@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Church Check-In</title>
+<link rel="stylesheet" href="/css/theme.css"/>
+<style>
+  body { background: var(--navy); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+  .qr-shell { width: 100%; max-width: 420px; }
+  .qr-card  { background: #fff; border-radius: var(--rxl); padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .qr-logo  { display: flex; align-items: center; gap: .6rem; margin-bottom: 1.75rem; }
+  .qr-logo-icon { width: 40px; height: 40px; background: var(--gold); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+  .qr-church-name { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+  .qr-church-sub  { font-size: .74rem; color: var(--ink3); }
+  .qr-output { display: none; text-align: center; padding: .5rem 0; }
+  .qr-output.show { display: block; }
+  .qr-code-wrap { background: var(--cream2); border-radius: var(--rl); padding: 1.25rem; display: inline-block; margin: 1rem 0; }
+  .qr-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin-bottom: .2rem; }
+  .qr-meta { font-size: .78rem; color: var(--ink3); margin-bottom: 1rem; }
+  .already-reg { text-align: center; padding: 1rem 0; }
+  .already-reg h2 { font-family: 'Playfair Display', serif; margin-bottom: .5rem; }
+  .already-reg p  { font-size: .84rem; color: var(--ink3); margin-bottom: 1.25rem; }
+  #loading-screen { text-align: center; padding: 2rem 0; }
+</style>
+</head>
+<body>
+<div class="qr-shell">
+  <div class="qr-card">
+
+    <!-- Loading -->
+    <div id="loading-screen">
+      <div class="spinner" style="margin: 0 auto 1rem;"></div>
+      <div class="text-muted text-sm">Loading…</div>
+    </div>
+
+    <!-- Registration form -->
+    <div id="form-screen" style="display:none;">
+      <div class="qr-logo">
+        <div class="qr-logo-icon">⛪</div>
+        <div>
+          <div class="qr-church-name" id="church-name">Church</div>
+          <div class="qr-church-sub" id="church-sub"></div>
+        </div>
+      </div>
+      <h2 class="serif" style="margin-bottom:.35rem;font-size:1.1rem;">Register &amp; Get QR Code</h2>
+      <p class="text-muted text-sm" style="margin-bottom:1.25rem;">Fill in your details once. Show the QR at the door each week.</p>
+      <form id="reg-form">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">First Name *</label><input type="text" id="rf-first" class="form-control" required autocomplete="given-name"/></div>
+          <div class="form-group"><label class="form-label">Last Name</label><input type="text" id="rf-last" class="form-control" autocomplete="family-name"/></div>
+        </div>
+        <div class="form-group"><label class="form-label">Phone Number *</label><input type="tel" id="rf-phone" class="form-control" required autocomplete="tel" placeholder="+233 …"/></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Membership #</label><input type="text" id="rf-mno" class="form-control" placeholder="Optional"/></div>
+          <div class="form-group"><label class="form-label">Role / Group</label>
+            <select id="rf-role" class="form-control">
+              <option value="General">General Member</option>
+              <option value="Visitor">Visitor</option>
+              <option value="Elder">Elder</option>
+              <option value="Deacon">Deacon</option>
+              <option value="Youth">Youth</option>
+              <option value="Children">Children</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem;" id="reg-btn">
+          Register &amp; Generate QR →
+        </button>
+      </form>
+    </div>
+
+    <!-- Already registered -->
+    <div id="already-screen" style="display:none;">
+      <div class="qr-logo">
+        <div class="qr-logo-icon">⛪</div>
+        <div><div class="qr-church-name" id="church-name2">Church</div><div class="qr-church-sub" id="church-sub2"></div></div>
+      </div>
+      <div class="already-reg">
+        <div style="font-size:2.5rem;margin-bottom:.75rem;">✅</div>
+        <h2>Already Registered</h2>
+        <p>Your QR code is ready. Show this at the check-in desk.</p>
+        <div class="qr-code-wrap"><div id="qr-display-2"></div></div>
+        <div class="qr-name" id="person-name-2">—</div>
+        <div class="qr-meta" id="person-meta-2">—</div>
+        <div style="display:flex;gap:.6rem;justify-content:center;margin-top:.5rem;">
+          <button class="btn btn-primary btn-sm" id="dl-btn-2">⬇ Download</button>
+          <button class="btn btn-outline btn-sm" id="share-btn-2">Share</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success / QR output -->
+    <div id="success-screen" style="display:none;">
+      <div class="qr-logo">
+        <div class="qr-logo-icon">⛪</div>
+        <div><div class="qr-church-name" id="church-name3">Church</div><div class="qr-church-sub" id="church-sub3"></div></div>
+      </div>
+      <div class="qr-output show">
+        <div style="font-size:2rem;margin-bottom:.5rem;">🎉</div>
+        <h2 class="serif" style="font-size:1.15rem;margin-bottom:.25rem;">You're registered!</h2>
+        <p class="text-sm text-muted" style="margin-bottom:1rem;">Show this QR code at the door each service.</p>
+        <div class="qr-code-wrap"><div id="qr-display"></div></div>
+        <div class="qr-name" id="person-name">—</div>
+        <div class="qr-meta" id="person-meta">—</div>
+        <div style="display:flex;gap:.6rem;justify-content:center;margin-top:.5rem;">
+          <button class="btn btn-primary btn-sm" id="dl-btn">⬇ Download</button>
+          <button class="btn btn-outline btn-sm" id="share-btn">Share</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module">
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '/js/config.js';
+
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const params  = new URLSearchParams(location.search);
+const orgSlug = params.get('org') || '';
+const LOCK_KEY = `qr_lock_${orgSlug}`;
+const DATA_KEY = `qr_data_${orgSlug}`;
+
+let org = null;
+let personData = null;
+
+// ─── BOOT ──────────────────────────────────────────────────────────────────
+async function boot() {
+  if (!orgSlug) { showError('Missing org parameter. Use ?org=your-slug'); return; }
+
+  // Check reset code
+  const resetCode = params.get('reset');
+  if (resetCode) {
+    const stored = JSON.parse(localStorage.getItem(DATA_KEY) || '{}');
+    if (stored.reset_code && resetCode === stored.reset_code) {
+      localStorage.removeItem(LOCK_KEY);
+      localStorage.removeItem(DATA_KEY);
+      location.href = location.pathname + '?org=' + orgSlug;
+      return;
+    }
+  }
+
+  // Load org config
+  try {
+    const { data, error } = await sb.from('organizations').select('id,name,sub_name,slug,qr_reset_code,settings').eq('slug', orgSlug).eq('is_active', true).single();
+    if (error || !data) { showError('Organization not found. Check your link.'); return; }
+    org = data;
+
+    // Cache reset code in localStorage for offline reset
+    const cached = JSON.parse(localStorage.getItem(DATA_KEY) || '{}');
+    localStorage.setItem(DATA_KEY, JSON.stringify({ ...cached, reset_code: data.qr_reset_code }));
+
+    setChurchBranding(data);
+  } catch {
+    // Offline — use cached org name if available
+    const cached = JSON.parse(localStorage.getItem(DATA_KEY) || '{}');
+    if (cached.name) org = cached;
+    else { showError('Cannot connect. Check your internet connection.'); return; }
+    setChurchBranding(org);
+  }
+
+  // Already registered?
+  const locked = localStorage.getItem(LOCK_KEY);
+  if (locked) {
+    const cached = JSON.parse(localStorage.getItem(DATA_KEY) || '{}');
+    personData = cached.person;
+    showAlreadyRegistered();
+    return;
+  }
+
+  showForm();
+}
+
+function setChurchBranding(data) {
+  ['','2','3'].forEach(n => {
+    const el = document.getElementById('church-name' + n);
+    const sl = document.getElementById('church-sub' + n);
+    if (el) el.textContent = data.name || 'Church';
+    if (sl) sl.textContent = data.sub_name || '';
+  });
+  document.title = (data.name || 'Church') + ' — Check-In';
+}
+
+function show(id) {
+  ['loading-screen','form-screen','already-screen','success-screen'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? '' : 'none';
+  });
+}
+
+function showForm()              { show('form-screen'); }
+function showAlreadyRegistered() { show('already-screen'); renderQR('qr-display-2', personData); populateMeta('2'); }
+function showSuccess()           { show('success-screen'); renderQR('qr-display', personData);  populateMeta(''); }
+function showError(msg)          { show('form-screen'); document.getElementById('form-screen').innerHTML = `<div style="padding:2rem;text-align:center;color:var(--red);">${msg}</div>`; }
+
+function populateMeta(suffix) {
+  if (!personData) return;
+  const name = `${personData.first_name} ${personData.last_name || ''}`.trim();
+  document.getElementById('person-name' + suffix).textContent = name;
+  document.getElementById('person-meta' + suffix).textContent =
+    [personData.role, personData.membership_no ? '# ' + personData.membership_no : '', personData.id].filter(Boolean).join(' · ');
+}
+
+function renderQR(containerId, person) {
+  const el = document.getElementById(containerId);
+  if (!el || !person) return;
+  el.innerHTML = '';
+  new QRCode(el, {
+    text: person.id,
+    width: 180, height: 180,
+    colorDark: '#0F2340', colorLight: '#F5E9CC',
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+}
+
+// ─── REGISTER ──────────────────────────────────────────────────────────────
+document.getElementById('reg-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = 'Registering…';
+
+  const first = document.getElementById('rf-first').value.trim();
+  const last  = document.getElementById('rf-last').value.trim();
+  const phone = document.getElementById('rf-phone').value.trim();
+  const mno   = document.getElementById('rf-mno').value.trim();
+  const role  = document.getElementById('rf-role').value;
+
+  if (!first || !phone) {
+    btn.disabled = false; btn.textContent = 'Register & Generate QR →';
+    alert('First name and phone are required.');
+    return;
+  }
+
+  // Generate ID: P + 8 hex chars
+  const id = 'P' + Array.from(crypto.getRandomValues(new Uint8Array(4))).map(b => b.toString(16).padStart(2,'0')).join('').toUpperCase();
+
+  try {
+    const { error } = await sb.from('qr_registrations').insert({
+      id, org_id: org.id,
+      first_name: first, last_name: last || null,
+      phone, membership_no: mno || null, role,
+    });
+
+    if (error) {
+      if (error.code === '23505') {
+        alert('You have already registered with this name and phone number.');
+        btn.disabled = false; btn.textContent = 'Register & Generate QR →';
+        return;
+      }
+      throw error;
+    }
+
+    personData = { id, first_name: first, last_name: last, phone, membership_no: mno, role };
+    const cached = JSON.parse(localStorage.getItem(DATA_KEY) || '{}');
+    localStorage.setItem(DATA_KEY, JSON.stringify({ ...cached, person: personData, name: org.name, sub_name: org.sub_name }));
+    localStorage.setItem(LOCK_KEY, '1');
+
+    showSuccess();
+  } catch (err) {
+    alert(err.message || 'Registration failed. Please try again.');
+    btn.disabled = false; btn.textContent = 'Register & Generate QR →';
+  }
+});
+
+// ─── DOWNLOAD & SHARE ──────────────────────────────────────────────────────
+function downloadQR(suffix) {
+  const canvas = document.querySelector('#qr-display' + suffix + ' canvas');
+  if (!canvas) return;
+  const out = document.createElement('canvas');
+  const pad = 32, textH = 80;
+  out.width  = canvas.width  + pad * 2;
+  out.height = canvas.height + pad * 2 + textH;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#0F2340';
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.fillStyle = '#B8964A';
+  ctx.fillRect(0, 0, out.width, 8);
+  ctx.drawImage(canvas, pad, pad + 8);
+  const name = `${personData?.first_name || ''} ${personData?.last_name || ''}`.trim();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 18px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(name, out.width / 2, canvas.height + pad + 36);
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.font = '13px sans-serif';
+  ctx.fillText(personData?.role || '', out.width / 2, canvas.height + pad + 56);
+  ctx.fillText(personData?.id || '', out.width / 2, canvas.height + pad + 74);
+  const link = document.createElement('a');
+  link.download = `qr-${name.replace(/\s+/g,'-')}.png`;
+  link.href = out.toDataURL('image/png');
+  link.click();
+}
+
+function shareQR(suffix) {
+  const name = `${personData?.first_name || ''} ${personData?.last_name || ''}`.trim();
+  if (navigator.share) {
+    navigator.share({ title: `${org?.name || ''} QR Code — ${name}`, text: `My church check-in QR: ${personData?.id}` }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(personData?.id || '').then(() => alert('QR ID copied to clipboard'));
+  }
+}
+
+document.getElementById('dl-btn')?.addEventListener('click', () => downloadQR(''));
+document.getElementById('dl-btn-2')?.addEventListener('click', () => downloadQR('-2'));
+document.getElementById('share-btn')?.addEventListener('click', () => shareQR(''));
+document.getElementById('share-btn-2')?.addEventListener('click', () => shareQR('-2'));
+
+boot();
+</script>
+</body>
+</html>

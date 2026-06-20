@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ChurchOS — Sign In</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="stylesheet" href="/css/theme.css"/>
+<style>
+  .onboard-step { display: none; }
+  .onboard-step.active { display: block; }
+  .plan-cards { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 1rem 0; }
+  .plan-card  { border: 2px solid var(--cream3); border-radius: var(--r); padding: 1rem; cursor: pointer; transition: border-color .15s; }
+  .plan-card.selected, .plan-card:hover { border-color: var(--gold); }
+  .plan-card h4 { margin-bottom: .25rem; }
+  .plan-card p  { font-size: .78rem; color: var(--ink3); }
+  .plan-badge   { font-size: .68rem; font-weight: 700; color: var(--gold-dark); background: var(--gold-pale); padding: .1rem .45rem; border-radius: 4px; margin-left: .35rem; }
+  .step-indicator { display: flex; gap: .4rem; margin-bottom: 1.5rem; justify-content: center; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cream3); transition: background .2s; }
+  .step-dot.active { background: var(--gold); }
+  .step-dot.done   { background: var(--green); }
+</style>
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⛪</div>
+      <div class="auth-logo-text">
+        <h1 class="serif">ChurchOS</h1>
+        <p>Church Management Platform</p>
+      </div>
+    </div>
+
+    <!-- Sign In / Sign Up tabs -->
+    <div id="auth-section">
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-tab="signin">Sign In</div>
+        <div class="auth-tab" data-tab="signup">Create Account</div>
+      </div>
+
+      <!-- Sign In -->
+      <div class="auth-panel active" data-panel="signin">
+        <form id="signin-form">
+          <div class="form-group">
+            <label class="form-label">Email address</label>
+            <input type="email" id="signin-email" class="form-control" placeholder="you@church.org" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="signin-password" class="form-control" placeholder="••••••••" required/>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;" id="signin-btn">
+            Sign In
+          </button>
+        </form>
+        <p style="margin-top:1rem;font-size:.78rem;color:var(--ink3);text-align:center;">
+          Don't have an account? <a href="#" id="goto-signup" style="color:var(--gold-dark);font-weight:500;">Create one free →</a>
+        </p>
+      </div>
+
+      <!-- Sign Up -->
+      <div class="auth-panel" data-panel="signup">
+        <form id="signup-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">First Name</label>
+              <input type="text" id="su-first" class="form-control" placeholder="John" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last Name</label>
+              <input type="text" id="su-last" class="form-control" placeholder="Doe" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email address</label>
+            <input type="email" id="su-email" class="form-control" placeholder="you@church.org" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="su-password" class="form-control" placeholder="Min 8 characters" minlength="8" required/>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;" id="signup-btn">
+            Create Account
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Onboarding wizard (shown after new signup) -->
+    <div id="onboard-section" style="display:none;">
+      <div class="step-indicator">
+        <div class="step-dot active" id="dot-0"></div>
+        <div class="step-dot" id="dot-1"></div>
+        <div class="step-dot" id="dot-2"></div>
+      </div>
+
+      <!-- Step 0: Church details -->
+      <div class="onboard-step active" id="step-0">
+        <h2 class="serif" style="margin-bottom:.35rem;">Set up your church</h2>
+        <p class="text-muted text-sm" style="margin-bottom:1.25rem;">This takes about a minute.</p>
+        <div class="form-group">
+          <label class="form-label">Church / Organization Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="ob-name" class="form-control" placeholder="Grace Community Church" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tagline or Location</label>
+          <input type="text" id="ob-sub" class="form-control" placeholder="Accra, Ghana"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Denomination (optional)</label>
+          <input type="text" id="ob-denom" class="form-control" placeholder="e.g. Presbyterian, Baptist, Pentecostal"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL Slug <span style="color:var(--red)">*</span></label>
+          <div style="display:flex;align-items:center;gap:.4rem;">
+            <span style="font-size:.82rem;color:var(--ink3);white-space:nowrap;">churchos.app/</span>
+            <input type="text" id="ob-slug" class="form-control" placeholder="grace-community" pattern="[a-z0-9\-]+" required/>
+          </div>
+          <div style="font-size:.72rem;color:var(--ink3);margin-top:.25rem;">Lowercase letters, numbers, hyphens only.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Default Currency</label>
+          <select id="ob-currency" class="form-control">
+            <option value="USD">USD — US Dollar</option>
+            <option value="GHS">GHS — Ghanaian Cedi</option>
+            <option value="NGN">NGN — Nigerian Naira</option>
+            <option value="KES">KES — Kenyan Shilling</option>
+            <option value="ZAR">ZAR — South African Rand</option>
+            <option value="GBP">GBP — British Pound</option>
+            <option value="EUR">EUR — Euro</option>
+            <option value="CAD">CAD — Canadian Dollar</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" id="ob-next-0">Continue →</button>
+      </div>
+
+      <!-- Step 1: Plan -->
+      <div class="onboard-step" id="step-1">
+        <h2 class="serif" style="margin-bottom:.35rem;">Choose a plan</h2>
+        <p class="text-muted text-sm" style="margin-bottom:1rem;">Start free, upgrade anytime.</p>
+        <div class="plan-cards">
+          <div class="plan-card selected" data-plan="free" id="plan-free">
+            <h4>Free <span class="plan-badge">Current</span></h4>
+            <p>Up to 200 members, all core modules, QR check-in.</p>
+          </div>
+          <div class="plan-card" data-plan="pro" id="plan-pro">
+            <h4>Pro <span class="plan-badge">$9/mo</span></h4>
+            <p>Unlimited members, hierarchy rollup, priority support.</p>
+          </div>
+        </div>
+        <div style="font-size:.75rem;color:var(--ink3);text-align:center;margin-bottom:1rem;">
+          No credit card required for Free plan.
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" id="ob-next-1">Continue →</button>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:.5rem;" id="ob-back-1">← Back</button>
+      </div>
+
+      <!-- Step 2: Done -->
+      <div class="onboard-step" id="step-2">
+        <div style="text-align:center;padding:1rem 0;">
+          <div style="font-size:3rem;margin-bottom:.75rem;">🎉</div>
+          <h2 class="serif" style="margin-bottom:.5rem;">You're all set!</h2>
+          <p class="text-muted text-sm" style="margin-bottom:1.75rem;">Your church is ready. Invite your team and start adding members.</p>
+          <div style="background:var(--cream2);border-radius:var(--r);padding:1rem;text-align:left;margin-bottom:1.25rem;">
+            <div style="font-size:.72rem;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;">Your QR Check-In Link</div>
+            <div class="mono" style="font-size:.82rem;color:var(--ink2);word-break:break-all;" id="qr-link-display">—</div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;" id="ob-go-app">Open ChurchOS →</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script type="module">
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '/js/config.js';
+import { toast } from '/js/ui.js';
+
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Redirect if already signed in and onboarding complete
+sb.auth.getSession().then(async ({ data: { session } }) => {
+  if (!session) return;
+  const { data: profile } = await sb.from('profiles').select('org_id').eq('id', session.user.id).single();
+  if (profile?.org_id) {
+    window.location.href = '/app.html';
+  } else {
+    // Has session but no org — show onboarding
+    newUserId = session.user.id;
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('onboard-section').style.display = 'block';
+  }
+});
+
+// Tab switching
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelector(`[data-panel="${tab.dataset.tab}"]`).classList.add('active');
+  });
+});
+document.getElementById('goto-signup').addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelector('[data-tab="signup"]').click();
+});
+
+// Sign In
+document.getElementById('signin-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('signin-btn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const { error } = await sb.auth.signInWithPassword({
+      email: document.getElementById('signin-email').value,
+      password: document.getElementById('signin-password').value,
+    });
+    if (error) throw error;
+    window.location.href = '/app.html';
+  } catch (err) {
+    toast(err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+});
+
+// Sign Up
+let newUserId = null;
+let selectedPlan = 'free';
+
+document.getElementById('signup-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('signup-btn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  try {
+    const { data, error } = await sb.auth.signUp({
+      email: document.getElementById('su-email').value,
+      password: document.getElementById('su-password').value,
+      options: { data: {
+        first_name: document.getElementById('su-first').value,
+        last_name:  document.getElementById('su-last').value,
+        role: 'owner',
+      }},
+    });
+    if (error) throw error;
+    newUserId = data.user?.id;
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('onboard-section').style.display = 'block';
+  } catch (err) {
+    toast(err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Create Account';
+  }
+});
+
+// Auto-generate slug from name
+document.getElementById('ob-name').addEventListener('input', e => {
+  const slug = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  document.getElementById('ob-slug').value = slug;
+});
+
+// Plan selection
+document.querySelectorAll('.plan-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedPlan = card.dataset.plan;
+  });
+});
+
+// Step navigation helpers
+function setStep(n) {
+  document.querySelectorAll('.onboard-step').forEach((s, i) => s.classList.toggle('active', i === n));
+  document.querySelectorAll('.step-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === n);
+    d.classList.toggle('done', i < n);
+  });
+}
+
+// Step 0 → 1
+document.getElementById('ob-next-0').addEventListener('click', () => {
+  const name = document.getElementById('ob-name').value.trim();
+  const slug = document.getElementById('ob-slug').value.trim();
+  if (!name || !slug) { toast('Church name and slug are required', 'error'); return; }
+  if (!/^[a-z0-9-]+$/.test(slug)) { toast('Slug can only contain lowercase letters, numbers, hyphens', 'error'); return; }
+  setStep(1);
+});
+
+document.getElementById('ob-back-1').addEventListener('click', () => setStep(0));
+
+// Step 1 → 2: create org
+document.getElementById('ob-next-1').addEventListener('click', async () => {
+  const btn = document.getElementById('ob-next-1');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    const name     = document.getElementById('ob-name').value.trim();
+    const slug     = document.getElementById('ob-slug').value.trim();
+    const sub      = document.getElementById('ob-sub').value.trim();
+    const denom    = document.getElementById('ob-denom').value.trim();
+    const currency = document.getElementById('ob-currency').value;
+
+    // Create org
+    const { data: org, error: orgErr } = await sb.from('organizations').insert({
+      name, slug, sub_name: sub || null, denomination: denom || null,
+      currency, plan: selectedPlan, org_type: 'congregation',
+    }).select().single();
+    if (orgErr) throw orgErr;
+
+    // Attach org to profile
+    const { error: profErr } = await sb.from('profiles').update({ org_id: org.id }).eq('id', newUserId);
+    if (profErr) throw profErr;
+
+    const origin = window.location.origin;
+    document.getElementById('qr-link-display').textContent = `${origin}/qr/register/?org=${slug}`;
+    setStep(2);
+  } catch (err) {
+    toast(err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Continue →';
+  }
+});
+
+document.getElementById('ob-go-app').addEventListener('click', () => {
+  window.location.href = '/app.html';
+});
+</script>
+</body>
+</html>

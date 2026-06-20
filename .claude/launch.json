@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "churchos",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["/Users/taz/Desktop/Projects/churchos/.claude/server.js"],
+      "port": 4200
+    }
+  ]
+}

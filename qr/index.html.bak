@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<!-- saved from url=(0030)https://qrcapture.netlify.app/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Eventara — Check-In</title>
+<link href="./Eventara — Check-In_files/css2" rel="stylesheet">
+<style>
+:root {
+  --navy:      #0A1628;
+  --navy-2:    #0F1E38;
+  --navy-3:    #162240;
+  --navy-4:    #1C2A4E;
+  --gold:      #C9A84C;
+  --gold-2:    #E2C06A;
+  --gold-dim:  rgba(201,168,76,0.18);
+  --gold-glow: rgba(201,168,76,0.08);
+  --white:     #F8F5EE;
+  --white-dim: rgba(248,245,238,0.72);
+  --white-faint: rgba(248,245,238,0.12);
+  --muted:     rgba(248,245,238,0.45);
+  --border:    rgba(201,168,76,0.15);
+  --border-2:  rgba(201,168,76,0.28);
+  --success:   #2ECC71;
+  --success-bg: rgba(46,204,113,0.12);
+  --danger:    #E74C3C;
+  --danger-bg: rgba(231,76,60,0.12);
+  --warn:      #F39C12;
+  --warn-bg:   rgba(243,156,18,0.12);
+  --info:      #5DADE2;
+  --info-bg:   rgba(93,173,226,0.12);
+  --display: 'Playfair Display', Georgia, serif;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --r: 8px; --rl: 14px; --rxl: 20px;
+  --tap: 48px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; height: 100%; }
+
+body {
+  font-family: var(--sans);
+  color: var(--white);
+  background: var(--navy);
+  font-size: 15px;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100%;
+  /* Subtle noise texture overlay */
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201,168,76,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 90% 90%, rgba(201,168,76,0.04) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app { max-width: 600px; margin: 0 auto; padding-bottom: 84px; position: relative; z-index: 1; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(10,22,40,0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid var(--border-2);
+  display: flex; z-index: 200;
+  max-width: 600px; margin: 0 auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.bnav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; padding: 9px 4px 11px;
+  border: none; background: none; color: var(--muted);
+  cursor: pointer; font-family: var(--sans); font-size: 9.5px;
+  font-weight: 500; min-height: var(--tap);
+  transition: color 0.18s; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.bnav-btn.active { color: var(--gold); }
+.bnav-btn.active .ni { stroke: var(--gold); }
+.ni { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.18s; }
+
+/* ── PAGES ── */
+.page { display: none; padding: 20px 16px 0; }
+.page.active { display: block; }
+
+/* ── PAGE HEADER ── */
+.page-header { margin-bottom: 22px; padding-top: 4px; }
+.page-eyebrow {
+  font-family: var(--mono); font-size: 10px; font-weight: 400;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold);
+  margin-bottom: 6px; display: block;
+}
+.page-title {
+  font-family: var(--display); font-size: 26px; font-weight: 600;
+  color: var(--white); line-height: 1.15; letter-spacing: -0.01em;
+}
+.page-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; }
+
+/* ── SECTION LABELS ── */
+.slabel {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold);
+  margin: 0 0 12px; display: block;
+}
+
+/* ── DIVIDER ── */
+.gold-rule { height: 0.5px; background: linear-gradient(90deg, transparent, var(--gold-2), transparent); margin: 20px 0; opacity: 0.5; border: none; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--navy-2);
+  border: 0.5px solid var(--border-2);
+  border-radius: var(--rl);
+  padding: 18px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
+}
+
+/* ── STATS ── */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+.stat {
+  background: var(--navy-3);
+  border: 0.5px solid var(--border);
+  border-radius: var(--rl);
+  padding: 16px;
+  position: relative; overflow: hidden;
+}
+.stat::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+}
+.stat-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.stat-value { font-family: var(--display); font-size: 34px; font-weight: 600; color: var(--white); line-height: 1; }
+.stat-value.gold { color: var(--gold); }
+.stat-value.green { color: var(--success); }
+.stat-value.amber { color: var(--warn); }
+
+/* ── FORM FIELDS ── */
+.field { margin-bottom: 14px; }
+.field:last-of-type { margin-bottom: 0; }
+.field-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 7px; display: block;
+}
+.field-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+input[type=text], input[type=email], input[type=tel], select, input[type=number] {
+  width: 100%; font-family: var(--sans); font-size: 15px;
+  padding: 11px 14px;
+  border: 0.5px solid var(--border-2);
+  border-radius: var(--r);
+  background: var(--navy-3);
+  color: var(--white);
+  outline: none; -webkit-appearance: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input::placeholder, select option { color: var(--muted); }
+input:focus, select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-glow);
+}
+
+/* ── BUTTONS ── */
+.btn {
+  font-family: var(--sans); font-size: 13.5px; font-weight: 500;
+  padding: 0 20px; height: var(--tap);
+  border: 0.5px solid var(--border-2);
+  background: var(--navy-3);
+  color: var(--white-dim);
+  border-radius: var(--r);
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  white-space: nowrap;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, transform 0.1s, box-shadow 0.14s;
+  letter-spacing: 0.02em;
+}
+.btn:active { transform: scale(0.97); }
+.btn:hover { border-color: var(--border-2); background: var(--navy-4); color: var(--white); }
+.btn.primary {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 18px rgba(201,168,76,0.22);
+}
+.btn.primary:hover { background: var(--gold-2); border-color: var(--gold-2); box-shadow: 0 4px 24px rgba(201,168,76,0.32); }
+.btn.full { width: 100%; }
+.btn.danger { background: var(--danger-bg); color: var(--danger); border-color: rgba(231,76,60,0.25); }
+.btn.success { background: var(--success-bg); color: var(--success); border-color: rgba(46,204,113,0.25); }
+.btn.sm { height: 34px; padding: 0 14px; font-size: 12px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+/* ── PERSON ROWS ── */
+.person-row {
+  display: flex; align-items: center; gap: 13px;
+  padding: 13px 0; border-bottom: 0.5px solid var(--border);
+  transition: opacity 0.15s;
+}
+.person-row:last-child { border-bottom: none; }
+
+.avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--navy-4);
+  border: 0.5px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  color: var(--gold); flex-shrink: 0; letter-spacing: 0.08em;
+}
+.person-info { flex: 1; min-width: 0; }
+.person-name { font-weight: 500; font-size: 14px; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.person-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex; align-items: center; font-family: var(--mono);
+  font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 99px; white-space: nowrap;
+}
+.badge.checked  { background: var(--success-bg); color: var(--success); border: 0.5px solid rgba(46,204,113,0.2); }
+.badge.pending  { background: var(--warn-bg);    color: var(--warn);    border: 0.5px solid rgba(243,156,18,0.2); }
+.badge.synced   { background: var(--info-bg);    color: var(--info);    border: 0.5px solid rgba(93,173,226,0.2); }
+.badge.local    { background: var(--navy-4);     color: var(--muted);   border: 0.5px solid var(--border); }
+
+/* ── CAMERA SCANNER ── */
+.cam-container {
+  position: relative; background: #000;
+  border-radius: var(--rl); overflow: hidden;
+  margin-bottom: 14px; aspect-ratio: 1/1;
+  max-height: 320px;
+  border: 0.5px solid var(--border-2);
+  box-shadow: 0 0 40px rgba(201,168,76,0.08);
+}
+.cam-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.cam-frame {
+  width: 58%; aspect-ratio: 1/1;
+  border: none; position: relative;
+}
+.cam-frame .corner {
+  position: absolute; width: 22px; height: 22px;
+  border-color: var(--gold); border-style: solid;
+}
+.cam-frame .corner.tl { top: 0; left: 0; border-width: 2.5px 0 0 2.5px; border-radius: 4px 0 0 0; }
+.cam-frame .corner.tr { top: 0; right: 0; border-width: 2.5px 2.5px 0 0; border-radius: 0 4px 0 0; }
+.cam-frame .corner.bl { bottom: 0; left: 0; border-width: 0 0 2.5px 2.5px; border-radius: 0 0 0 4px; }
+.cam-frame .corner.br { bottom: 0; right: 0; border-width: 0 2.5px 2.5px 0; border-radius: 0 0 4px 0; }
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  border-radius: 1px;
+  animation: scanline 2.2s ease-in-out infinite; top: 10%;
+  box-shadow: 0 0 8px var(--gold);
+}
+@keyframes scanline { 0%,100% { top: 5%; opacity: 0.5; } 50% { top: 90%; opacity: 1; } }
+.cam-status {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(10,22,40,0.82);
+  backdrop-filter: blur(8px);
+  color: var(--white-dim); font-family: var(--mono);
+  font-size: 12px; text-align: center; padding: 11px 12px;
+  letter-spacing: 0.06em;
+}
+.cam-status.success { background: rgba(46,204,113,0.75); color: #fff; }
+.cam-status.error   { background: rgba(231,76,60,0.75);  color: #fff; }
+.cam-status.warn    { background: rgba(243,156,18,0.7);   color: var(--navy); }
+
+.cam-controls { display: flex; gap: 8px; margin-bottom: 14px; }
+.cam-btn {
+  flex: 1; height: var(--tap); border-radius: var(--r);
+  border: 0.5px solid var(--border-2);
+  background: var(--navy-3); color: var(--white);
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: background 0.14s, border-color 0.14s;
+}
+.cam-btn:hover { background: var(--navy-4); }
+.cam-btn.active-cam { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+.cam-btn.stop { background: var(--danger-bg); color: var(--danger); border-color: rgba(231,76,60,0.3); }
+
+/* Manual fallback */
+.manual-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.manual-row input {
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.06em;
+  flex: 1; height: var(--tap); padding: 0 14px;
+}
+
+/* Scan result banner */
+.result-banner {
+  border-radius: var(--rl); padding: 18px 16px;
+  text-align: center; margin-bottom: 14px;
+  border: 0.5px solid transparent;
+  animation: bannerIn 0.25s ease;
+}
+@keyframes bannerIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.result-banner.success { background: var(--success-bg); border-color: rgba(46,204,113,0.25); }
+.result-banner.error   { background: var(--danger-bg);  border-color: rgba(231,76,60,0.25); }
+.result-banner.warn    { background: var(--warn-bg);    border-color: rgba(243,156,18,0.25); }
+.rb-name { font-family: var(--display); font-size: 18px; font-weight: 600; color: var(--white); }
+.rb-detail { font-family: var(--mono); font-size: 11.5px; margin-top: 5px; color: var(--muted); letter-spacing: 0.05em; }
+
+/* Section row */
+.section-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-row .slabel { margin: 0; }
+
+/* ── LOGS TABLE ── */
+.log-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.log-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 380px; }
+.log-table th {
+  text-align: left; padding: 6px 10px;
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold);
+  border-bottom: 0.5px solid var(--border-2);
+}
+.log-table td { padding: 11px 10px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+.log-table tr:last-child td { border-bottom: none; }
+.log-mono { font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.04em; }
+
+/* Sync bar */
+.sync-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--warn-bg); border: 0.5px solid rgba(243,156,18,0.2);
+  color: var(--warn); border-radius: var(--r); padding: 10px 14px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  margin-bottom: 14px; gap: 8px;
+}
+
+.empty { text-align: center; padding: 36px 16px; color: var(--muted); font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; }
+
+/* ── QR MODAL ── */
+.modal-wrap {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(5,12,24,0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 500; animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-sheet {
+  background: var(--navy-2);
+  border: 0.5px solid var(--border-2);
+  border-radius: 22px 22px 0 0;
+  padding: 8px 20px 40px;
+  width: 100%; max-width: 600px; text-align: center;
+  animation: sheetUp 0.28s cubic-bezier(.25,.46,.45,.94);
+  position: relative;
+}
+.modal-sheet::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.4;
+}
+@keyframes sheetUp { from { transform: translateY(60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-handle { width: 36px; height: 3.5px; background: var(--border-2); border-radius: 2px; margin: 12px auto 18px; }
+.modal-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.modal-name { font-family: var(--display); font-size: 22px; font-weight: 600; color: var(--white); }
+.modal-role { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 3px; letter-spacing: 0.08em; text-transform: uppercase; }
+.modal-phone { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 2px; margin-bottom: 18px; }
+.qr-wrap {
+  background: #fff; padding: 16px; border-radius: 12px;
+  display: inline-block; margin-bottom: 10px;
+  box-shadow: 0 4px 32px rgba(201,168,76,0.14);
+}
+.qr-id { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 20px; letter-spacing: 0.1em; }
+.modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%);
+  background: var(--gold);
+  color: var(--navy);
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  letter-spacing: 0.06em;
+  padding: 10px 22px; border-radius: 99px;
+  z-index: 9999; opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none; white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(201,168,76,0.4);
+  transform: translateX(-50%) translateY(6px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── BULK QR PAGE ── */
+.bulk-progress {
+  background: var(--navy-3); border: 0.5px solid var(--border-2);
+  border-radius: var(--r); padding: 14px 16px; margin-bottom: 14px;
+  display: none;
+}
+.bulk-progress.visible { display: block; }
+.bulk-bar-track {
+  height: 3px; background: var(--navy-4);
+  border-radius: 2px; margin-top: 8px; overflow: hidden;
+}
+.bulk-bar-fill {
+  height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-2));
+  border-radius: 2px; width: 0%; transition: width 0.3s ease;
+  box-shadow: 0 0 8px var(--gold);
+}
+.bulk-status { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
+
+.bulk-preview {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px; margin-top: 4px;
+}
+.bulk-card {
+  background: var(--navy-3); border: 0.5px solid var(--border);
+  border-radius: var(--r); padding: 12px; text-align: center;
+  position: relative; overflow: hidden;
+}
+.bulk-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.25), transparent);
+}
+.bulk-card-qr { background: #fff; border-radius: 6px; display: inline-block; padding: 6px; margin-bottom: 7px; }
+.bulk-card-name { font-family: var(--display); font-size: 11.5px; font-weight: 600; color: var(--white); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bulk-card-id { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; }
+
+/* print */
+@media print {
+  .app, body { background: #fff !important; }
+  .bottom-nav, .page-header, .btn-row, .slabel, .bulk-progress { display: none !important; }
+  .bulk-preview { display: grid !important; grid-template-columns: repeat(3,1fr); gap: 20px; }
+  .bulk-card { border: 1px solid #ccc; page-break-inside: avoid; }
+}
+
+/* Responsive touch fixes */
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23C9A84C' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+select option { background: #0F1E38; color: #F8F5EE; }
+
+/* ── LOGIN SCREEN ── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--navy);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 32px 24px;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201,168,76,0.09) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 90% 90%, rgba(201,168,76,0.05) 0%, transparent 50%);
+}
+#login-screen.hidden { display: none; }
+.login-logo {
+  width: 64px; height: 64px; border: 1.5px solid var(--border-2);
+  border-radius: 18px; background: var(--navy-2);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 28px; box-shadow: 0 0 40px rgba(201,168,76,0.12);
+}
+.login-logo svg { width: 32px; height: 32px; }
+.login-title {
+  font-family: var(--display); font-size: 28px; font-weight: 600;
+  color: var(--white); text-align: center; letter-spacing: -0.01em; margin-bottom: 6px;
+}
+.login-sub {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  text-align: center; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 40px;
+}
+.login-card {
+  width: 100%; max-width: 380px; background: var(--navy-2);
+  border: 0.5px solid var(--border-2); border-radius: var(--rxl);
+  padding: 28px 24px; position: relative; overflow: hidden;
+}
+.login-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent);
+}
+.login-field-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: block;
+}
+.login-input {
+  width: 100%; font-family: var(--mono); font-size: 16px;
+  letter-spacing: 0.06em; padding: 13px 16px; margin-bottom: 16px;
+  border: 0.5px solid var(--border-2); border-radius: var(--r);
+  background: var(--navy-3); color: var(--white); outline: none; -webkit-appearance: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.login-input::placeholder { color: var(--muted); letter-spacing: 0.04em; }
+.login-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-glow); }
+.login-btn {
+  width: 100%; height: 50px; background: var(--gold); color: var(--navy);
+  border: none; border-radius: var(--r); font-family: var(--sans);
+  font-size: 15px; font-weight: 600; letter-spacing: 0.05em; cursor: pointer;
+  box-shadow: 0 4px 24px rgba(201,168,76,0.28);
+  transition: background 0.14s, box-shadow 0.14s, transform 0.1s;
+}
+.login-btn:hover { background: var(--gold-2); box-shadow: 0 6px 28px rgba(201,168,76,0.38); }
+.login-btn:active { transform: scale(0.98); }
+.login-error {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  color: var(--danger); text-align: center; margin-top: 14px; min-height: 18px;
+}
+.login-hint {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  text-align: center; margin-top: 24px; letter-spacing: 0.06em; line-height: 1.7;
+}
+/* ── LOCKED SETTINGS ── */
+.locked-field {
+  padding: 10px 14px; margin-bottom: 10px;
+  background: var(--navy-3); border: 0.5px solid var(--border); border-radius: var(--r);
+}
+.locked-field:last-of-type { margin-bottom: 0; }
+.locked-field-label {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+}
+.locked-field-value {
+  font-family: var(--mono); font-size: 12.5px; color: var(--gold);
+  letter-spacing: 0.04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.locked-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(201,168,76,0.1); border: 0.5px solid var(--border-2);
+  color: var(--gold); border-radius: 99px; font-family: var(--mono);
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 10px; margin-bottom: 14px;
+}
+.lock-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path>
+    </svg>
+  </div>
+  <div class="login-title">Eventara</div>
+  <div class="login-sub">Check-In System</div>
+  <div class="login-card">
+    <label class="login-field-label">Congregation ID</label>
+    <input class="login-input" id="login-input" type="text" placeholder="e.g. immanuel_madina" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" onkeydown="if(event.key===&#39;Enter&#39;)doLogin()">
+    <button class="login-btn" onclick="doLogin()">Enter</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+  <div class="login-hint">Contact your administrator for your congregation ID</div>
+</div>
+
+<div class="app" style="visibility: hidden;">
+
+  <!-- ── DASHBOARD ── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <span class="page-eyebrow">Overview</span>
+      <div class="page-title">Check-In</div>
+      <div class="page-sub" id="dash-date"></div>
+    </div>
+    <div class="stats" id="dash-stats"></div>
+    <div id="dash-sync-bar"></div>
+    <div class="slabel">Recent arrivals</div>
+    <div class="card"><div id="dash-recent"></div></div>
+  </div>
+
+  <!-- ── REGISTER ── -->
+  <div class="page" id="page-register">
+    <div class="page-header">
+      <span class="page-eyebrow">Attendees</span>
+      <div class="page-title">Register</div>
+    </div>
+    <div class="slabel">New attendee</div>
+    <div class="card">
+      <div class="field-row2">
+        <div><label class="field-label">First name</label><input type="text" id="reg-fname" placeholder="Kofi" autocomplete="given-name"></div>
+        <div><label class="field-label">Last name</label><input type="text" id="reg-lname" placeholder="Asante" autocomplete="family-name"></div>
+      </div>
+      <div class="field"><label class="field-label">Membership No</label><input type="email" id="reg-email" placeholder="MIPC 000" inputmode="email"></div>
+      <div class="field"><label class="field-label">Phone number</label><input type="tel" id="reg-phone" placeholder="024 000 0000" inputmode="tel"></div>
+      <div class="field"><label class="field-label">Role / Group</label><input type="text" id="reg-role" placeholder="Agent, YPG, Visitor…"></div>
+      <div class="btn-row">
+        <button class="btn primary full" onclick="registerPerson()">Add &amp; generate QR</button>
+        <button class="btn full" onclick="importCSV()">Import CSV</button>
+      </div>
+    </div>
+    <div class="section-row" style="margin-top:20px;">
+      <div class="slabel">Attendees (<span id="reg-count">0</span>)</div>
+    </div>
+    <div class="card"><div id="reg-list"></div></div>
+  </div>
+
+  <!-- ── SCANNER ── -->
+  <div class="page" id="page-scanner">
+    <div class="page-header">
+      <span class="page-eyebrow">Live scan</span>
+      <div class="page-title">Scanner</div>
+      <div class="page-sub" id="cam-api-note"></div>
+    </div>
+
+    <div class="cam-container" id="cam-box" style="display:none;">
+      <video class="cam-video" id="cam-video" playsinline="" muted="" autoplay=""></video>
+      <div class="cam-overlay">
+        <div class="cam-frame">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+      <div class="cam-status" id="cam-status">Scanning…</div>
+    </div>
+
+    <div class="cam-controls">
+      <button class="cam-btn" id="btn-start-cam" onclick="startCamera()">
+        <svg class="ni" style="width:17px;height:17px;" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2"></rect></svg>
+        Start camera
+      </button>
+      <button class="cam-btn" id="btn-flip-cam" onclick="flipCamera()" style="display:none;">
+        <svg class="ni" style="width:17px;height:17px;" viewBox="0 0 24 24"><path d="M1 4v6h6"></path><path d="M3.51 15a9 9 0 1 0 .49-4.5"></path></svg>
+        Flip
+      </button>
+      <button class="cam-btn stop" id="btn-stop-cam" onclick="stopCamera()" style="display:none;">Stop</button>
+    </div>
+
+    <div id="scan-result"></div>
+
+    <div class="slabel">Manual entry</div>
+    <div class="manual-row">
+      <input type="text" id="scan-input" placeholder="Type or paste ID…" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" onkeydown="if(event.key===&#39;Enter&#39;)doManualScan()">
+      <button class="btn primary" onclick="doManualScan()">Check in</button>
+    </div>
+    <div class="section-row">
+      <div class="slabel">Today (<span id="scan-count">0</span>)</div>
+    </div>
+    <div class="card"><div id="scan-recent"></div></div>
+  </div>
+
+  <!-- ── LOGS ── -->
+  <div class="page" id="page-logs">
+    <div class="page-header">
+      <span class="page-eyebrow">Records</span>
+      <div class="page-title">Logs</div>
+    </div>
+    <div class="section-row">
+      <div class="slabel">All check-ins (<span id="log-count">0</span>)</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn sm" onclick="exportCSV()">CSV</button>
+        <button class="btn sm danger" onclick="clearLogs()">Clear</button>
+      </div>
+    </div>
+    <div class="card"><div id="log-container"></div></div>
+  </div>
+
+  <!-- ── BULK QR ── -->
+  <div class="page" id="page-bulk">
+    <div class="page-header">
+      <span class="page-eyebrow">Batch</span>
+      <div class="page-title">Bulk QR</div>
+      <div class="page-sub">Generate &amp; download QR codes for all attendees</div>
+    </div>
+
+    <div class="slabel">Options</div>
+    <div class="card">
+      <div class="field-row2">
+        <div>
+          <label class="field-label">Filter by role</label>
+          <select id="bulk-role-filter">
+            <option value="">All roles</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Cards per row</label>
+          <select id="bulk-cols">
+            <option value="2">2</option>
+            <option value="3" selected="">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">QR size (px)</label>
+        <input type="number" id="bulk-qr-size" value="120" min="80" max="240" step="10">
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="generateBulkQR()">Generate QR codes</button>
+        <button class="btn" onclick="downloadBulkPDF()">
+          <svg class="ni" style="width:16px;height:16px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download all
+        </button>
+        <button class="btn" onclick="window.print()">Print</button>
+      </div>
+    </div>
+
+    <div class="bulk-progress" id="bulk-progress">
+      <div class="bulk-status" id="bulk-status-text">Generating…</div>
+      <div class="bulk-bar-track"><div class="bulk-bar-fill" id="bulk-bar"></div></div>
+    </div>
+
+    <div class="section-row" id="bulk-preview-header" style="display:none;">
+      <div class="slabel">Preview (<span id="bulk-count">0</span>)</div>
+    </div>
+    <div class="bulk-preview" id="bulk-preview"></div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <span class="page-eyebrow">Configuration</span>
+      <div class="page-title">Settings</div>
+    </div>
+
+    <div class="slabel">Active Congregation</div>
+    <div class="card">
+      <div class="locked-badge"><div class="lock-dot"></div><span id="set-cong-id-badge">—</span></div>
+      <div class="locked-field"><div class="locked-field-label">Congregation</div><div class="locked-field-value" id="set-cong-name">—</div></div>
+    </div>
+
+    <div class="slabel" style="margin-top:18px;">Firebase (Check-In Sync)</div>
+    <div class="card">
+      <div class="locked-field"><div class="locked-field-label">Database URL</div><div class="locked-field-value" id="set-fb-url-display">—</div></div>
+      <div class="locked-field"><div class="locked-field-label">API Key</div><div class="locked-field-value" id="set-fb-key-display">—</div></div>
+      <div class="locked-field"><div class="locked-field-label">Congregation Path</div><div class="locked-field-value" id="set-cong-path-display">—</div></div>
+      <div class="btn-row">
+        <button class="btn success" onclick="syncNow()">Sync check-ins now</button>
+      </div>
+      <p id="sync-status" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:0.05em;"></p>
+    </div>
+
+    <div class="slabel" style="margin-top:18px;">Supabase (Attendee Registry)</div>
+    <div class="card">
+      <div class="locked-field"><div class="locked-field-label">URL</div><div class="locked-field-value" id="set-sb-url-display">—</div></div>
+      <div class="locked-field"><div class="locked-field-label">Anon Key</div><div class="locked-field-value" id="set-sb-key-display">—</div></div>
+      <div class="locked-field"><div class="locked-field-label">Table</div><div class="locked-field-value" id="set-sb-table-display">—</div></div>
+      <div class="btn-row">
+        <button class="btn" onclick="pullFromSupabase()">Pull all to local</button>
+        <button class="btn" onclick="pushLocalToSupabase()">Push local to Supabase</button>
+      </div>
+      <p id="sb-status" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:0.05em;"></p>
+    </div>
+
+    <hr class="gold-rule">
+    <div class="slabel">Data &amp; Session</div>
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn sm" onclick="exportAll()">Export JSON</button>
+        <button class="btn sm" onclick="exportCSV()">Export CSV</button>
+        <button class="btn sm danger" onclick="nukeAll()">Reset all data</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn full danger" onclick="logoutCongregation()">
+          <svg class="ni" style="width:16px;height:16px;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          Switch congregation
+        </button>
+      </div>
+      <p style="font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:14px;letter-spacing:0.04em;line-height:1.7;">Check-ins stored in IndexedDB on this device. Configs are locked to the active congregation.</p>
+    </div>
+  </div>
+
+</div><!-- .app -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav" style="visibility: hidden;">
+  <button class="bnav-btn active" id="bnav-dashboard" onclick="showPage(&#39;dashboard&#39;)">
+    <svg class="ni" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect></svg>
+    <span>Home</span>
+  </button>
+  <button class="bnav-btn" id="bnav-register" onclick="showPage(&#39;register&#39;)">
+    <svg class="ni" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"></circle><path d="M2 20c0-4 3.6-7 8-7"></path><path d="M17 14v6M14 17h6"></path></svg>
+    <span>Register</span>
+  </button>
+  <button class="bnav-btn" id="bnav-scanner" onclick="showPage(&#39;scanner&#39;)">
+    <svg class="ni" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+    <span>Scan</span>
+  </button>
+  <button class="bnav-btn" id="bnav-logs" onclick="showPage(&#39;logs&#39;)">
+    <svg class="ni" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line></svg>
+    <span>Logs</span>
+  </button>
+  <button class="bnav-btn" id="bnav-bulk" onclick="showPage(&#39;bulk&#39;)">
+    <svg class="ni" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="0.5"></rect><rect x="16" y="3" width="5" height="5" rx="0.5"></rect><rect x="3" y="16" width="5" height="5" rx="0.5"></rect><rect x="10" y="3" width="1.5" height="1.5"></rect><rect x="10" y="10" width="1.5" height="1.5"></rect><rect x="3" y="10" width="1.5" height="1.5"></rect><path d="M16 10h5M16 13h2M16 16v5M19 16h2v2h-2zM13 16v2h-2v3h2M13 10v5"></path></svg>
+    <span>Bulk QR</span>
+  </button>
+  <button class="bnav-btn" id="bnav-settings" onclick="showPage(&#39;settings&#39;)">
+    <svg class="ni" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    <span>Settings</span>
+  </button>
+</div>
+
+<div id="qr-modal-root"></div>
+<div class="toast" id="toast"></div>
+
+<script src="./Eventara — Check-In_files/qrcode.min.js"></script>
+<script>
+// ── DB ──────────────────────────────────────────────────────────────────
+let db;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('qr_checkin_v3',1);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('persons'))d.createObjectStore('persons',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('logs')){const ls=d.createObjectStore('logs',{keyPath:'id',autoIncrement:true});ls.createIndex('personId','personId',{unique:false});}
+      if(!d.objectStoreNames.contains('settings'))d.createObjectStore('settings',{keyPath:'k'});
+    };
+    req.onsuccess=e=>{db=e.target.result;res(db);};
+    req.onerror=()=>rej(req.error);
+  });
+}
+function txRW(s){return db.transaction(s,'readwrite').objectStore(s);}
+function txR(s){return db.transaction(s,'readonly').objectStore(s);}
+function dbPut(s,o){return new Promise((res,rej)=>{const r=txRW(s).put(o);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+function dbGetAll(s){return new Promise((res,rej)=>{const r=txR(s).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+function dbGet(s,k){return new Promise((res,rej)=>{const r=txR(s).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+function dbDelete(s,k){return new Promise((res,rej)=>{const r=txRW(s).delete(k);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+
+// ── UTILS ───────────────────────────────────────────────────────────────
+function uid(){return 'P'+Math.random().toString(36).slice(2,10).toUpperCase();}
+function initials(n){return n.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();}
+function fmtTime(ts){const d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+function isToday(ts){return new Date(ts).toDateString()===new Date().toDateString();}
+let toastTimer;
+function toast(msg,dur=2500){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),dur);}
+
+// ── CONGREGATION REGISTRY ───────────────────────────────────────────────
+// Add new congregations here. Keys are the congregation IDs users type at login.
+const CONGREGATIONS = {
+  'immanuel_madina': {
+    name: 'Immanuel Congregation — Madina',
+    firebase: {
+      url: 'https://pcg-erp-1e1d0-default-rtdb.firebaseio.com',   // e.g. https://your-project-default-rtdb.firebaseio.com
+      key: 'AIzaSyA3vzjg1s6JwEjTzkLy9sptXoqrgfoAkQQ',   // Firebase Web API Key
+    },
+    supabase: {
+      url: 'https://rtzbjfjxijaweyuvnrop.supabase.co',   // e.g. 
+      key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0emJqZmp4aWphd2V5dXZucm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNjI2NTUsImV4cCI6MjA5MzgzODY1NX0.3EdMsMOLJeZO8Uxbmo7YfEUHmDRRM07lkEqLfcpeuz4',   // Anon/public key
+      table: 'attendees_immanuel_madina',
+    }
+  },
+  // Add more congregations below:
+  // 'central_accra': {
+  //   name: 'Central Assembly — Accra',
+  //   firebase: { url: '...', key: '...' },
+  //   supabase: { url: '...', key: '...', table: 'attendees' }
+  // },
+};
+
+// ── LOGIN ────────────────────────────────────────────────────────────────
+// Active congregation config — loaded after login
+let activeCong = null; // { id, name, firebase:{url,key}, supabase:{url,key,table} }
+
+function doLogin(){
+  const input = document.getElementById('login-input');
+  const errEl = document.getElementById('login-error');
+  const id = input.value.trim().toLowerCase().replace(/\s+/g,'_');
+  errEl.textContent = '';
+  if(!id){ errEl.textContent = 'Please enter your congregation ID.'; return; }
+  const cong = CONGREGATIONS[id];
+  if(!cong){ errEl.textContent = 'Congregation not found. Check your ID and try again.'; input.select(); return; }
+  // Persist session
+  try{ localStorage.setItem('cong_session', id); }catch(e){}
+  loadCongregation(id, cong);
+}
+
+function loadCongregation(id, cong){
+  activeCong = { id, ...cong };
+  // Also wire settings object for Firebase sync
+  settings.fbUrl = cong.firebase.url;
+  settings.fbKey = cong.firebase.key;
+  settings.congregation = id;
+  // Wire supabase
+  sbSettings.url = cong.supabase.url;
+  sbSettings.key = cong.supabase.key;
+  sbSettings.table = cong.supabase.table || 'attendees';
+  // Show app
+  document.getElementById('login-screen').classList.add('hidden');
+  document.querySelector('.app').style.visibility = 'visible';
+  document.querySelector('.bottom-nav').style.visibility = 'visible';
+  // Update dashboard header
+  const eyebrow = document.querySelector('#page-dashboard .page-eyebrow');
+  if(eyebrow) eyebrow.textContent = cong.name;
+  renderSettingsLocked();
+  renderDashboard();
+}
+
+function renderSettingsLocked(){
+  const c = activeCong; if(!c) return;
+  const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val||'—'; };
+  set('set-cong-id-badge', c.id);
+  set('set-cong-name', c.name);
+  set('set-fb-url-display', c.firebase.url || '(not configured)');
+  set('set-fb-key-display', c.firebase.key ? c.firebase.key.slice(0,12)+'…' : '(not configured)');
+  set('set-cong-path-display', 'congregations/'+c.id+'/erp_checkins_v1');
+  set('set-sb-url-display', c.supabase.url || '(not configured)');
+  set('set-sb-key-display', c.supabase.key ? c.supabase.key.slice(0,16)+'…' : '(not configured)');
+  set('set-sb-table-display', c.supabase.table || 'attendees');
+}
+
+function logoutCongregation(){
+  if(!confirm('Switch congregation? This device will return to the login screen. Local data remains.')) return;
+  try{ localStorage.removeItem('cong_session'); }catch(e){}
+  activeCong = null;
+  _fbDb = null;
+  stopCamera();
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-input').value = '';
+  document.getElementById('login-error').textContent = '';
+}
+
+// ── NAV ─────────────────────────────────────────────────────────────────
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const nb=document.getElementById('bnav-'+id);if(nb)nb.classList.add('active');
+  if(id==='dashboard')renderDashboard();
+  if(id==='register')renderRegister();
+  if(id==='logs')renderLogs();
+  if(id==='scanner'){renderScanRecent();checkCamSupport();}
+  if(id==='settings')renderSettingsLocked();
+  if(id==='bulk')populateBulkRoles();
+  if(id!=='scanner')stopCamera();
+}
+
+// ── CAMERA ──────────────────────────────────────────────────────────────
+let stream=null,detector=null,scanLoop=null,facingMode='environment';
+let lastScanned='',lastScannedTime=0;
+const COOLDOWN=3000;
+
+function checkCamSupport(){
+  const noteEl=document.getElementById('cam-api-note');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){noteEl.textContent='Camera unavailable — use manual entry';return;}
+  noteEl.textContent='BarcodeDetector' in window?'BarcodeDetector ready · tap Start':'Canvas QR fallback · tap Start';
+}
+
+async function startCamera(){
+  const box=document.getElementById('cam-box'),video=document.getElementById('cam-video'),statusEl=document.getElementById('cam-status');
+  const btnStart=document.getElementById('btn-start-cam'),btnFlip=document.getElementById('btn-flip-cam'),btnStop=document.getElementById('btn-stop-cam');
+  stopCamera();
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode,width:{ideal:1280},height:{ideal:720}},audio:false});
+    video.srcObject=stream;await video.play();
+    box.style.display='block';btnStart.style.display='none';btnFlip.style.display='flex';btnStop.style.display='flex';
+    statusEl.textContent='Scanning…';statusEl.className='cam-status';
+    startDetection(video,statusEl);
+  }catch(e){toast('Camera error: '+e.message,4000);document.getElementById('cam-api-note').textContent='Camera denied — use manual entry';}
+}
+
+function stopCamera(){
+  if(scanLoop){cancelAnimationFrame(scanLoop);scanLoop=null;}
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  const box=document.getElementById('cam-box'),btnStart=document.getElementById('btn-start-cam');
+  const btnFlip=document.getElementById('btn-flip-cam'),btnStop=document.getElementById('btn-stop-cam');
+  if(box)box.style.display='none';
+  if(btnStart)btnStart.style.display='flex';
+  if(btnFlip)btnFlip.style.display='none';
+  if(btnStop)btnStop.style.display='none';
+}
+
+async function flipCamera(){facingMode=facingMode==='environment'?'user':'environment';await startCamera();}
+
+function startDetection(video,statusEl){
+  if('BarcodeDetector' in window){
+    BarcodeDetector.getSupportedFormats().then(formats=>{
+      const fmts=formats.includes('qr_code')?['qr_code']:formats;
+      detector=new BarcodeDetector({formats:fmts});detectLoop(video,statusEl);
+    }).catch(()=>{detector=new BarcodeDetector({formats:['qr_code']});detectLoop(video,statusEl);});
+  }else{loadJsQR().then(()=>canvasLoop(video,statusEl));}
+}
+
+function detectLoop(video,statusEl){
+  if(!stream)return;
+  detector.detect(video).then(barcodes=>{if(barcodes.length>0)handleScan(barcodes[0].rawValue,statusEl);}).catch(()=>{}).finally(()=>{if(stream)scanLoop=requestAnimationFrame(()=>detectLoop(video,statusEl));});
+}
+
+let jsQRLoaded=false;
+function loadJsQR(){
+  if(jsQRLoaded||window.jsQR)return Promise.resolve();
+  return new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';s.onload=()=>{jsQRLoaded=true;res();};s.onerror=()=>rej();document.head.appendChild(s);});
+}
+
+const offscreen=document.createElement('canvas');
+function canvasLoop(video,statusEl){
+  if(!stream)return;
+  if(video.readyState===video.HAVE_ENOUGH_DATA&&window.jsQR){
+    const w=video.videoWidth,h=video.videoHeight;
+    if(w>0&&h>0){offscreen.width=w;offscreen.height=h;const ctx=offscreen.getContext('2d');ctx.drawImage(video,0,0,w,h);const img=ctx.getImageData(0,0,w,h);const code=window.jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});if(code)handleScan(code.data,statusEl);}
+  }
+  if(stream)scanLoop=requestAnimationFrame(()=>canvasLoop(video,statusEl));
+}
+
+async function handleScan(raw,statusEl){
+  const val=raw.trim().toUpperCase();
+  if(!val)return;
+  const now=Date.now();
+  if(val===lastScanned&&now-lastScannedTime<COOLDOWN)return;
+  lastScanned=val;lastScannedTime=now;
+  if(navigator.vibrate)navigator.vibrate(60);
+  // 1. Local IndexedDB (fast, offline)
+  let person=await dbGet('persons',val).catch(()=>null);
+  // 2. Supabase remote fallback (cross-device support)
+  if(!person&&sbSettings.url&&sbSettings.key&&sbSettings.table){
+    if(statusEl.textContent!==undefined){statusEl.textContent='Checking master registry…';statusEl.className='cam-status';}
+    try{const remote=await sbGetPerson(val);if(remote){await dbPut('persons',remote);person=remote;toast('Found in master registry',1800);}}catch(e){console.warn('Supabase fallback failed',e);}
+  }
+  if(!person){
+    if(statusEl.textContent!==undefined){statusEl.textContent='Unknown: '+val;statusEl.className='cam-status error';}
+    showScanResult('error','Unknown QR code',val);toast('Unknown QR code',2000);return;
+  }
+  const logs=await dbGetAll('logs');
+  if(logs.some(l=>l.personId===person.id&&isToday(l.ts))){
+    if(statusEl.textContent!==undefined){statusEl.textContent=person.firstName+' '+person.lastName+' — already in';statusEl.className='cam-status warn';}
+    showScanResult('warn','Already checked in today',person.firstName+' '+person.lastName);
+    if(navigator.vibrate)navigator.vibrate([60,60,60]);return;
+  }
+  const log={personId:person.id,name:person.firstName+' '+person.lastName,role:person.role,phone:person.phone||'',ts:Date.now(),synced:false};
+  await dbPut('logs',log);
+  person.checkedIn=true;await dbPut('persons',person);
+  if(statusEl.textContent!==undefined){statusEl.textContent='✓ '+person.firstName+' '+person.lastName;statusEl.className='cam-status success';}
+  showScanResult('success','✓ '+person.firstName+' '+person.lastName,person.role+(person.phone?' · '+person.phone:'')+' · '+fmtTime(log.ts));
+  if(navigator.vibrate)navigator.vibrate([80,40,80]);
+  renderScanRecent();autoSync();
+}
+
+function showScanResult(type,name,detail){
+  document.getElementById('scan-result').innerHTML=`<div class="result-banner ${type}"><div class="rb-name">${name}</div><div class="rb-detail">${detail}</div></div>`;
+}
+
+async function doManualScan(){
+  const input=document.getElementById('scan-input');
+  const raw=input.value.trim().toUpperCase();
+  if(!raw)return;input.value='';input.focus();
+  await handleScan(raw,{textContent:'',className:''});
+}
+
+// ── REGISTER ────────────────────────────────────────────────────────────
+async function registerPerson(){
+  const fn=document.getElementById('reg-fname').value.trim();
+  const ln=document.getElementById('reg-lname').value.trim();
+  if(!fn||!ln){toast('Enter first and last name');return;}
+  const person={id:uid(),firstName:fn,lastName:ln,email:document.getElementById('reg-email').value.trim(),phone:document.getElementById('reg-phone').value.trim(),role:document.getElementById('reg-role').value.trim()||'General',createdAt:Date.now(),checkedIn:false};
+  await dbPut('persons',person);
+  sbUpsertPerson(person).catch(()=>{});// push to Supabase master registry
+  ['reg-fname','reg-lname','reg-email','reg-phone','reg-role'].forEach(i=>document.getElementById(i).value='');
+  toast('Registered '+fn+' '+ln);
+  renderRegister();showQR(person);
+}
+
+async function renderRegister(){
+  const persons=await dbGetAll('persons');
+  document.getElementById('reg-count').textContent=persons.length;
+  const el=document.getElementById('reg-list');
+  if(!persons.length){el.innerHTML='<div class="empty">No attendees yet.</div>';return;}
+  persons.sort((a,b)=>b.createdAt-a.createdAt);
+  el.innerHTML=persons.map(p=>`
+    <div class="person-row">
+      <div class="avatar">${initials(p.firstName+' '+p.lastName)}</div>
+      <div class="person-info">
+        <div class="person-name">${p.firstName} ${p.lastName}</div>
+        <div class="person-meta">${p.role}${p.phone?' · '+p.phone:''}${p.email?' · '+p.email:''}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <span class="badge ${p.checkedIn?'checked':'pending'}">${p.checkedIn?'In':'—'}</span>
+        <button class="btn sm" onclick='showQR(${JSON.stringify({id:p.id,firstName:p.firstName,lastName:p.lastName,role:p.role,phone:p.phone||""})})'>QR</button>
+      </div>
+    </div>`).join('');
+}
+
+function parseCSVLine(line){
+  const cols=[];let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){
+      if(inQ&&line[i+1]==='"'){cur+='"';i++;}
+      else{inQ=!inQ;}
+    }else if(c===','&&!inQ){cols.push(cur.trim());cur='';}
+    else{cur+=c;}
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+function isHeaderRow(cols){
+  const hwords=/^(first.?name|last.?name|name|email|phone|mobile|role|group|type)$/i;
+  return hwords.test(cols[0])||hwords.test(cols[1]);
+}
+
+function importCSV(){
+  const input=document.createElement('input');input.type='file';input.accept='.csv,.txt';
+  input.onchange=async e=>{
+    const text=await e.target.files[0].text();
+    const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim());
+    if(!lines.length){toast('CSV is empty');return;}
+    const firstCols=parseCSVLine(lines[0]);
+    const startRow=isHeaderRow(firstCols)?1:0;
+    let added=0,skipped=0;
+    for(let i=startRow;i<lines.length;i++){
+      const cols=parseCSVLine(lines[i]);
+      const fn=(cols[0]||'').replace(/^"|"$/g,'').trim();
+      const ln=(cols[1]||'').replace(/^"|"$/g,'').trim();
+      if(!fn||!ln){skipped++;continue;}
+      await dbPut('persons',{
+        id:uid(),firstName:fn,lastName:ln,
+        email:(cols[2]||'').replace(/^"|"$/g,'').trim(),
+        phone:(cols[3]||'').replace(/^"|"$/g,'').trim(),
+        role:(cols[4]||'').replace(/^"|"$/g,'').trim()||'General',
+        createdAt:Date.now(),checkedIn:false
+      });
+      added++;
+    }
+    const msg=skipped?`Imported ${added} attendee${added!==1?'s':''} (${skipped} skipped)`:`Imported ${added} attendee${added!==1?'s':''}`;
+    toast(msg,3000);renderRegister();
+  };
+  input.click();
+}
+
+// ── QR MODAL ────────────────────────────────────────────────────────────
+let currentQRPerson=null;
+function showQR(p){
+  currentQRPerson=p;
+  document.getElementById('qr-modal-root').innerHTML=`
+    <div class="modal-wrap" onclick="if(event.target.classList.contains('modal-wrap'))closeQR()">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-eyebrow">Guest Pass</div>
+        <div class="modal-name">${p.firstName} ${p.lastName}</div>
+        <div class="modal-role">${p.role||''}</div>
+        ${p.phone?`<div class="modal-phone">${p.phone}</div>`:'<div style="margin-bottom:18px;"></div>'}
+        <div class="qr-wrap" id="qr-render-${p.id}"></div>
+        <div class="qr-id">${p.id}</div>
+        <div class="modal-actions">
+          <button class="btn full" onclick="downloadQR()">Save image</button>
+          <button class="btn full" onclick="shareQR()">Share</button>
+          <button class="btn full" onclick="window.print()">Print</button>
+          <button class="btn full" onclick="closeQR()">Close</button>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(()=>{try{new QRCode(document.getElementById('qr-render-'+p.id),{text:p.id,width:200,height:200,correctLevel:QRCode.CorrectLevel.H});}catch(e){}},60);
+}
+
+function closeQR(){document.getElementById('qr-modal-root').innerHTML='';currentQRPerson=null;}
+function getQRCanvas(){const p=currentQRPerson;if(!p)return null;const el=document.getElementById('qr-render-'+p.id);return el?el.querySelector('canvas'):null;}
+
+function downloadQR(){
+  const p=currentQRPerson;if(!p)return;
+  const qc=getQRCanvas();if(!qc){toast('QR not ready');return;}
+  const pad=28,qs=qc.width,w=qs+pad*2,h=qs+pad*2+64;
+  const cv=document.createElement('canvas');cv.width=w*2;cv.height=h*2;
+  const ctx=cv.getContext('2d');ctx.scale(2,2);
+  // Navy background
+  ctx.fillStyle='#0A1628';ctx.fillRect(0,0,w,h);
+  // Gold top bar
+  ctx.fillStyle='#C9A84C';ctx.fillRect(0,0,w,3);
+  // White QR area
+  ctx.fillStyle='#ffffff';ctx.beginPath();ctx.roundRect?ctx.roundRect(pad-8,pad-8,qs+16,qs+16,8):ctx.rect(pad-8,pad-8,qs+16,qs+16);ctx.fill();
+  ctx.drawImage(qc,pad,pad,qs,qs);
+  // Name
+  ctx.fillStyle='#F8F5EE';ctx.font='600 15px "Playfair Display",Georgia,serif';ctx.textAlign='center';ctx.fillText(p.firstName+' '+p.lastName,w/2,qs+pad+26);
+  // Role
+  ctx.fillStyle='#C9A84C';ctx.font='500 10px "DM Mono",monospace';ctx.fillText((p.role||'').toUpperCase(),w/2,qs+pad+42);
+  // ID
+  ctx.fillStyle='rgba(248,245,238,0.4)';ctx.font='10px "DM Mono",monospace';ctx.fillText(p.id,w/2,qs+pad+58);
+  const a=document.createElement('a');a.download='qr-'+p.id+'.png';a.href=cv.toDataURL('image/png');a.click();
+  toast('QR saved!');
+}
+
+async function shareQR(){
+  const p=currentQRPerson;if(!p)return;
+  const qc=getQRCanvas();
+  if(qc&&navigator.share&&navigator.canShare){
+    qc.toBlob(async blob=>{
+      const file=new File([blob],'qr-'+p.id+'.png',{type:'image/png'});
+      if(navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:p.firstName+' '+p.lastName+' QR',text:'ID: '+p.id});toast('Shared!');}catch(e){if(e.name!=='AbortError')downloadQR();}}else{downloadQR();}
+    });
+  }else{downloadQR();}
+}
+
+// ── BULK QR ──────────────────────────────────────────────────────────────
+let bulkPersons=[];
+
+async function populateBulkRoles(){
+  const persons=await dbGetAll('persons');
+  const roles=[...new Set(persons.map(p=>p.role).filter(Boolean))].sort();
+  const sel=document.getElementById('bulk-role-filter');
+  sel.innerHTML='<option value="">All roles</option>'+roles.map(r=>`<option value="${r}">${r}</option>`).join('');
+}
+
+async function generateBulkQR(){
+  const roleFilter=document.getElementById('bulk-role-filter').value;
+  const qrSize=parseInt(document.getElementById('bulk-qr-size').value)||120;
+  const cols=parseInt(document.getElementById('bulk-cols').value)||3;
+
+  const persons=await dbGetAll('persons');
+  bulkPersons=roleFilter?persons.filter(p=>p.role===roleFilter):persons;
+
+  if(!bulkPersons.length){toast('No attendees found');return;}
+
+  // Update grid columns
+  document.getElementById('bulk-preview').style.gridTemplateColumns=`repeat(${cols}, 1fr)`;
+
+  const progressEl=document.getElementById('bulk-progress');
+  const barEl=document.getElementById('bulk-bar');
+  const statusEl=document.getElementById('bulk-status-text');
+  progressEl.classList.add('visible');
+
+  const previewEl=document.getElementById('bulk-preview');
+  previewEl.innerHTML='';
+  document.getElementById('bulk-count').textContent=bulkPersons.length;
+  document.getElementById('bulk-preview-header').style.display='flex';
+
+  for(let i=0;i<bulkPersons.length;i++){
+    const p=bulkPersons[i];
+    const pct=Math.round(((i+1)/bulkPersons.length)*100);
+    barEl.style.width=pct+'%';
+    statusEl.textContent=`Generating ${i+1} of ${bulkPersons.length} — ${p.firstName} ${p.lastName}`;
+
+    const card=document.createElement('div');
+    card.className='bulk-card';
+    card.id='bulk-card-'+p.id;
+
+    const qrDiv=document.createElement('div');
+    qrDiv.className='bulk-card-qr';
+    qrDiv.id='bulk-qr-'+p.id;
+
+    card.innerHTML=`<div class="bulk-card-name">${p.firstName} ${p.lastName}</div><div class="bulk-card-id">${p.id}</div>`;
+    card.insertBefore(qrDiv,card.firstChild);
+    previewEl.appendChild(card);
+
+    // Render QR with small delay to not block UI
+    await new Promise(resolve=>{
+      setTimeout(()=>{
+        try{new QRCode(qrDiv,{text:p.id,width:qrSize,height:qrSize,correctLevel:QRCode.CorrectLevel.H});}catch(e){}
+        resolve();
+      },i<10?i*30:0);
+    });
+  }
+
+  barEl.style.width='100%';
+  statusEl.textContent=`✓ ${bulkPersons.length} QR codes generated`;
+  toast(`Generated ${bulkPersons.length} QR codes`);
+}
+
+async function downloadBulkPDF(){
+  if(!bulkPersons.length){toast('Generate QR codes first');return;}
+  // Download each QR as individual PNG
+  for(let i=0;i<bulkPersons.length;i++){
+    const p=bulkPersons[i];
+    const qrEl=document.getElementById('bulk-qr-'+p.id);
+    if(!qrEl)continue;
+    const qc=qrEl.querySelector('canvas');
+    if(!qc)continue;
+    const qs=qc.width,pad=20,nameH=52;
+    const w=qs+pad*2,h=qs+pad*2+nameH;
+    const cv=document.createElement('canvas');cv.width=w*2;cv.height=h*2;
+    const ctx=cv.getContext('2d');ctx.scale(2,2);
+    ctx.fillStyle='#0A1628';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#C9A84C';ctx.fillRect(0,0,w,2.5);
+    ctx.fillStyle='#ffffff';ctx.fillRect(pad-6,pad-6,qs+12,qs+12);
+    ctx.drawImage(qc,pad,pad,qs,qs);
+    ctx.fillStyle='#F8F5EE';ctx.font='600 13px Georgia,serif';ctx.textAlign='center';ctx.fillText(p.firstName+' '+p.lastName,w/2,qs+pad+20);
+    ctx.fillStyle='#C9A84C';ctx.font='9px monospace';ctx.fillText((p.role||'').toUpperCase(),w/2,qs+pad+34);
+    ctx.fillStyle='rgba(248,245,238,0.4)';ctx.font='9px monospace';ctx.fillText(p.id,w/2,qs+pad+48);
+    const a=document.createElement('a');a.download=`qr-${p.firstName}-${p.lastName}-${p.id}.png`;a.href=cv.toDataURL('image/png');
+    a.click();
+    await new Promise(r=>setTimeout(r,80));
+  }
+  toast('Downloaded '+bulkPersons.length+' QR codes');
+}
+
+// ── DASHBOARD ───────────────────────────────────────────────────────────
+async function renderDashboard(){
+  document.getElementById('dash-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  const [persons,logs]=await Promise.all([dbGetAll('persons'),dbGetAll('logs')]);
+  const todayLogs=logs.filter(l=>isToday(l.ts));
+  const unsynced=logs.filter(l=>!l.synced);
+  const checkedIn=new Set(todayLogs.map(l=>l.personId)).size;
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="stat"><div class="stat-label">Registered</div><div class="stat-value gold">${persons.length}</div></div>
+    <div class="stat"><div class="stat-label">Today</div><div class="stat-value green">${checkedIn}</div></div>
+    <div class="stat"><div class="stat-label">All-time</div><div class="stat-value">${logs.length}</div></div>
+    <div class="stat"><div class="stat-label">Unsynced</div><div class="stat-value amber">${unsynced.length}</div></div>`;
+  document.getElementById('dash-sync-bar').innerHTML=unsynced.length?`<div class="sync-bar"><span>${unsynced.length} pending Firebase sync</span><button class="btn sm" onclick="syncNow()">Sync now</button></div>`:'';
+  const recent=[...logs].sort((a,b)=>b.ts-a.ts).slice(0,5);
+  const recEl=document.getElementById('dash-recent');
+  if(!recent.length){recEl.innerHTML='<div class="empty">No check-ins yet.</div>';return;}
+  recEl.innerHTML=recent.map(l=>`
+    <div class="person-row">
+      <div class="avatar" style="color:var(--success);border-color:rgba(46,204,113,0.25);">${initials(l.name)}</div>
+      <div class="person-info"><div class="person-name">${l.name}</div><div class="person-meta">${l.role}${l.phone?' · '+l.phone:''}</div></div>
+      <span class="log-mono">${fmtTime(l.ts)}</span>
+    </div>`).join('');
+}
+
+async function renderScanRecent(){
+  const logs=await dbGetAll('logs');
+  const today=logs.filter(l=>isToday(l.ts)).sort((a,b)=>b.ts-a.ts);
+  document.getElementById('scan-count').textContent=today.length;
+  const el=document.getElementById('scan-recent');
+  if(!today.length){el.innerHTML='<div class="empty">No scans yet today.</div>';return;}
+  el.innerHTML=today.slice(0,15).map(l=>`
+    <div class="person-row">
+      <div class="avatar" style="color:var(--success);border-color:rgba(46,204,113,0.2);">${initials(l.name)}</div>
+      <div class="person-info"><div class="person-name">${l.name}</div><div class="person-meta">${l.role}${l.phone?' · '+l.phone:''}</div></div>
+      <span class="log-mono">${fmtTime(l.ts)}</span>
+    </div>`).join('');
+}
+
+// ── SUPABASE — ATTENDEE REGISTRY ────────────────────────────────────────
+let sbSettings={url:'',key:'',table:'attendees'};
+
+function _sbHeaders(){
+  return{'Content-Type':'application/json','apikey':sbSettings.key,'Authorization':'Bearer '+sbSettings.key,'Prefer':'return=representation'};
+}
+async function sbGetPerson(id){
+  if(!sbSettings.url||!sbSettings.key||!sbSettings.table)return null;
+  const url=`${sbSettings.url}/rest/v1/${sbSettings.table}?id=eq.${encodeURIComponent(id)}&limit=1`;
+  const resp=await fetch(url,{headers:_sbHeaders()});
+  if(!resp.ok)throw new Error('Supabase '+resp.status);
+  const rows=await resp.json();
+  if(!rows||!rows.length)return null;
+  const r=rows[0];
+  return{id:r.id,firstName:r.firstName||r.first_name||'',lastName:r.lastName||r.last_name||'',email:r.email||'',phone:r.phone||'',role:r.role||'General',createdAt:r.createdAt||r.created_at||Date.now(),checkedIn:r.checkedIn||r.checked_in||false};
+}
+async function sbUpsertPerson(p){
+  if(!sbSettings.url||!sbSettings.key||!sbSettings.table)return;
+  const url=`${sbSettings.url}/rest/v1/${sbSettings.table}`;
+  const body={id:p.id,firstName:p.firstName,lastName:p.lastName,email:p.email||'',phone:p.phone||'',role:p.role||'General',createdAt:p.createdAt,checkedIn:p.checkedIn||false};
+  const resp=await fetch(url,{method:'POST',headers:{..._sbHeaders(),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)});
+  if(!resp.ok){const t=await resp.text();throw new Error('Supabase upsert: '+resp.status+' '+t);}
+}
+async function sbUpsertBatch(persons,chunkSize=50){
+  if(!sbSettings.url||!sbSettings.key||!sbSettings.table||!persons.length)return;
+  const url=`${sbSettings.url}/rest/v1/${sbSettings.table}`;
+  for(let i=0;i<persons.length;i+=chunkSize){
+    const chunk=persons.slice(i,i+chunkSize).map(p=>({id:p.id,firstName:p.firstName,lastName:p.lastName,email:p.email||'',phone:p.phone||'',role:p.role||'General',createdAt:p.createdAt,checkedIn:p.checkedIn||false}));
+    const resp=await fetch(url,{method:'POST',headers:{..._sbHeaders(),'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(chunk)});
+    if(!resp.ok){const t=await resp.text();throw new Error('Supabase batch: '+resp.status+' '+t);}
+  }
+}
+async function pullFromSupabase(){
+  const statusEl=document.getElementById('sb-status');
+  if(!sbSettings.url||!sbSettings.key||!sbSettings.table){if(statusEl)statusEl.textContent='Supabase not configured for this congregation.';return;}
+  if(statusEl)statusEl.textContent='Pulling…';
+  try{
+    let allRows=[],offset=0,limit=1000,more=true;
+    while(more){
+      const url=`${sbSettings.url}/rest/v1/${sbSettings.table}?select=*&limit=${limit}&offset=${offset}`;
+      const resp=await fetch(url,{headers:_sbHeaders()});
+      if(!resp.ok)throw new Error('Supabase '+resp.status);
+      const rows=await resp.json();
+      allRows=allRows.concat(rows);more=rows.length===limit;offset+=limit;
+    }
+    let saved=0;
+    for(const r of allRows){
+      const p={id:r.id,firstName:r.firstName||r.first_name||'',lastName:r.lastName||r.last_name||'',email:r.email||'',phone:r.phone||'',role:r.role||'General',createdAt:r.createdAt||r.created_at||Date.now(),checkedIn:r.checkedIn||r.checked_in||false};
+      if(p.id&&p.firstName){await dbPut('persons',p);saved++;}
+    }
+    if(statusEl)statusEl.textContent=`✓ Pulled ${saved} records · ${new Date().toLocaleTimeString()}`;
+    toast(`Pulled ${saved} attendees`,3000);renderDashboard();
+  }catch(e){if(statusEl)statusEl.textContent='Failed: '+e.message;toast('Pull failed: '+e.message,4000);}
+}
+async function pushLocalToSupabase(){
+  const statusEl=document.getElementById('sb-status');
+  if(!sbSettings.url||!sbSettings.key||!sbSettings.table){if(statusEl)statusEl.textContent='Supabase not configured.';return;}
+  try{
+    const persons=await dbGetAll('persons');
+    if(!persons.length){if(statusEl)statusEl.textContent='No local attendees to push.';return;}
+    if(statusEl)statusEl.textContent='Pushing '+persons.length+' records…';
+    await sbUpsertBatch(persons);
+    if(statusEl)statusEl.textContent=`✓ Pushed ${persons.length} records · ${new Date().toLocaleTimeString()}`;
+    toast('Pushed to Supabase!');
+  }catch(e){if(statusEl)statusEl.textContent='Failed: '+e.message;toast('Push failed',3000);}
+}
+
+// ── SETTINGS + FIREBASE SYNC ─────────────────────────────────────────
+let _fbApp=null,_fbDb=null,_fbRef=null,_fbPush=null,_fbSet=null;
+let settings={fbUrl:'',fbKey:'',congregation:''};
+
+async function _initFirebase(){
+  if(_fbDb)return true;
+  const {fbUrl,fbKey,congregation}=settings;
+  if(!fbUrl||!fbKey||!congregation){return false;}
+  try{
+    const {initializeApp,getApps}=await import('https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js');
+    const {getDatabase,ref,push,set}=await import('https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js');
+    const existing=getApps().find(a=>a.name==='checkin-app');
+    _fbApp=existing||initializeApp({apiKey:fbKey,databaseURL:fbUrl},'checkin-app');
+    _fbDb=getDatabase(_fbApp);_fbRef=ref;_fbPush=push;_fbSet=set;
+    return true;
+  }catch(e){console.error('Firebase init failed',e);return false;}
+}
+
+// loadSettings is now handled by congregation login.
+// Settings are locked to the congregation config at login time.
+async function loadSettings(){
+  // Configs come from CONGREGATIONS registry, not user-editable storage.
+  // This is a no-op kept for compatibility — configs already set in loadCongregation().
+}
+
+async function syncNow(){
+  const statusEl=document.getElementById('sync-status');
+  if(!settings.fbUrl||!settings.fbKey||!settings.congregation){toast('Configure Firebase settings first');return;}
+  const logs=await dbGetAll('logs');
+  const unsynced=logs.filter(l=>!l.synced);
+  if(!unsynced.length){statusEl.textContent='Nothing to sync.';return;}
+  statusEl.textContent='Syncing '+unsynced.length+' record(s)…';
+  const ok=await _initFirebase();
+  if(!ok){statusEl.textContent='Firebase init failed — check settings.';return;}
+  try{
+    const basePath='congregations/'+settings.congregation+'/erp_checkins_v1';
+    for(const l of unsynced){
+      const dateKey=new Date(l.ts).toISOString().slice(0,10).replace(/-/g,'');
+      const rec={name:l.name,phone:l.phone||'',role:l.role||'',timestamp:new Date(l.ts).toISOString(),date:new Date(l.ts).toISOString().slice(0,10)};
+      await _fbSet(_fbRef(_fbDb,basePath+'/'+dateKey+'/'+l.personId+'_'+l.ts),rec);
+      l.synced=true;await dbPut('logs',l);
+    }
+    statusEl.textContent='Synced '+unsynced.length+' record(s) · '+new Date().toLocaleTimeString();
+    toast('Synced to Firebase!');renderDashboard();
+  }catch(e){statusEl.textContent='Failed: '+e.message;toast('Sync failed — saved locally',3000);}
+}
+async function autoSync(){if(!settings.fbUrl||!settings.congregation)return;try{await syncNow();}catch(e){}}
+
+function exportAll(){
+  Promise.all([dbGetAll('persons'),dbGetAll('logs')]).then(([persons,logs])=>{
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({persons,logs,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'}));a.download='checkin-data.json';a.click();
+  });
+}
+async function nukeAll(){
+  if(!confirm('Delete ALL data?'))return;
+  await Promise.all(['persons','logs','settings'].map(s=>new Promise((res,rej)=>{const r=txRW(s).clear();r.onsuccess=res;r.onerror=rej;})));
+  toast('All data cleared');renderDashboard();
+}
+
+// ── LOGS ────────────────────────────────────────────────────────────────
+async function renderLogs(){
+  const logs=await dbGetAll('logs');logs.sort((a,b)=>b.ts-a.ts);
+  document.getElementById('log-count').textContent=logs.length;
+  const el=document.getElementById('log-container');
+  if(!logs.length){el.innerHTML='<div class="empty">No logs yet.</div>';return;}
+  el.innerHTML=`<div class="log-wrap"><table class="log-table">
+    <thead><tr><th>Name</th><th>Phone</th><th>Time</th><th>Sync</th></tr></thead>
+    <tbody>${logs.map(l=>`<tr>
+      <td><div style="font-weight:500;font-size:13px;color:var(--white);">${l.name}</div><div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:1px;">${l.role||''}</div></td>
+      <td class="log-mono">${l.phone||'—'}</td>
+      <td class="log-mono">${fmtTime(l.ts)}</td>
+      <td><span class="badge ${l.synced?'synced':'local'}">${l.synced?'synced':'local'}</span></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+async function clearLogs(){
+  if(!confirm('Delete all check-in logs?'))return;
+  const logs=await dbGetAll('logs');
+  for(const l of logs)if(l.id)await dbDelete('logs',l.id);
+  const persons=await dbGetAll('persons');
+  for(const p of persons){p.checkedIn=false;await dbPut('persons',p);}
+  toast('Logs cleared');renderLogs();
+}
+function exportCSV(){
+  dbGetAll('logs').then(logs=>{
+    const rows=[['Name','Phone','Role','Timestamp','ISO','Synced']];
+    logs.sort((a,b)=>b.ts-a.ts).forEach(l=>rows.push([l.name,l.phone||'',l.role||'',fmtTime(l.ts),new Date(l.ts).toISOString(),l.synced?'yes':'no']));
+    const csv=rows.map(r=>r.map(c=>'"'+c+'"').join(',')).join('\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='checkin-logs.csv';a.click();
+    toast('CSV exported');
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────
+// Hide app until logged in
+document.querySelector('.app').style.visibility = 'hidden';
+document.querySelector('.bottom-nav').style.visibility = 'hidden';
+
+openDB().then(async()=>{
+  // Check for a saved congregation session
+  let savedId = null;
+  try{ savedId = localStorage.getItem('cong_session'); }catch(e){}
+  if(savedId && CONGREGATIONS[savedId]){
+    // Resume session silently
+    loadCongregation(savedId, CONGREGATIONS[savedId]);
+  } else {
+    // Show login screen
+    document.getElementById('login-screen').classList.remove('hidden');
+    // Focus input on next tick
+    setTimeout(()=>{ const el=document.getElementById('login-input'); if(el)el.focus(); },100);
+  }
+  window.addEventListener('online',()=>{toast('Back online — syncing…',2000);autoSync();});
+});
+</script>
+
+
+</body></html>

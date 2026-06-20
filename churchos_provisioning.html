@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChurchOS · User Provisioning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Tokens ─────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:      #1A1210;
+  --ink2:     #3D322C;
+  --ink3:     #7A6A62;
+  --gold:     #B8964A;
+  --gold-lt:  #D4AF6A;
+  --gold-dk:  #7A5F28;
+  --cream:    #FAF6F0;
+  --cream2:   #F0E8DC;
+  --cream3:   #DDD0BE;
+  --white:    #FFFFFF;
+  --green:    #1A6B45;
+  --green-lt: #E8F8F0;
+  --red:      #C0392B;
+  --red-lt:   #FDECEA;
+  --blue:     #1A3A5C;
+  --blue-lt:  #EEF4FF;
+  --radius:   10px;
+  --shadow:   0 2px 12px rgba(26,18,16,.08);
+  --shadow-lg:0 8px 40px rgba(26,18,16,.14);
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5}
+
+/* ── Login Screen ───────────────────────────────────── */
+#login-screen{
+  position:fixed;inset:0;background:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;
+}
+.login-card{
+  background:var(--cream);border-radius:16px;
+  width:100%;max-width:400px;overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,.5);
+}
+.login-head{
+  background:var(--ink);padding:32px 32px 28px;
+  border-bottom:3px solid var(--gold);
+}
+.login-logo{
+  font-family:'Playfair Display',serif;
+  font-size:22px;font-weight:700;color:var(--gold);
+  letter-spacing:.02em;margin-bottom:4px;
+}
+.login-sub{font-size:12px;color:rgba(255,255,255,.45);letter-spacing:.04em}
+.login-body{padding:28px 32px 32px}
+.login-title{font-family:'Playfair Display',serif;font-size:17px;color:var(--ink);margin-bottom:4px}
+.login-desc{font-size:12px;color:var(--ink3);margin-bottom:24px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:5px}
+.field input{width:100%;padding:10px 13px;border:1.5px solid var(--cream3);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink);background:white;outline:none;transition:border-color .15s}
+.field input:focus{border-color:var(--gold)}
+.btn-login{width:100%;padding:11px;background:var(--gold);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s;margin-top:4px}
+.btn-login:hover{background:var(--gold-dk)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed}
+.login-error{display:none;padding:10px 13px;background:var(--red-lt);border-left:3px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);margin-bottom:14px}
+
+/* ── App Shell ──────────────────────────────────────── */
+#app{display:none;height:100vh;flex-direction:column}
+
+/* ── Topbar ─────────────────────────────────────────── */
+.topbar{
+  background:var(--ink);height:54px;
+  display:flex;align-items:center;padding:0 24px;
+  gap:16px;flex-shrink:0;border-bottom:2px solid var(--gold);
+}
+.topbar-logo{font-family:'Playfair Display',serif;font-size:16px;color:var(--gold);font-weight:700;letter-spacing:.02em}
+.topbar-sep{width:1px;height:20px;background:rgba(255,255,255,.12)}
+.topbar-title{font-size:12px;color:rgba(255,255,255,.5);letter-spacing:.04em;text-transform:uppercase}
+.topbar-user{margin-left:auto;font-size:12px;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:10px}
+.topbar-badge{padding:3px 10px;background:rgba(184,150,74,.2);border:1px solid rgba(184,150,74,.3);border-radius:20px;font-size:11px;color:var(--gold)}
+.btn-logout{padding:5px 12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:rgba(255,255,255,.55);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s}
+.btn-logout:hover{background:rgba(255,255,255,.14);color:white}
+
+/* ── Body layout ────────────────────────────────────── */
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* ── Sidebar (tabs) ─────────────────────────────────── */
+.sidebar{
+  width:200px;background:var(--white);border-right:1px solid var(--cream3);
+  display:flex;flex-direction:column;padding:20px 0;flex-shrink:0;
+}
+.sidebar-section{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);padding:0 18px;margin-bottom:8px;margin-top:16px}
+.sidebar-section:first-child{margin-top:0}
+.nav-btn{
+  display:flex;align-items:center;gap:10px;
+  width:100%;padding:9px 18px;border:none;background:none;
+  font-size:12.5px;font-family:'DM Sans',sans-serif;
+  color:var(--ink3);cursor:pointer;text-align:left;
+  transition:all .12s;border-left:3px solid transparent;
+}
+.nav-btn:hover{background:var(--cream);color:var(--ink)}
+.nav-btn.active{background:var(--cream);color:var(--gold-dk);font-weight:600;border-left-color:var(--gold)}
+.nav-icon{font-size:15px;flex-shrink:0}
+
+/* ── Main content ───────────────────────────────────── */
+.main{flex:1;overflow-y:auto;padding:28px 32px;background:var(--cream)}
+
+/* ── Page header ────────────────────────────────────── */
+.page-head{margin-bottom:24px}
+.page-head h1{font-family:'Playfair Display',serif;font-size:22px;color:var(--ink);margin-bottom:4px}
+.page-head p{font-size:12.5px;color:var(--ink3)}
+
+/* ── Stat cards ─────────────────────────────────────── */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:white;border-radius:var(--radius);border:1px solid var(--cream3);padding:14px 16px;box-shadow:var(--shadow)}
+.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:6px}
+.stat-val{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--ink);line-height:1}
+.stat-card.accent .stat-val{color:var(--gold-dk)}
+
+/* ── Toolbar ────────────────────────────────────────── */
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.toolbar-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.search-box{padding:7px 12px;border:1.5px solid var(--cream3);border-radius:8px;font-size:12.5px;font-family:'DM Sans',sans-serif;color:var(--ink);background:white;outline:none;width:200px;transition:border-color .15s}
+.search-box:focus{border-color:var(--gold)}
+select.filter{padding:7px 10px;border:1.5px solid var(--cream3);border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--ink);background:white;outline:none;cursor:pointer}
+select.filter:focus{border-color:var(--gold)}
+
+/* ── Buttons ────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--gold);color:white}
+.btn-primary:hover{background:var(--gold-dk)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.btn-outline{background:white;color:var(--ink2);border:1.5px solid var(--cream3)}
+.btn-outline:hover{border-color:var(--ink3);color:var(--ink)}
+.btn-ghost{background:transparent;color:var(--ink3);border:none;padding:6px 8px}
+.btn-ghost:hover{color:var(--ink);background:var(--cream2)}
+.btn-danger{background:var(--red-lt);color:var(--red);border:1px solid rgba(192,57,43,.2)}
+.btn-danger:hover{background:rgba(192,57,43,.12)}
+.btn-sm{padding:5px 10px;font-size:11.5px}
+
+/* ── Table ──────────────────────────────────────────── */
+.table-wrap{background:white;border-radius:var(--radius);border:1px solid var(--cream3);overflow:hidden;box-shadow:var(--shadow)}
+.table-head-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--cream2)}
+.table-head-bar h3{font-family:'Playfair Display',serif;font-size:14px;color:var(--ink)}
+.count-badge{font-size:11px;color:var(--ink3);background:var(--cream2);padding:2px 8px;border-radius:12px}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--cream);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);padding:9px 14px;text-align:left;border-bottom:1px solid var(--cream2);white-space:nowrap}
+tbody td{padding:11px 14px;font-size:12.5px;color:var(--ink2);border-bottom:1px solid var(--cream2)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#FDFAF6}
+.td-name strong{display:block;font-size:13px;color:var(--ink)}
+.td-name span{font-size:11px;color:var(--ink3)}
+.td-mono{font-family:'DM Mono',monospace;font-size:11.5px;color:var(--ink3)}
+.td-actions{display:flex;gap:4px}
+
+/* ── Badges ─────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:600;white-space:nowrap}
+.badge-green{background:var(--green-lt);color:var(--green);border:1px solid rgba(26,107,69,.2)}
+.badge-red{background:var(--red-lt);color:var(--red);border:1px solid rgba(192,57,43,.2)}
+.badge-gold{background:rgba(184,150,74,.1);color:var(--gold-dk);border:1px solid rgba(184,150,74,.25)}
+.badge-blue{background:var(--blue-lt);color:var(--blue);border:1px solid rgba(26,58,92,.2)}
+.badge-gray{background:var(--cream2);color:var(--ink3);border:1px solid var(--cream3)}
+
+/* ── Role cards ─────────────────────────────────────── */
+.roles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.role-card{background:white;border-radius:var(--radius);border:1px solid var(--cream3);overflow:hidden;box-shadow:var(--shadow)}
+.role-card-head{padding:13px 16px;display:flex;align-items:flex-start;justify-content:space-between}
+.role-card-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:white;margin-bottom:2px}
+.role-card-code{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.6)}
+.role-card-body{padding:12px 16px}
+.role-card-desc{font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.5}
+.role-module-list{display:flex;flex-wrap:wrap;gap:4px}
+.module-chip{font-size:10.5px;padding:2px 8px;border-radius:10px;background:var(--cream2);color:var(--ink2)}
+.role-level-badge{font-size:10px;padding:2px 8px;border-radius:12px;color:white;font-weight:600;background:rgba(255,255,255,.25)}
+
+/* ── Forms ──────────────────────────────────────────── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.form-group label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:5px}
+.form-group label span.req{color:var(--red)}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;padding:9px 12px;border:1.5px solid var(--cream3);border-radius:8px;
+  font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink);background:white;
+  outline:none;transition:border-color .15s;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold)}
+.form-group input[readonly]{background:var(--cream);opacity:.7}
+.form-hint{font-size:10.5px;color:var(--ink3);margin-top:4px}
+.scope-box{background:var(--cream);border:1px solid var(--cream3);border-radius:10px;padding:14px 16px;margin-bottom:18px}
+.scope-box-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:12px}
+.perms-preview{padding:11px 14px;background:var(--cream);border-radius:8px;border:1px solid var(--cream3);font-size:12px;color:var(--ink3);margin-top:8px;line-height:1.6}
+.status-msg{display:none;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:500;margin-top:12px}
+.status-msg.err{background:var(--red-lt);border-left:3px solid var(--red);color:var(--red)}
+.status-msg.ok{background:var(--green-lt);border-left:3px solid var(--green);color:var(--green)}
+.status-msg.info{background:var(--blue-lt);border-left:3px solid var(--blue);color:var(--blue)}
+
+/* ── Modal ──────────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(26,18,16,.55);backdrop-filter:blur(3px);align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:white;border-radius:14px;width:100%;max-width:660px;margin:auto;overflow:hidden;box-shadow:var(--shadow-lg)}
+.modal-header{background:var(--ink);padding:16px 22px;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-family:'Playfair Display',serif;font-size:16px;color:var(--gold)}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;line-height:1;padding:0 2px}
+.modal-close:hover{color:white}
+.modal-body{padding:24px 26px}
+.modal-footer{padding:14px 26px;border-top:1px solid var(--cream2);display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.spinner-text{font-size:12px;color:var(--ink3);display:none}
+
+/* ── Toast ──────────────────────────────────────────── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast-item{padding:11px 16px;border-radius:9px;font-size:12.5px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.2);animation:slideUp .25s ease;pointer-events:auto;max-width:320px}
+.toast-ok{background:var(--green-lt);border:1px solid rgba(26,107,69,.25);color:var(--green)}
+.toast-err{background:var(--red-lt);border:1px solid rgba(192,57,43,.25);color:var(--red)}
+.toast-info{background:var(--blue-lt);border:1px solid rgba(26,58,92,.2);color:var(--blue)}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── Empty state ────────────────────────────────────── */
+.empty{text-align:center;padding:48px 24px;color:var(--ink3)}
+.empty-icon{font-size:36px;margin-bottom:12px;opacity:.4}
+.empty-title{font-size:14px;font-weight:600;margin-bottom:4px;color:var(--ink2)}
+.empty-sub{font-size:12px}
+
+/* ── Section card ───────────────────────────────────── */
+.section-card{background:white;border-radius:var(--radius);border:1px solid var(--cream3);box-shadow:var(--shadow);padding:20px 22px;margin-bottom:20px}
+.section-card h3{font-family:'Playfair Display',serif;font-size:15px;color:var(--ink);margin-bottom:4px}
+.section-card p{font-size:12px;color:var(--ink3);margin-bottom:16px}
+
+/* ── Access denied ──────────────────────────────────── */
+.access-denied{display:none;padding:18px 22px;background:#FEF3C7;border-left:4px solid #D97706;border-radius:8px;margin-bottom:20px;font-size:13px;color:#92400E}
+
+/* ── Responsive ─────────────────────────────────────── */
+@media(max-width:640px){
+  .form-grid{grid-template-columns:1fr}
+  .main{padding:16px}
+  .sidebar{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-head">
+      <div class="login-logo">ChurchOS ERP</div>
+      <div class="login-sub">Presbyterian Church of Ghana · PCG Edition</div>
+    </div>
+    <div class="login-body">
+      <div class="login-title">User Provisioning</div>
+      <div class="login-desc">Sign in with your Administrator account to manage users.</div>
+      <div class="login-error" id="login-error"></div>
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="login-email" placeholder="admin@pcg.org.gh" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-login" id="login-btn" onclick="doLogin()">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════════════ -->
+<div id="app">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-logo">ChurchOS ERP</div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-title">User Provisioning Console</div>
+    <div class="topbar-user">
+      <span id="topbar-badge" class="topbar-badge"></span>
+      <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-section">Manage</div>
+      <button class="nav-btn active" onclick="showView('users')" id="nav-users">
+        <span class="nav-icon">👤</span> Users
+      </button>
+      <button class="nav-btn" onclick="showView('roles')" id="nav-roles">
+        <span class="nav-icon">🛡️</span> Roles
+      </button>
+      <button class="nav-btn" onclick="showView('scopes')" id="nav-scopes">
+        <span class="nav-icon">⛪</span> Scopes
+      </button>
+      <div class="sidebar-section">Tools</div>
+      <button class="nav-btn" onclick="showView('onboarding')" id="nav-onboarding">
+        <span class="nav-icon">📋</span> Onboarding Letters
+      </button>
+    </nav>
+
+    <!-- Main -->
+    <main class="main" id="main">
+
+      <!-- ── USERS VIEW ─────────────────────────────── -->
+      <div id="view-users">
+        <div class="page-head">
+          <h1>Users</h1>
+          <p>Provision accounts for congregation, district, and presbytery officers. Each user is scoped to their own data partition.</p>
+        </div>
+        <div class="stat-row">
+          <div class="stat-card accent"><div class="stat-label">Total Users</div><div class="stat-val" id="s-total">—</div></div>
+          <div class="stat-card"><div class="stat-label">Active</div><div class="stat-val" id="s-active" style="color:var(--green)">—</div></div>
+          <div class="stat-card"><div class="stat-label">Inactive</div><div class="stat-val" id="s-inactive" style="color:var(--red)">—</div></div>
+          <div class="stat-card"><div class="stat-label">Congregations</div><div class="stat-val" id="s-congs">—</div></div>
+          <div class="stat-card"><div class="stat-label">Districts</div><div class="stat-val" id="s-districts">—</div></div>
+          <div class="stat-card"><div class="stat-label">Presbyteries</div><div class="stat-val" id="s-presbyteries">—</div></div>
+          <div class="stat-card"><div class="stat-label">Hierarchy Admins</div><div class="stat-val" id="s-hierarchy" style="color:var(--blue)">—</div></div>
+        </div>
+        <div class="access-denied" id="users-denied">⚠️ <strong>Restricted.</strong> Only Administrators can provision users.</div>
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <input class="search-box" type="text" id="u-search" placeholder="Search name or email…" oninput="renderUsers()">
+            <select class="filter" id="u-scope" onchange="renderUsers()"><option value="">All Scopes</option></select>
+            <select class="filter" id="u-role" onchange="renderUsers()"><option value="">All Roles</option></select>
+            <select class="filter" id="u-status" onchange="renderUsers()">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" onclick="exportCSV()">⬇ Export CSV</button>
+            <button class="btn btn-primary" id="btn-new-user" onclick="openUserModal()">＋ New User</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <div class="table-head-bar">
+            <h3>User Accounts</h3>
+            <span class="count-badge" id="u-count"></span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Name / Email</th>
+                <th>Role</th>
+                <th>Level</th>
+                <th>Congregation / Scope</th>
+                <th>Status</th>
+                <th style="width:120px"></th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody">
+              <tr><td colspan="6"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Loading…</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ROLES VIEW ─────────────────────────────── -->
+      <div id="view-roles" style="display:none">
+        <div class="page-head">
+          <h1>Roles</h1>
+          <p>Built-in access roles mapped to the ChurchOS permission model. Each role controls which ERP and PCG modules a user can access.</p>
+        </div>
+        <div class="roles-grid" id="roles-grid"></div>
+      </div>
+
+      <!-- ── SCOPES VIEW ────────────────────────────── -->
+      <div id="view-scopes" style="display:none">
+        <div class="page-head">
+          <h1>Congregations, Districts &amp; Presbyteries</h1>
+          <p>Define every unit in the hierarchy. Each entry maps to a Firebase data path. Users are scoped to their unit and can only see data within it.</p>
+        </div>
+        <!-- Hierarchy info banner -->
+        <div style="background:var(--blue-lt);border:1px solid rgba(26,58,92,.15);border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:12.5px;color:var(--blue);line-height:1.7">
+          <strong>📐 PCG Data Hierarchy</strong><br>
+          <code style="font-family:'DM Mono',monospace;font-size:11px">congregations/{id}/</code> — Congregation data (written by the main ChurchOS app)<br>
+          <code style="font-family:'DM Mono',monospace;font-size:11px">districts/{id}/congregations/{cid}/summary</code> — District rollup (published automatically)<br>
+          <code style="font-family:'DM Mono',monospace;font-size:11px">presbyteries/{id}/districts/{did}/</code> — Presbytery rollup<br>
+          <code style="font-family:'DM Mono',monospace;font-size:11px">national/presbyteries/{pid}/</code> — National rollup<br>
+          <span style="color:var(--ink3);font-size:11.5px">District, Presbytery, and National entries here are used for scoping hierarchy admin accounts and are registered in <code style="font-family:'DM Mono',monospace">up_scopes/</code>.</span>
+        </div>
+        <div class="toolbar">
+          <div></div>
+          <button class="btn btn-outline" id="btn-seed-presby" onclick="seedPresbyteriesManual()" title="Load all 21 PCG presbyteries into Firebase" style="font-size:12px">🌍 Seed Presbyteries</button>
+          <button class="btn btn-outline" id="btn-seed-ga-dist" onclick="seedGaDistrictsManual()" title="Load all 29 Ga Presbytery districts into Firebase" style="font-size:12px">🏘️ Seed Ga Districts</button>
+          <button class="btn btn-primary" id="btn-new-scope" onclick="openScopeModal()">＋ Add Scope</button>
+        </div>
+        <div class="table-wrap">
+          <div class="table-head-bar"><h3>Defined Scopes</h3><span class="count-badge" id="scopes-count"></span></div>
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Type</th><th>Firebase ID</th><th>Presbytery</th><th>District</th><th>Users</th><th style="width:100px"></th></tr>
+            </thead>
+            <tbody id="scopes-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ONBOARDING VIEW ────────────────────────── -->
+      <div id="view-onboarding" style="display:none">
+        <div class="page-head">
+          <h1>Onboarding Letters</h1>
+          <p>Generate a printable welcome letter for any provisioned user with their login credentials and data scope details.</p>
+        </div>
+        <div class="section-card" style="max-width:540px">
+          <h3>Print Onboarding Letter</h3>
+          <p>Select a user to generate their personalised letter.</p>
+          <div class="form-group" style="margin-bottom:16px">
+            <label>Select User</label>
+            <select id="letter-user" style="width:100%;padding:9px 12px;border:1.5px solid var(--cream3);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink);background:white;outline:none">
+              <option value="">— Select a user —</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="printLetter()">🖨 Generate &amp; Print Letter</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══ USER MODAL ══════════════════════════════════════ -->
+<div class="modal-overlay" id="user-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="user-modal-title">New User</span>
+      <button class="modal-close" onclick="closeUserModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="um-uid">
+      <!-- Scope box -->
+      <div class="scope-box">
+        <div class="scope-box-title">📍 Data Scope — Which congregation/district/presbytery does this user belong to?</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Scope Level <span class="req">*</span></label>
+            <select id="um-level" onchange="onLevelChange()">
+              <option value="congregation">Congregation</option>
+              <option value="district">District</option>
+              <option value="presbytery">Presbytery</option>
+              <option value="national">National</option>
+            </select>
+          </div>
+          <div class="form-group" id="um-scope-group">
+            <label id="um-scope-label">Congregation <span class="req">*</span></label>
+            <select id="um-scope-select"><option value="">— Select —</option></select>
+          </div>
+        </div>
+        <div id="um-scope-hint" class="form-hint" style="display:none"></div>
+      </div>
+      <!-- Fields -->
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Full Name <span class="req">*</span></label>
+          <input type="text" id="um-name" placeholder="e.g. Abena Mensah">
+        </div>
+        <div class="form-group">
+          <label>Email Address (Login) <span class="req">*</span></label>
+          <input type="email" id="um-email" placeholder="e.g. abena@pcg.org.gh">
+        </div>
+        <div class="form-group">
+          <label>Role <span class="req">*</span></label>
+          <select id="um-role" onchange="onRoleChange()"><option value="">— Select Role —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" id="um-phone" placeholder="e.g. 0244 123 456">
+        </div>
+        <div class="form-group">
+          <label>Temporary Password <span class="req">*</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="um-password" placeholder="Min 8 characters" style="flex:1">
+            <button type="button" onclick="genPassword()" class="btn btn-outline btn-sm">Generate</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="um-status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        </div>
+        <div class="form-group form-full">
+          <label>Notes</label>
+          <textarea id="um-notes" rows="2" placeholder="Optional notes…" style="resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="perms-preview" id="um-perms-preview">Select a role to preview its module access.</div>
+      <div id="um-portal-hint" style="display:none;margin-top:8px;padding:10px 14px;background:var(--blue-lt);border:1px solid rgba(26,58,92,.2);border-radius:8px;font-size:12px;color:var(--blue);line-height:1.6">
+        🌐 <strong>Hierarchy Portal access:</strong> This user will log in via the <strong>ChurchOS Hierarchy Admin Portal</strong> (not the main congregation app). Share the correct portal URL with them along with their credentials.
+      </div>
+      <div class="status-msg" id="um-status-msg"></div>
+    </div>
+    <div class="modal-footer">
+      <span class="spinner-text" id="um-spinner">⏳ Saving…</span>
+      <button class="btn btn-outline" onclick="closeUserModal()">Cancel</button>
+      <button class="btn btn-primary" id="um-save-btn" onclick="saveUser()">💾 Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCOPE MODAL ═════════════════════════════════════ -->
+<div class="modal-overlay" id="scope-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <span class="modal-title" id="scope-modal-title">Add Scope</span>
+      <button class="modal-close" onclick="closeScopeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sm-edit-id">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Type <span class="req">*</span></label>
+          <select id="sm-type" onchange="onScopeTypeChange()">
+            <option value="congregation">Congregation</option>
+            <option value="district">District</option>
+            <option value="presbytery">Presbytery</option>
+            <option value="national">National</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Display Name <span class="req">*</span></label>
+          <input type="text" id="sm-name" placeholder="e.g. Immanuel Congregation">
+        </div>
+        <div class="form-group form-full">
+          <label>Firebase ID <span class="req">*</span></label>
+          <input type="text" id="sm-id" placeholder="e.g. immanuel_madina" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'_')">
+          <div class="form-hint" id="sm-id-hint">Lowercase, underscores only.</div>
+        </div>
+
+        <!-- Presbytery parent selector (for districts and congregations) -->
+        <div class="form-group" id="sm-presby-grp">
+          <label id="sm-presby-label">Presbytery</label>
+          <select id="sm-presbytery-sel" onchange="document.getElementById('sm-presbytery').value=this.value">
+            <option value="">— Select or type below —</option>
+          </select>
+          <input type="text" id="sm-presbytery" placeholder="e.g. Ga" style="margin-top:6px">
+          <div class="form-hint">Parent presbytery name or ID</div>
+        </div>
+
+        <!-- District parent selector (for congregations) -->
+        <div class="form-group" id="sm-district-grp">
+          <label id="sm-district-label">District</label>
+          <select id="sm-district-sel" onchange="document.getElementById('sm-district').value=this.value">
+            <option value="">— Select or type below —</option>
+          </select>
+          <input type="text" id="sm-district" placeholder="e.g. Madina" style="margin-top:6px">
+          <div class="form-hint">Parent district name or ID</div>
+        </div>
+
+        <div class="form-group">
+          <label>Minister / Head / Contact</label>
+          <input type="text" id="sm-minister" placeholder="e.g. Rev. Kwame Asante">
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="sm-location" placeholder="e.g. Madina, Accra">
+        </div>
+      </div>
+
+      <!-- Firebase path preview -->
+      <div style="margin-top:4px;padding:10px 14px;background:var(--cream);border:1px solid var(--cream3);border-radius:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3)" id="sm-path-preview">
+        Firebase path will appear here after you select a type and enter an ID.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeScopeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveScope()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast"></div>
+
+<!-- ══ FIREBASE (module) ════════════════════════════════ -->
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+                            from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getDatabase, ref, set, get, update, remove }
+                            from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+const cfg = {
+  apiKey:            "AIzaSyA3vzjg1s6JwEjTzkLy9sptXoqrgfoAkQQ",
+  authDomain:        "pcg-erp-1e1d0.firebaseapp.com",
+  databaseURL:       "https://pcg-erp-1e1d0-default-rtdb.firebaseio.com",
+  projectId:         "pcg-erp-1e1d0",
+  storageBucket:     "pcg-erp-1e1d0.firebasestorage.app",
+  messagingSenderId: "97661604507",
+  appId:             "1:97661604507:web:646869f00c6b14aa07ac3e"
+};
+
+const app  = initializeApp(cfg);
+const auth = getAuth(app);
+const db   = getDatabase(app);
+
+// Expose to global scope for the plain script below
+window._fb = { auth, db,
+  ref: (p)       => ref(db, p),
+  get: (p)       => get(ref(db, p)),
+  set: (p, v)    => set(ref(db, p), v),
+  update: (p, v) => update(ref(db, p), v),
+  remove: (p)    => remove(ref(db, p)),
+  signIn: (e, p) => signInWithEmailAndPassword(auth, e, p),
+  signOut: ()    => signOut(auth),
+};
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-btn').disabled = false;
+    document.getElementById('login-error').style.display = 'none';
+    return;
+  }
+  // Load profile
+  const snap    = await window._fb.get('users/' + user.uid);
+  const profile = snap.exists() ? snap.val() : {};
+  const role    = profile.role || 'readonly';
+
+  window._session = { uid: user.uid, email: user.email, role, profile };
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display         = 'flex';
+  document.getElementById('topbar-badge').textContent  =
+    (window.ROLES[role]?.label || role) + '  ·  ' + (profile.displayName || user.email);
+
+  window.loadData();
+});
+</script>
+
+<!-- ══ APP LOGIC (plain, global scope) ══════════════════ -->
+<script>
+// ── Role definitions (mirrors ACL_ROLES in main app) ──
+window.ROLES = {
+  admin:            { label:'Administrator',           level:'congregation', erp:'*',  pcg:'*',   write:true  },
+  pastor:           { label:'Pastor / Minister',       level:'congregation',
+    erp:['dashboard','members','groups','visitors','welfare','family-life','scholarship','events','attendance','volunteers','giving','communications','administration'],
+    pcg:['dashboard','setup','membership','attendance','groups-pcg','tyrp','quarterly','annual','expenditure','land','committees'], write:true },
+  finance:          { label:'Finance Officer',          level:'congregation',
+    erp:['dashboard','giving','finance-tracker','administration'],
+    pcg:['dashboard','expenditure','quarterly','annual'], write:true },
+  secretary:        { label:'Congregation Secretary',  level:'congregation',
+    erp:['dashboard','members','groups','visitors','events','attendance','volunteers','communications','welfare','family-life','scholarship','administration'],
+    pcg:['dashboard','setup','membership','attendance','groups-pcg','tyrp','quarterly','annual','land','committees'], write:true },
+  welfare:          { label:'Welfare Committee',        level:'congregation',
+    erp:['dashboard','members','welfare','family-life','scholarship','visitors'],
+    pcg:['dashboard'], write:false },
+  readonly:         { label:'Read-Only Viewer',         level:'congregation',
+    erp:['dashboard','members','groups','events','attendance'],
+    pcg:['dashboard','membership','attendance','groups-pcg','quarterly','annual'], write:false },
+  district_admin:   { label:'District Administrator',  level:'district',
+    erp:['dashboard'], pcg:['dashboard','quarterly','annual'], write:false },
+  presbytery_admin: { label:'Presbytery Administrator',level:'presbytery',
+    erp:['dashboard'], pcg:['dashboard','quarterly','annual'], write:false },
+  national_admin:   { label:'National Administrator',  level:'national',
+    erp:['dashboard'], pcg:['dashboard','quarterly','annual'], write:false },
+};
+
+const ROLE_COLORS = {
+  admin:'#7A5F28', pastor:'#1A6B45', finance:'#5A1A6B',
+  secretary:'#1A3A5C', welfare:'#8B4513', readonly:'#4A4A4A',
+  district_admin:'#1A5A6B', presbytery_admin:'#1A3D6B', national_admin:'#4A1A6B'
+};
+
+const FB_API_KEY = 'AIzaSyA3vzjg1s6JwEjTzkLy9sptXoqrgfoAkQQ';
+
+// ── In-memory state ──
+let _users  = [];
+let _scopes = {};
+
+// ── PCG Presbytery Master List ─────────────────────────────────────────────
+const PRELOADED_PRESBYTERIES = [
+  { id: 'presby_sefwi',           name: 'Sefwi'                   },
+  { id: 'presby_sekyere',         name: 'Sekyere'                 },
+  { id: 'presby_ga_west',         name: 'Ga West'                 },
+  { id: 'presby_volta',           name: 'Volta'                   },
+  { id: 'presby_west_akyem',      name: 'West Akyem'              },
+  { id: 'presby_ga',              name: 'Ga'                      },
+  { id: 'presby_kwahu',           name: 'Kwahu'                   },
+  { id: 'presby_akuapem',         name: 'Akuapem'                 },
+  { id: 'presby_western',         name: 'Western'                 },
+  { id: 'presby_akyem_abuakwa',   name: 'Akyem Abuakwa'          },
+  { id: 'presby_dangme_tongu',    name: 'Dangme Tongu'            },
+  { id: 'presby_central',         name: 'Central'                 },
+  { id: 'presby_asante_akyem',    name: 'Asante Akyem'           },
+  { id: 'presby_asante_south',    name: 'Asante South'            },
+  { id: 'presby_brong_ahafo',     name: 'Brong Ahafo'             },
+  { id: 'presby_asante',          name: 'Asante'                  },
+  { id: 'presby_upper',           name: 'Upper'                   },
+  { id: 'presby_west_brong',      name: 'West Brong'              },
+  { id: 'presby_northern',        name: 'Northern'                },
+  { id: 'presby_europe',          name: 'Europe'                  },
+  { id: 'presby_north_america',   name: 'North America / Australia' },
+];
+
+// ── Ga Presbytery — District Master List ──────────────────────────────────
+const PRELOADED_GA_DISTRICTS = [
+  { id: 'dist_ga_abokobi',            name: 'Abokobi'             },
+  { id: 'dist_ga_accra_central',       name: 'Accra Central'       },
+  { id: 'dist_ga_accra_new_town',      name: 'Accra New Town'      },
+  { id: 'dist_ga_adabraka',            name: 'Adabraka'            },
+  { id: 'dist_ga_adentan',             name: 'Adentan'             },
+  { id: 'dist_ga_ashaiman',            name: 'Ashaiman'            },
+  { id: 'dist_ga_ashaiman_north',      name: 'Ashaiman North'      },
+  { id: 'dist_ga_ashaley_botwe',       name: 'Ashaley Botwe'       },
+  { id: 'dist_ga_atomic_hills',        name: 'Atomic Hills'        },
+  { id: 'dist_ga_dzorwulu',            name: 'Dzorwulu'            },
+  { id: 'dist_ga_fafraha',             name: 'Fafraha'             },
+  { id: 'dist_ga_mission_field',       name: 'Ga Mission Field'    },
+  { id: 'dist_ga_haatso',              name: 'Haatso'              },
+  { id: 'dist_ga_kaajaano',            name: 'Kaajaano'            },
+  { id: 'dist_ga_kutunse',             name: 'Kutunse'             },
+  { id: 'dist_ga_la',                  name: 'La'                  },
+  { id: 'dist_ga_madina',              name: 'Madina'              },
+  { id: 'dist_ga_nima',                name: 'Nima'                },
+  { id: 'dist_ga_nungua',              name: 'Nungua'              },
+  { id: 'dist_ga_osu',                 name: 'Osu'                 },
+  { id: 'dist_ga_oyibi',               name: 'Oyibi'               },
+  { id: 'dist_ga_sakumono',            name: 'Sakumono'            },
+  { id: 'dist_ga_sebrepor',            name: 'Sebrepor'            },
+  { id: 'dist_ga_taifa',               name: 'Taifa'               },
+  { id: 'dist_ga_tema_community_one',  name: 'Tema Community One'  },
+  { id: 'dist_ga_tema_community_two',  name: 'Tema Community Two'  },
+  { id: 'dist_ga_tema_manhean',        name: 'Tema Manhean'        },
+  { id: 'dist_ga_tema_north',          name: 'Tema North'          },
+  { id: 'dist_ga_teshie',              name: 'Teshie'              },
+];
+
+// Seed all 21 presbyteries into Firebase up_scopes + presbyteries/<id>/meta.
+// Skips any that already exist. Called automatically after login if admin.
+async function seedGaDistrictsIfNeeded() {
+  if (!window._fb) return;
+  const PRESBY_ID = 'presby_ga';
+  const toSeed = PRELOADED_GA_DISTRICTS.filter(d => !_scopes[d.id]);
+  if (toSeed.length === 0) return;
+
+  const writes = toSeed.map(d => {
+    const scope = { id: d.id, type: 'district', name: d.name,
+                    presbytery: PRESBY_ID, district: '', minister: '', location: '' };
+    const meta  = { id: d.id, type: 'district', name: d.name,
+                    presbytery: PRESBY_ID, registeredAt: new Date().toISOString() };
+    return Promise.all([
+      window._fb.set('up_scopes/' + d.id, scope),
+      window._fb.set('districts/' + d.id + '/meta', meta),
+      // Register under parent presbytery path so hierarchy portal can discover it
+      window._fb.set('presbyteries/' + PRESBY_ID + '/districts/' + d.id + '/meta',
+                     { name: d.name, id: d.id, presbytery: PRESBY_ID }),
+    ]).then(() => { _scopes[d.id] = scope; });
+  });
+
+  try {
+    await Promise.all(writes);
+    renderScopes();
+    console.log('[ChurchOS] Seeded', toSeed.length, 'Ga districts into Firebase.');
+  } catch(err) {
+    console.warn('[ChurchOS] Ga district seed error:', err);
+  }
+}
+
+async function seedGaDistrictsManual() {
+  const btn = document.getElementById('btn-seed-ga-dist');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Seeding…'; }
+  const before = Object.values(_scopes).filter(s => s.type === 'district' && s.presbytery === 'presby_ga').length;
+  await seedGaDistrictsIfNeeded();
+  const after  = Object.values(_scopes).filter(s => s.type === 'district' && s.presbytery === 'presby_ga').length;
+  const added  = after - before;
+  if (btn) { btn.disabled = false; btn.textContent = '🏘️ Seed Ga Districts'; }
+  const msg = added > 0
+    ? `✓ ${added} Ga Presbytery district(s) added to Firebase.`
+    : 'All 29 Ga districts are already present — nothing to add.';
+  alert(msg);
+}
+
+async function seedPresbyteriesManual() {
+  const btn = document.getElementById('btn-seed-presby');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Seeding…'; }
+  const before = Object.values(_scopes).filter(s => s.type === 'presbytery').length;
+  await seedPresbyteriesIfNeeded();
+  const after  = Object.values(_scopes).filter(s => s.type === 'presbytery').length;
+  const added  = after - before;
+  if (btn) { btn.disabled = false; btn.textContent = '🌍 Seed Presbyteries'; }
+  const msg = added > 0
+    ? `✓ ${added} presbyteries added to Firebase.`
+    : 'All 21 presbyteries are already present — nothing to add.';
+  alert(msg);
+}
+
+async function seedPresbyteriesIfNeeded() {
+  if (!window._fb) return;
+  const toSeed = PRELOADED_PRESBYTERIES.filter(p => !_scopes[p.id]);
+  if (toSeed.length === 0) return; // all already present
+
+  const writes = toSeed.map(p => {
+    const scope = { id: p.id, type: 'presbytery', name: p.name, presbytery: '', district: '', minister: '', location: '' };
+    const meta  = { id: p.id, type: 'presbytery', name: p.name, registeredAt: new Date().toISOString() };
+    return Promise.all([
+      window._fb.set('up_scopes/' + p.id, scope),
+      window._fb.set('presbyteries/' + p.id + '/meta', meta),
+    ]).then(() => { _scopes[p.id] = scope; });
+  });
+
+  try {
+    await Promise.all(writes);
+    renderScopes();
+    console.log('[ChurchOS] Seeded', toSeed.length, 'presbyteries into Firebase.');
+  } catch(err) {
+    console.warn('[ChurchOS] Presbytery seed error:', err);
+  }
+}
+let _loaded = false;
+
+// ── Helpers ──
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const rl  = id => ROLES[id]?.label || id || '—';
+const rc  = id => ROLE_COLORS[id]  || '#3D322C';
+const lvlIcon = l => ({congregation:'⛪',district:'🏘️',presbytery:'🏛️',national:'🌍'}[l]||'⛪');
+
+function scopeLabel(u) {
+  const id = u.congregationId || u.districtId || u.presbyteryId || '';
+  return _scopes[id]?.name || id || '—';
+}
+
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  const d = document.createElement('div');
+  d.className = `toast-item toast-${type}`;
+  d.textContent = msg;
+  t.appendChild(d);
+  setTimeout(() => d.remove(), 3000);
+}
+
+function isAdmin() { return window._session?.role === 'admin'; }
+
+// ── Auth ──
+window.doLogin = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+  if (!email || !pass) { errEl.textContent='Enter your email and password.'; errEl.style.display='block'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    await window._fb.signIn(email, pass);
+  } catch(e) {
+    const map = {
+      'auth/user-not-found':'No account found for this email.',
+      'auth/wrong-password':'Incorrect password.',
+      'auth/invalid-email':'Invalid email address.',
+      'auth/too-many-requests':'Too many attempts. Please wait.',
+      'auth/invalid-credential':'Invalid email or password.',
+    };
+    errEl.textContent = map[e.code] || e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+};
+
+window.doLogout = async function() {
+  await window._fb.signOut();
+};
+
+// ── Load data ──
+window.loadData = async function() {
+  try {
+    const [usersSnap, scopesSnap] = await Promise.all([
+      window._fb.get('users'),
+      window._fb.get('up_scopes'),
+    ]);
+    _users = [];
+    if (usersSnap.exists()) {
+      Object.entries(usersSnap.val() || {}).forEach(([uid, p]) => {
+        if (p && typeof p === 'object') _users.push({ ...p, uid });
+      });
+    }
+    _scopes = scopesSnap.exists() ? (scopesSnap.val() || {}) : {};
+    _loaded = true;
+    renderAll();
+  } catch(e) {
+    console.error('Load error:', e);
+    toast('Failed to load data: ' + e.message, 'err');
+  }
+};
+
+function renderAll() {
+  updateStats();
+  renderUsers();
+  renderRoles();
+  renderScopes();
+  refreshSelects();
+  // Auto-seed 21 PCG presbyteries on first login (admin only)
+  if (window._isAdmin) seedPresbyteriesIfNeeded();
+  if (window._isAdmin) seedGaDistrictsIfNeeded();
+}
+
+// ── Stats ──
+function updateStats() {
+  const active      = _users.filter(u => u.status === 'active').length;
+  const congs       = Object.values(_scopes).filter(s => s.type === 'congregation').length;
+  const districts   = Object.values(_scopes).filter(s => s.type === 'district').length;
+  const presbyteries= Object.values(_scopes).filter(s => s.type === 'presbytery').length;
+  const hierarchyAdmins = _users.filter(u => ['district_admin','presbytery_admin','national_admin'].includes(u.role)).length;
+  document.getElementById('s-total').textContent       = _users.length;
+  document.getElementById('s-active').textContent      = active;
+  document.getElementById('s-inactive').textContent    = _users.length - active;
+  document.getElementById('s-congs').textContent       = congs;
+  document.getElementById('s-districts').textContent   = districts;
+  document.getElementById('s-presbyteries').textContent= presbyteries;
+  document.getElementById('s-hierarchy').textContent   = hierarchyAdmins;
+}
+
+// ── View switching ──
+window.showView = function(name) {
+  ['users','roles','scopes','onboarding'].forEach(v => {
+    document.getElementById('view-'+v).style.display = v === name ? '' : 'none';
+    document.getElementById('nav-'+v).classList.toggle('active', v === name);
+  });
+  if (name === 'onboarding') refreshLetterSelect();
+};
+
+// ── Render Users ──
+function renderUsers() {
+  const search  = document.getElementById('u-search')?.value?.toLowerCase() || '';
+  const fScope  = document.getElementById('u-scope')?.value  || '';
+  const fRole   = document.getElementById('u-role')?.value   || '';
+  const fStatus = document.getElementById('u-status')?.value || '';
+
+  const list = _users.filter(u => {
+    if (fRole   && u.role   !== fRole)   return false;
+    if (fStatus && u.status !== fStatus) return false;
+    if (fScope) {
+      const sid = u.congregationId || u.districtId || u.presbyteryId || '';
+      if (sid !== fScope) return false;
+    }
+    if (search && !((u.displayName||'').toLowerCase().includes(search) ||
+                    (u.email||'').toLowerCase().includes(search))) return false;
+    return true;
+  });
+
+  document.getElementById('u-count').textContent =
+    `${list.length} of ${_users.length} user${_users.length !== 1 ? 's' : ''}`;
+
+  const admin  = isAdmin();
+  const denied = document.getElementById('users-denied');
+  if (denied) denied.style.display = admin ? 'none' : 'block';
+  const newBtn = document.getElementById('btn-new-user');
+  if (newBtn) newBtn.style.display = admin ? '' : 'none';
+
+  const tbody = document.getElementById('users-tbody');
+  if (!_loaded) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Loading…</div></div></td></tr>`;
+    return;
+  }
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty">
+      <div class="empty-icon">👤</div>
+      <div class="empty-title">${_users.length ? 'No users match your filter.' : 'No users yet.'}</div>
+      <div class="empty-sub">${_users.length ? 'Try adjusting the filters.' : 'Click <strong>+ New User</strong> to add one.'}</div>
+    </div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(u => {
+    const color = rc(u.role);
+    const sl    = scopeLabel(u);
+    const icon  = lvlIcon(u.level);
+    return `<tr>
+      <td class="td-name"><strong>${esc(u.displayName||'')}</strong><span>${esc(u.email||'')}</span></td>
+      <td><span class="badge" style="background:${color}18;color:${color};border:1px solid ${color}30">${esc(rl(u.role))}</span></td>
+      <td style="font-size:12px;text-transform:capitalize">${icon} ${esc(u.level||'congregation')}</td>
+      <td style="font-size:12.5px">${esc(sl)}</td>
+      <td><span class="badge ${u.status==='active'?'badge-green':'badge-red'}">${u.status==='active'?'Active':'Inactive'}</span></td>
+      <td class="td-actions">${admin ? `
+        <button class="btn btn-ghost btn-sm" onclick="editUser('${u.uid}')" title="Edit">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleStatus('${u.uid}')" title="Toggle status">🔄</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteUser('${u.uid}')" title="Delete user" style="color:var(--red)">🗑️</button>
+      ` : ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Render Roles ──
+function renderRoles() {
+  const grid = document.getElementById('roles-grid');
+  if (!grid) return;
+  grid.innerHTML = Object.entries(ROLES).map(([id, r]) => {
+    const color = rc(id);
+    const count = _users.filter(u => u.role === id).length;
+    const erp   = r.erp === '*' ? ['All ERP modules'] : (r.erp || []);
+    const lvlLabel = {congregation:'Congregation',district:'District',presbytery:'Presbytery',national:'National'}[r.level] || r.level;
+    return `<div class="role-card">
+      <div class="role-card-head" style="background:${color}">
+        <div>
+          <div class="role-card-name">${esc(r.label)}</div>
+          <div class="role-card-code">${id}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span class="role-level-badge">${lvlLabel}</span>
+          <span style="font-size:11px;color:rgba(255,255,255,.7)">${count} user${count!==1?'s':''}</span>
+        </div>
+      </div>
+      <div class="role-card-body">
+        <div class="role-card-desc">${r.write ? '✓ Can write data' : '✗ Read-only'}</div>
+        <div class="role-module-list">
+          ${erp.map(m => `<span class="module-chip">${esc(m)}</span>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render Scopes ──
+function renderScopes() {
+  const tbody = document.getElementById('scopes-tbody');
+  if (!tbody) return;
+  const scopeList = Object.values(_scopes).sort((a,b) => {
+    const order = {presbytery:0, district:1, congregation:2, national:3};
+    return (order[a.type]??9) - (order[b.type]??9) || (a.name||'').localeCompare(b.name||'');
+  });
+  const admin = isAdmin();
+  document.getElementById('btn-new-scope').style.display = admin ? '' : 'none';
+  const countEl = document.getElementById('scopes-count');
+  if (countEl) countEl.textContent = scopeList.length + ' scope' + (scopeList.length!==1?'s':'');
+  if (!scopeList.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty">
+      <div class="empty-icon">⛪</div>
+      <div class="empty-title">No scopes defined yet.</div>
+      <div class="empty-sub">Click <strong>+ Add Scope</strong> to start. Add presbyteries first, then districts, then congregations.</div>
+    </div></td></tr>`;
+    return;
+  }
+  const typeColor = {congregation:'#1A6B45', district:'#1A3A5C', presbytery:'#5A1A6B', national:'#7A5F28'};
+  const typeIcon  = {congregation:'⛪', district:'🏘️', presbytery:'🏛️', national:'🌍'};
+  tbody.innerHTML = scopeList.map(s => {
+    const tc    = typeColor[s.type] || '#3D322C';
+    const ti    = typeIcon[s.type]  || '📍';
+    const count = _users.filter(u => (u.congregationId||u.districtId||u.presbyteryId||'') === s.id).length;
+    const pathMap = {
+      congregation: `congregations/${s.id}/`,
+      district:     `districts/${s.id}/`,
+      presbytery:   `presbyteries/${s.id}/`,
+      national:     `national/`,
+    };
+    const fbPath = pathMap[s.type] || `up_scopes/${s.id}`;
+    return `<tr>
+      <td class="td-name"><strong>${esc(s.name)}</strong><span style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink3)">${esc(fbPath)}</span></td>
+      <td><span class="badge" style="background:${tc}18;color:${tc};border:1px solid ${tc}30">${ti} ${esc((s.type||'congregation').charAt(0).toUpperCase()+(s.type||'congregation').slice(1))}</span></td>
+      <td class="td-mono">${esc(s.id)}</td>
+      <td style="font-size:12px">${esc(s.presbytery||'—')}</td>
+      <td style="font-size:12px">${esc(s.district||'—')}</td>
+      <td style="font-weight:600">${count}</td>
+      <td>${admin ? `
+        <button class="btn btn-ghost btn-sm" onclick="editScope('${esc(s.id)}')" title="Edit">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteScope('${esc(s.id)}')" title="Delete scope" style="color:var(--red)">🗑️</button>
+      ` : ''}</td>
+    </tr>`;
+  }).join('');
+  // Keep parent-selector dropdowns in sync after every scope change
+  refreshSelects();
+}
+
+// ── Refresh selects ──
+function refreshSelects() {
+  // Scope filter dropdown
+  const uScope = document.getElementById('u-scope');
+  if (uScope) {
+    const cur = uScope.value;
+    uScope.innerHTML = '<option value="">All Scopes</option>' +
+      Object.values(_scopes).map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    uScope.value = cur;
+  }
+  // Role filter dropdown
+  const uRole = document.getElementById('u-role');
+  if (uRole) {
+    const cur = uRole.value;
+    uRole.innerHTML = '<option value="">All Roles</option>' +
+      Object.entries(ROLES).map(([id,r]) => `<option value="${id}">${esc(r.label)}</option>`).join('');
+    uRole.value = cur;
+  }
+  // Scope modal — Presbytery parent selector
+  const presbySel = document.getElementById('sm-presbytery-sel');
+  if (presbySel) {
+    const cur = presbySel.value;
+    const presbyScopes = Object.values(_scopes)
+      .filter(s => s.type === 'presbytery')
+      .sort((a, b) => a.name.localeCompare(b.name));
+    presbySel.innerHTML = '<option value="">— Select or type below —</option>' +
+      presbyScopes.map(ps => `<option value="${esc(ps.id)}">${esc(ps.name)}</option>`).join('');
+    if (cur) presbySel.value = cur;
+  }
+  // Scope modal — District parent selector
+  const distSel = document.getElementById('sm-district-sel');
+  if (distSel) {
+    const cur = distSel.value;
+    const distScopes = Object.values(_scopes)
+      .filter(s => s.type === 'district')
+      .sort((a, b) => a.name.localeCompare(b.name));
+    distSel.innerHTML = '<option value="">— Select or type below —</option>' +
+      distScopes.map(ds => `<option value="${esc(ds.id)}">${esc(ds.name)}</option>`).join('');
+    if (cur) distSel.value = cur;
+  }
+}
+
+// ── User Modal ──
+window.openUserModal = function(user) {
+  if (!isAdmin()) { toast('Only administrators can create users.', 'err'); return; }
+  const isEdit = !!user;
+  document.getElementById('user-modal-title').textContent = isEdit ? 'Edit User' : 'New User';
+  document.getElementById('um-save-btn').textContent      = isEdit ? '💾 Save Changes' : '💾 Create Account';
+  document.getElementById('um-uid').value      = user?.uid    || '';
+  document.getElementById('um-name').value     = user?.displayName || '';
+  document.getElementById('um-email').value    = user?.email  || '';
+  document.getElementById('um-email').readOnly = isEdit;
+  document.getElementById('um-email').style.opacity = isEdit ? '0.6' : '1';
+  document.getElementById('um-phone').value    = user?.phone  || '';
+  document.getElementById('um-password').value = '';
+  document.getElementById('um-status').value   = user?.status || 'active';
+  document.getElementById('um-notes').value    = user?.notes  || '';
+  document.getElementById('um-level').value    = user?.level  || 'congregation';
+  document.getElementById('um-status-msg').style.display = 'none';
+  document.getElementById('um-spinner').style.display    = 'none';
+  onLevelChange();
+  if (user) {
+    const scopeId = user.congregationId || user.districtId || user.presbyteryId || '';
+    document.getElementById('um-scope-select').value = scopeId;
+    document.getElementById('um-role').value = user.role || '';
+    onRoleChange();
+  }
+  document.getElementById('user-modal').classList.add('open');
+};
+
+window.closeUserModal = () => document.getElementById('user-modal').classList.remove('open');
+window.editUser = uid => openUserModal(_users.find(u => u.uid === uid));
+
+window.onLevelChange = function() {
+  const level   = document.getElementById('um-level')?.value || 'congregation';
+  const typeMap = { congregation:'congregation', district:'district', presbytery:'presbytery', national:'national' };
+  const fType   = typeMap[level] || 'congregation';
+  const grp     = document.getElementById('um-scope-group');
+  const lbl     = document.getElementById('um-scope-label');
+  const sel     = document.getElementById('um-scope-select');
+  const hint    = document.getElementById('um-scope-hint');
+
+  if (level === 'national') {
+    if (grp) grp.style.display = 'none';
+  } else {
+    if (grp) grp.style.display = '';
+    if (lbl) lbl.innerHTML = `${fType.charAt(0).toUpperCase()+fType.slice(1)} <span class="req">*</span>`;
+    if (sel) {
+      const scopes = Object.values(_scopes).filter(s => (s.type||'congregation') === fType);
+      sel.innerHTML = '<option value="">— Select —</option>' +
+        scopes.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+      if (!scopes.length && hint) {
+        hint.style.display = 'block';
+        const addMsg = fType === 'district'   ? 'Go to the Congregations, Districts & Presbyteries tab and add a District first.'
+                     : fType === 'presbytery' ? 'Go to the Congregations, Districts & Presbyteries tab and add a Presbytery first.'
+                     : 'Go to the Congregations, Districts & Presbyteries tab and add a Congregation first.';
+        hint.textContent = `No ${fType}s defined yet. ${addMsg}`;
+      } else if (hint) {
+        hint.style.display = 'none';
+      }
+    }
+  }
+  // Filter roles to match level
+  const roleEl = document.getElementById('um-role');
+  if (roleEl) {
+    const valid = Object.entries(ROLES).filter(([,r]) => r.level === level);
+    const cur   = roleEl.value;
+    roleEl.innerHTML = '<option value="">— Select Role —</option>' +
+      valid.map(([id,r]) => `<option value="${id}">${esc(r.label)}</option>`).join('');
+    if (valid.find(([id]) => id === cur)) roleEl.value = cur;
+    onRoleChange();
+  }
+};
+
+window.onRoleChange = function() {
+  const roleId = document.getElementById('um-role')?.value || '';
+  const el     = document.getElementById('um-perms-preview');
+  const hint   = document.getElementById('um-portal-hint');
+  if (!el) return;
+  if (!roleId) { el.textContent = 'Select a role to preview its module access.'; if(hint) hint.style.display='none'; return; }
+  const r   = ROLES[roleId];
+  if (!r)   { el.textContent = rl(roleId); if(hint) hint.style.display='none'; return; }
+  const erp = r.erp === '*' ? 'All ERP modules' : (r.erp||[]).join(', ');
+  const pcg = r.pcg === '*' ? 'All PCG modules' : (r.pcg||[]).join(', ');
+  const isHierarchy = ['district_admin','presbytery_admin','national_admin'].includes(roleId);
+  el.innerHTML = `<strong style="color:var(--ink2)">${esc(r.label)}</strong><br>
+    <span style="font-size:11.5px"><b>ERP:</b> ${esc(erp)}</span><br>
+    <span style="font-size:11.5px"><b>PCG Hierarchy Portal:</b> ${esc(pcg)}</span><br>
+    <span style="font-size:11.5px;color:${r.write?'var(--green)':'var(--red)'}">
+      ${r.write ? '✓ Can write data' : '✗ Read-only (aggregated view)'}
+    </span>`;
+  if (hint) hint.style.display = isHierarchy ? 'block' : 'none';
+};
+
+window.genPassword = function() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  let pw = '';
+  for (let i=0; i<10; i++) pw += chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('um-password').value = pw;
+};
+
+function showSaveStatus(msg, type) {
+  const el = document.getElementById('um-status-msg');
+  if (!el) return;
+  el.className = `status-msg ${type}`;
+  el.style.display = 'block';
+  el.textContent = msg;
+}
+
+window.saveUser = async function() {
+  if (!isAdmin()) { toast('Only administrators can save users.', 'err'); return; }
+  const uid      = document.getElementById('um-uid').value.trim();
+  const name     = document.getElementById('um-name').value.trim();
+  const email    = document.getElementById('um-email').value.trim().toLowerCase();
+  const phone    = document.getElementById('um-phone').value.trim();
+  const roleId   = document.getElementById('um-role').value;
+  const status   = document.getElementById('um-status').value;
+  const password = document.getElementById('um-password').value;
+  const notes    = document.getElementById('um-notes').value.trim();
+  const level    = document.getElementById('um-level').value || 'congregation';
+  const scopeId  = document.getElementById('um-scope-select')?.value || '';
+  const isEdit   = !!uid;
+
+  if (!name)   { showSaveStatus('Full name is required.', 'err'); return; }
+  if (!email)  { showSaveStatus('Email address is required.', 'err'); return; }
+  if (!roleId) { showSaveStatus('Please select a role.', 'err'); return; }
+  if (!isEdit && !password)         { showSaveStatus('Temporary password is required.', 'err'); return; }
+  if (!isEdit && password.length<8) { showSaveStatus('Password must be at least 8 characters.', 'err'); return; }
+  if (level !== 'national' && !scopeId) { showSaveStatus(`Please select a ${level}.`, 'err'); return; }
+
+  const scope = _scopes[scopeId] || {};
+  // Each level stores its own ID in the matching field.
+  // Hierarchy admins also carry the parent IDs so the portal can filter correctly.
+  const congregationId = level === 'congregation' ? scopeId : '';
+  const districtId     = level === 'district'     ? scopeId
+                       : level === 'congregation' ? (scope.district || '')
+                       : '';
+  const presbyteryId   = level === 'presbytery'   ? scopeId
+                       : level === 'district'     ? (scope.presbytery || '')
+                       : level === 'congregation' ? (scope.presbytery || '')
+                       : '';
+
+  const btn     = document.getElementById('um-save-btn');
+  const spinner = document.getElementById('um-spinner');
+  btn.disabled = true; spinner.style.display = 'inline';
+
+  try {
+    if (!isEdit) {
+      // Create Firebase Auth account via REST API
+      showSaveStatus('Creating Firebase Auth account…', 'info');
+      const resp = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB_API_KEY}`,
+        { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password, returnSecureToken:false }) }
+      );
+      const data = await resp.json();
+      if (data.error) {
+        const errMap = {
+          'EMAIL_EXISTS':    'An account with this email already exists.',
+          'INVALID_EMAIL':   'Invalid email address.',
+          'WEAK_PASSWORD : Password should be at least 6 characters': 'Password must be at least 6 characters.',
+        };
+        throw new Error(errMap[data.error.message] || data.error.message);
+      }
+      const newUid = data.localId;
+      const profile = {
+        displayName: name, email, phone, role: roleId, level,
+        congregationId, districtId, presbyteryId,
+        status, notes,
+        createdAt:   new Date().toISOString(),
+        createdBy:   window._session?.uid || '',
+        _tempPassword: password,   // stored for onboarding letter
+      };
+      showSaveStatus('Saving profile to database…', 'info');
+      await window._fb.set('users/'+newUid, profile);
+      _users.push({ ...profile, uid: newUid });
+      toast(`User "${name}" created ✓`);
+    } else {
+      const updates = {
+        displayName: name, phone, role: roleId, level,
+        congregationId, districtId, presbyteryId,
+        status, notes, updatedAt: new Date().toISOString(),
+      };
+      await window._fb.update('users/'+uid, updates);
+      const i = _users.findIndex(u => u.uid === uid);
+      if (i >= 0) _users[i] = { ..._users[i], ...updates };
+      toast(`User "${name}" updated ✓`);
+    }
+    closeUserModal();
+    renderAll();
+  } catch(e) {
+    showSaveStatus('Error: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; spinner.style.display = 'none';
+  }
+};
+
+window.toggleStatus = async function(uid) {
+  const u = _users.find(x => x.uid === uid);
+  if (!u) return;
+  const next = u.status === 'active' ? 'inactive' : 'active';
+  if (!confirm(`Set "${u.displayName || u.email}" to ${next}?`)) return;
+  await window._fb.update('users/'+uid, { status: next });
+  u.status = next;
+  renderUsers(); updateStats();
+  toast(`Status updated to ${next} ✓`);
+};
+
+// ── Scope Modal ──
+window.openScopeModal = function(scopeId) {
+  const s = scopeId ? (_scopes[scopeId] || null) : null;
+  document.getElementById('scope-modal-title').textContent = s ? 'Edit Scope' : 'Add Scope';
+  document.getElementById('sm-edit-id').value    = s?.id          || '';
+  document.getElementById('sm-type').value       = s?.type        || 'congregation';
+  document.getElementById('sm-name').value       = s?.name        || '';
+  document.getElementById('sm-id').value         = s?.id          || '';
+  document.getElementById('sm-id').readOnly      = !!s;
+  document.getElementById('sm-id').style.opacity = s ? '0.6' : '1';
+  document.getElementById('sm-presbytery').value = s?.presbytery  || '';
+  document.getElementById('sm-district').value   = s?.district    || '';
+  document.getElementById('sm-minister').value   = s?.minister    || '';
+  document.getElementById('sm-location').value   = s?.location    || '';
+
+  // Populate presbytery selector from known scopes
+  const presbyScopes = Object.values(_scopes).filter(sc => sc.type === 'presbytery');
+  const presbySel = document.getElementById('sm-presbytery-sel');
+  presbySel.innerHTML = '<option value="">— Select or type below —</option>' +
+    presbyScopes.map(ps => `<option value="${esc(ps.id)}">${esc(ps.name)}</option>`).join('');
+  if (s?.presbytery) presbySel.value = s.presbytery;
+
+  // Populate district selector from known scopes
+  const districtScopes = Object.values(_scopes).filter(sc => sc.type === 'district');
+  const distSel = document.getElementById('sm-district-sel');
+  distSel.innerHTML = '<option value="">— Select or type below —</option>' +
+    districtScopes.map(ds => `<option value="${esc(ds.id)}">${esc(ds.name)}</option>`).join('');
+  if (s?.district) distSel.value = s.district;
+
+  onScopeTypeChange();
+
+  // Auto-fill ID from name
+  const nameEl = document.getElementById('sm-name');
+  const idEl   = document.getElementById('sm-id');
+  nameEl._autoId = true;
+  nameEl.oninput = () => {
+    if (!idEl.readOnly && nameEl._autoId) {
+      idEl.value = nameEl.value.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    }
+    updateScopePathPreview();
+  };
+  idEl.oninput = () => { nameEl._autoId = false; updateScopePathPreview(); };
+  document.getElementById('sm-type').addEventListener('change', updateScopePathPreview);
+  updateScopePathPreview();
+  document.getElementById('scope-modal').classList.add('open');
+};
+
+window.closeScopeModal = () => document.getElementById('scope-modal').classList.remove('open');
+window.editScope = id => openScopeModal(id);
+
+function updateScopePathPreview() {
+  const type = document.getElementById('sm-type')?.value || 'congregation';
+  const id   = document.getElementById('sm-id')?.value   || '{id}';
+  const paths = {
+    congregation: `congregations/${id}/  (data partition for this congregation)`,
+    district:     `districts/${id}/congregations/{cid}/summary  (receives rollups from congregations)`,
+    presbytery:   `presbyteries/${id}/districts/{did}/  (receives rollups from districts)`,
+    national:     `national/presbyteries/{pid}/  (receives rollups from all presbyteries)`,
+  };
+  const el = document.getElementById('sm-path-preview');
+  if (el) el.textContent = '📂 ' + (paths[type] || 'up_scopes/' + id);
+}
+
+window.onScopeTypeChange = function() {
+  const type = document.getElementById('sm-type')?.value || 'congregation';
+  // Presbytery selector: show for congregation and district
+  document.getElementById('sm-presby-grp').style.display  = ['congregation','district'].includes(type) ? '' : 'none';
+  // District selector: show only for congregation
+  document.getElementById('sm-district-grp').style.display = type === 'congregation' ? '' : 'none';
+  // Update labels
+  const presbyLabel = document.getElementById('sm-presby-label');
+  if (presbyLabel) presbyLabel.textContent = type === 'district' ? 'Parent Presbytery' : 'Presbytery';
+  const distLabel = document.getElementById('sm-district-label');
+  if (distLabel) distLabel.textContent = 'Parent District';
+  updateScopePathPreview();
+};
+
+window.saveScope = async function() {
+  const editId = document.getElementById('sm-edit-id').value.trim();
+  const type   = document.getElementById('sm-type').value;
+  const name   = document.getElementById('sm-name').value.trim();
+  const id     = document.getElementById('sm-id').value.trim();
+  const presby = document.getElementById('sm-presbytery').value.trim();
+  const dist   = document.getElementById('sm-district').value.trim();
+  const min    = document.getElementById('sm-minister').value.trim();
+  const loc    = document.getElementById('sm-location').value.trim();
+
+  if (!name) { alert('Name is required.'); return; }
+  if (!id)   { alert('Firebase ID is required.'); return; }
+  if (!/^[a-z0-9_]+$/.test(id)) { alert('ID must be lowercase letters, numbers, underscores only.'); return; }
+  if (!editId && _scopes[id]) { alert(`A scope with ID "${id}" already exists.`); return; }
+
+  const scope = { id, type, name, presbytery:presby, district:dist, minister:min, location:loc };
+
+  try {
+    // Always save to up_scopes (the provisioning registry)
+    await window._fb.set('up_scopes/'+id, scope);
+    _scopes[id] = scope;
+
+    // Also register the scope node in its corresponding Firebase hierarchy path
+    // so the hierarchy portal can discover it even before data flows in
+    const metaPath = {
+      congregation: `congregations/${id}/meta`,
+      district:     `districts/${id}/meta`,
+      presbytery:   `presbyteries/${id}/meta`,
+      national:     `national/meta`,
+    }[type];
+    if (metaPath) {
+      await window._fb.set(metaPath, { name, id, type, presbytery:presby, district:dist, minister:min, location:loc, registeredAt: new Date().toISOString() });
+    }
+    // For districts: also register under the parent presbytery path
+    if (type === 'district' && presby) {
+      await window._fb.set(`presbyteries/${presby}/districts/${id}/meta`, { name, id, presbytery:presby });
+    }
+    // For congregations: also register under the parent district path
+    if (type === 'congregation' && dist) {
+      await window._fb.set(`districts/${dist}/congregations/${id}/meta`, { name, id, district:dist, presbytery:presby });
+    }
+
+    closeScopeModal();
+    renderAll();
+    toast(`"${name}" saved ✓`);
+  } catch(e) { alert('Error: ' + e.message); }
+};
+
+// ── Delete User ──
+window.deleteUser = async function(uid) {
+  if (!isAdmin()) { toast('Only administrators can delete users.', 'err'); return; }
+  const u = _users.find(x => x.uid === uid);
+  if (!u) return;
+
+  const confirmed = confirm(
+    `⚠️ Permanently delete "${u.displayName || u.email}"?\n\n` +
+    `This will:\n` +
+    `  • Remove their Firebase Auth account (they cannot log in)\n` +
+    `  • Remove their profile from the database\n\n` +
+    `This cannot be undone. Continue?`
+  );
+  if (!confirmed) return;
+
+  try {
+    // 1. Delete Firebase Auth account via Identity Toolkit REST API
+    //    Requires the user's ID token — we use the Admin REST endpoint
+    //    that accepts just the localId (UID) and the web API key.
+    const deleteResp = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${FB_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ localId: uid })
+      }
+    );
+    const deleteData = await deleteResp.json();
+    // The public REST API cannot delete other users — we use the Admin SDK path.
+    // If that fails with INSUFFICIENT_PERMISSION, we still remove the DB record
+    // and warn the admin to delete the Auth account manually from Firebase Console.
+    if (deleteData.error && deleteData.error.message !== 'INSUFFICIENT_PERMISSION') {
+      throw new Error(deleteData.error.message);
+    }
+    if (deleteData.error?.message === 'INSUFFICIENT_PERMISSION') {
+      toast(`⚠️ Auth account must be deleted manually in Firebase Console (insufficient REST permissions). Database record removed.`, 'info');
+    }
+
+    // 2. Remove database profile
+    await window._fb.remove('users/' + uid);
+
+    // 3. Update local state
+    _users = _users.filter(x => x.uid !== uid);
+    renderAll();
+    toast(`User "${u.displayName || u.email}" deleted ✓`);
+  } catch(e) {
+    toast('Delete failed: ' + e.message, 'err');
+    console.error('deleteUser error:', e);
+  }
+};
+
+// ── Delete Scope ──
+window.deleteScope = async function(scopeId) {
+  if (!isAdmin()) { toast('Only administrators can delete scopes.', 'err'); return; }
+  const s = _scopes[scopeId];
+  if (!s) return;
+
+  // Block if users are still assigned to this scope
+  const assignedUsers = _users.filter(u =>
+    (u.congregationId || u.districtId || u.presbyteryId || '') === scopeId
+  );
+  if (assignedUsers.length > 0) {
+    const names = assignedUsers.map(u => u.displayName || u.email).join(', ');
+    alert(
+      `Cannot delete "${s.name}" — ${assignedUsers.length} user${assignedUsers.length > 1 ? 's are' : ' is'} still assigned to it:\n\n${names}\n\nReassign or delete those users first.`
+    );
+    return;
+  }
+
+  const typeLabel = s.type || 'scope';
+  const pathMap = {
+    congregation: `congregations/${scopeId}/`,
+    district:     `districts/${scopeId}/`,
+    presbytery:   `presbyteries/${scopeId}/`,
+    national:     `national/`,
+  };
+  const fbPath = pathMap[s.type] || `up_scopes/${scopeId}`;
+
+  const confirmed = confirm(
+    `⚠️ Permanently delete ${typeLabel} "${s.name}"?\n\n` +
+    `This will remove:\n` +
+    `  • Scope registry entry (up_scopes/${scopeId})\n` +
+    `  • Meta node at ${fbPath}meta\n` +
+    (s.type === 'district' && s.presbytery
+      ? `  • Cross-link: presbyteries/${s.presbytery}/districts/${scopeId}/meta\n`
+      : '') +
+    (s.type === 'congregation' && s.district
+      ? `  • Cross-link: districts/${s.district}/congregations/${scopeId}/meta\n`
+      : '') +
+    `\nNote: congregation data under ${fbPath} is NOT deleted — only the scope registration.\n\n` +
+    `This cannot be undone. Continue?`
+  );
+  if (!confirmed) return;
+
+  try {
+    const removes = [];
+
+    // Always remove from scope registry
+    removes.push(window._fb.remove('up_scopes/' + scopeId));
+
+    // Remove the meta node in the hierarchy path
+    const metaPath = {
+      congregation: `congregations/${scopeId}/meta`,
+      district:     `districts/${scopeId}/meta`,
+      presbytery:   `presbyteries/${scopeId}/meta`,
+      national:     `national/meta`,
+    }[s.type];
+    if (metaPath) removes.push(window._fb.remove(metaPath));
+
+    // Remove cross-links written at save time
+    if (s.type === 'district' && s.presbytery) {
+      removes.push(window._fb.remove(`presbyteries/${s.presbytery}/districts/${scopeId}/meta`));
+    }
+    if (s.type === 'congregation' && s.district) {
+      removes.push(window._fb.remove(`districts/${s.district}/congregations/${scopeId}/meta`));
+    }
+
+    await Promise.all(removes);
+
+    // Update local state
+    delete _scopes[scopeId];
+    renderAll();
+    toast(`"${s.name}" scope deleted ✓`);
+  } catch(e) {
+    toast('Delete failed: ' + e.message, 'err');
+    console.error('deleteScope error:', e);
+  }
+};
+
+// ── Export CSV ──
+window.exportCSV = function() {
+  if (!_users.length) { toast('No users to export.', 'err'); return; }
+  const rows = [['Name','Email','Role','Level','Scope','Congregation ID','Status','Phone','Created']];
+  _users.forEach(u => rows.push([
+    u.displayName||'', u.email||'', rl(u.role), u.level||'',
+    scopeLabel(u), u.congregationId||u.districtId||u.presbyteryId||'',
+    u.status||'', u.phone||'', (u.createdAt||'').slice(0,10)
+  ]));
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a   = document.createElement('a');
+  a.href    = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download= `users_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV exported ✓');
+};
+
+// ── Onboarding Letter ──
+function refreshLetterSelect() {
+  const sel = document.getElementById('letter-user');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select a user —</option>' +
+    _users.map(u => `<option value="${esc(u.uid)}">${esc(u.displayName||u.email)}</option>`).join('');
+}
+
+window.printLetter = function() {
+  const uid = document.getElementById('letter-user')?.value || '';
+  if (!uid) { alert('Please select a user.'); return; }
+  const u = _users.find(x => x.uid === uid);
+  if (!u) return;
+  const scopeId = u.congregationId || u.districtId || u.presbyteryId || '';
+  const s     = _scopes[scopeId] || {};
+  const r     = ROLES[u.role] || {};
+  const isHierarchy = ['district_admin','presbytery_admin','national_admin'].includes(u.role);
+  const erp   = r.erp === '*' ? 'All ERP Modules' : (r.erp||[]).join(', ');
+  const today = new Date().toLocaleDateString('en-GH',{day:'numeric',month:'long',year:'numeric'});
+
+  // Determine scope description
+  let scopeDesc = '—';
+  let dataAccessDesc = '';
+  if (u.level === 'national') {
+    scopeDesc = 'National (all presbyteries)';
+    dataAccessDesc = 'Aggregated data from all presbyteries nationwide';
+  } else if (u.level === 'presbytery') {
+    scopeDesc = s.name || u.presbyteryId || '—';
+    dataAccessDesc = `Aggregated data from all districts under ${scopeDesc} Presbytery`;
+  } else if (u.level === 'district') {
+    scopeDesc = s.name || u.districtId || '—';
+    dataAccessDesc = `Aggregated data from all congregations under ${scopeDesc} District`;
+  } else {
+    scopeDesc = s.name || '—';
+    dataAccessDesc = `Data for ${scopeDesc} congregation only`;
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Onboarding Letter — ${esc(u.displayName||u.email)}</title>
+<style>
+  body{font-family:Georgia,serif;max-width:680px;margin:40px auto;padding:0 24px;color:#1a1614;line-height:1.7}
+  .logo{font-size:22px;font-weight:700;color:#B8964A;margin-bottom:4px}
+  .sub{font-size:12px;color:#6B5B52;margin-bottom:20px}
+  h1{font-size:19px;color:#3D322C;margin-bottom:4px}
+  h3{font-size:14px;color:#7A5F28;margin:20px 0 6px}
+  hr{border:none;border-top:2px solid #B8964A;margin:18px 0}
+  table{width:100%;border-collapse:collapse;margin:8px 0}
+  td{padding:6px 8px;font-size:13px;vertical-align:top}
+  td:first-child{font-weight:700;color:#3D322C;width:200px}
+  .chip{display:inline-block;padding:2px 10px;border-radius:12px;background:#f0ead6;color:#7A5F28;font-size:11px;margin:2px;border:1px solid #d6c99a}
+  .hierarchy-banner{background:#EEF4FF;border-left:4px solid #1A3A5C;border-radius:6px;padding:12px 16px;margin:14px 0;font-size:13px;color:#1A3A5C}
+  .sig{margin-top:50px}
+  .sig-line{border-top:1px solid #ccc;width:220px;margin-top:36px;padding-top:4px;font-size:12px;color:#6B5B52}
+  @media print{body{margin:20px}}
+</style></head><body>
+<div class="logo">ChurchOS ERP · PCG Edition</div>
+<div class="sub">Presbyterian Church of Ghana${s.presbytery?' — '+s.presbytery+' Presbytery':''}</div>
+<h1>System Access — ${esc(r.label||u.role)}</h1>
+<hr>
+<p style="text-align:right;font-size:12px;color:#6B5B52">${today}</p>
+<p>Dear <strong>${esc(u.displayName||u.email)}</strong>,</p>
+<p>Your ChurchOS ${isHierarchy ? 'Hierarchy Admin Portal' : 'ERP'} account has been set up. Please use the credentials below to log in and change your password on first use.</p>
+${isHierarchy ? `<div class="hierarchy-banner">
+  <strong>🌐 You are a Hierarchy Administrator.</strong> You will log in through the <strong>ChurchOS Hierarchy Admin Portal</strong> — not the main congregation app. Your administrator will provide you the portal URL.
+</div>` : ''}
+<hr>
+<h3>Account Details</h3>
+<table>
+  <tr><td>Full Name</td><td>${esc(u.displayName||'')}</td></tr>
+  <tr><td>Login Email</td><td><strong>${esc(u.email)}</strong></td></tr>
+  ${u._tempPassword ? `<tr><td>Temporary Password</td><td><strong style="font-family:monospace">${esc(u._tempPassword)}</strong></td></tr>` : ''}
+  <tr><td>Role</td><td>${esc(r.label||u.role)}</td></tr>
+  <tr><td>Access Level</td><td style="text-transform:capitalize">${esc(u.level||'congregation')}</td></tr>
+  <tr><td>Scope</td><td>${esc(scopeDesc)}</td></tr>
+  <tr><td>Data Access</td><td>${esc(dataAccessDesc)}</td></tr>
+  <tr><td>Write Access</td><td>${r.write ? '✓ Can enter and edit data' : '✗ Read-only (view and reports only)'}</td></tr>
+</table>
+<hr>
+${isHierarchy ? `
+<h3>Hierarchy Portal Access</h3>
+<p style="font-size:12.5px">As a <strong>${esc(r.label)}</strong>, you have access to aggregated dashboards covering:</p>
+<ul style="font-size:12.5px;margin-left:20px">
+  <li>Membership summaries across all units under you</li>
+  <li>Attendance records and trends</li>
+  <li>Souls won / Mission &amp; Evangelism events</li>
+  <li>Finance — receipts, payments, expenditure</li>
+  <li>Welfare and scholarship disbursements</li>
+  <li>Land and property register</li>
+  <li>Group meeting attendance (YPG, YAF, Women's, Men's, etc.)</li>
+</ul>
+` : `
+<h3>Module Access (ERP)</h3>
+${erp.split(', ').map(m => `<span class="chip">${esc(m)}</span>`).join('')}
+`}
+<hr>
+<p style="font-size:12.5px">Keep your credentials confidential. Contact your system administrator for access issues or password resets.</p>
+<div class="sig">
+  <p>Yours sincerely,</p>
+  ${s.minister ? `<div class="sig-line">${esc(s.minister)}<br>Minister</div>` : '<div class="sig-line">System Administrator</div>'}
+</div>
+</body></html>`;
+
+  const w = window.open('','_blank','width=760,height=900');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 400);
+};
+
+// ── Enter key on login ──
+document.getElementById('login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>

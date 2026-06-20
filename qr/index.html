@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>QR Check-In Scanner</title>
+<link rel="stylesheet" href="/css/theme.css"/>
+<style>
+  body { background: var(--navy); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+  .scanner-card { background: #fff; border-radius: var(--rxl); padding: 2rem; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  #video-wrap { position: relative; border-radius: var(--rl); overflow: hidden; background: #000; aspect-ratio: 1; margin: 1rem 0; }
+  #video-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .scan-frame   { width: 60%; aspect-ratio: 1; border: 3px solid var(--gold); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,.4); }
+  .result-card  { display: none; border-radius: var(--rl); padding: 1.25rem; text-align: center; margin-top: 1rem; background: var(--green-light); border: 1.5px solid var(--green); }
+  .result-card.show  { display: block; }
+  .result-card.error { background: var(--red-light); border-color: var(--red); }
+  .result-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; }
+  .result-meta { font-size: .82rem; color: var(--ink3); margin-top: .25rem; }
+  .checkin-log { margin-top: 1.25rem; max-height: 220px; overflow-y: auto; }
+  .log-row { display: flex; align-items: center; gap: .65rem; padding: .5rem 0; border-bottom: 1px solid var(--cream2); font-size: .82rem; }
+  .log-row:last-child { border-bottom: none; }
+  .log-time { color: var(--ink3); flex-shrink: 0; font-size: .72rem; }
+</style>
+</head>
+<body>
+<div class="scanner-card">
+  <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:1.25rem;">
+    <div style="width:36px;height:36px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">⛪</div>
+    <div>
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;" id="church-name">ChurchOS</div>
+      <div style="font-size:.72rem;color:var(--ink3);">QR Check-In</div>
+    </div>
+    <div style="margin-left:auto;font-size:.75rem;color:var(--ink3);" id="today-label"></div>
+  </div>
+
+  <!-- Setup -->
+  <div id="setup-screen">
+    <p class="text-sm text-muted" style="margin-bottom:1rem;">Configure before scanning.</p>
+    <div class="form-group">
+      <label class="form-label">Organization Slug</label>
+      <input type="text" id="org-slug-input" class="form-control" placeholder="your-church"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Service Type</label>
+      <select id="service-type-input" class="form-control">
+        <option>Sunday Service</option><option>Prayer Meeting</option><option>Group Meeting</option><option>Special Service</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" id="start-btn">Start Scanner →</button>
+  </div>
+
+  <!-- Scanner -->
+  <div id="scanner-screen" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+      <div>
+        <span class="badge badge-green" id="service-badge">Sunday Service</span>
+        <span class="text-sm text-muted" style="margin-left:.5rem;" id="checkin-count-label">0 checked in</span>
+      </div>
+      <button class="btn btn-outline btn-sm" id="stop-btn">Stop</button>
+    </div>
+    <div id="video-wrap">
+      <video id="scanner-video" autoplay playsinline muted></video>
+      <div class="scan-overlay"><div class="scan-frame"></div></div>
+    </div>
+    <div class="result-card" id="result-card">
+      <div class="result-name" id="result-name">—</div>
+      <div class="result-meta" id="result-meta">—</div>
+    </div>
+    <div class="checkin-log" id="checkin-log"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script type="module">
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '/js/config.js';
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let org = null, serviceType = 'Sunday Service', checkinCount = 0, scanLoop = null;
+const recentScans = new Set();
+const todayStr = new Date().toISOString().slice(0,10);
+
+const params = new URLSearchParams(location.search);
+if (params.get('org'))  document.getElementById('org-slug-input').value  = params.get('org');
+if (params.get('type')) document.getElementById('service-type-input').value = params.get('type');
+document.getElementById('today-label').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+document.getElementById('start-btn').addEventListener('click', async () => {
+  const slug = document.getElementById('org-slug-input').value.trim();
+  if (!slug) { alert('Enter org slug'); return; }
+  serviceType = document.getElementById('service-type-input').value;
+  const btn = document.getElementById('start-btn');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  const { data, error } = await sb.from('organizations').select('id,name,sub_name').eq('slug', slug).single();
+  if (error || !data) { alert('Organization not found'); btn.disabled=false; btn.textContent='Start Scanner →'; return; }
+  org = data;
+  document.getElementById('church-name').textContent = data.name;
+  document.getElementById('service-badge').textContent = serviceType;
+  document.getElementById('setup-screen').style.display   = 'none';
+  document.getElementById('scanner-screen').style.display = '';
+  await startCamera();
+});
+
+document.getElementById('stop-btn').addEventListener('click', () => {
+  stopCamera();
+  document.getElementById('setup-screen').style.display   = '';
+  document.getElementById('scanner-screen').style.display = 'none';
+});
+
+async function startCamera() {
+  const video = document.getElementById('scanner-video');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+    await video.play();
+    const canvas = document.createElement('canvas');
+    const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+    function tick() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (code?.data) handleScan(code.data);
+      }
+      scanLoop = requestAnimationFrame(tick);
+    }
+    tick();
+  } catch {
+    alert('Camera access denied. Please allow camera and reload.');
+  }
+}
+
+function stopCamera() {
+  const video = document.getElementById('scanner-video');
+  if (scanLoop) cancelAnimationFrame(scanLoop);
+  video.srcObject?.getTracks().forEach(t => t.stop());
+}
+
+async function handleScan(qrId) {
+  if (recentScans.has(qrId)) return;
+  recentScans.add(qrId);
+  setTimeout(() => recentScans.delete(qrId), 5000);
+
+  const { data: reg } = await sb.from('qr_registrations').select('*').eq('id', qrId).eq('org_id', org.id).single();
+  const card = document.getElementById('result-card');
+
+  if (!reg) {
+    card.className = 'result-card show error';
+    document.getElementById('result-name').textContent = 'Unknown QR Code';
+    document.getElementById('result-meta').textContent = qrId;
+    setTimeout(() => card.className = 'result-card', 3000);
+    return;
+  }
+
+  const name = `${reg.first_name} ${reg.last_name || ''}`.trim();
+  await sb.from('attendance').insert({
+    org_id: org.id, guest_name: name, guest_phone: reg.phone, guest_role: reg.role,
+    service_date: todayStr, service_type: serviceType, check_in_method: 'qr',
+  });
+
+  checkinCount++;
+  document.getElementById('checkin-count-label').textContent = `${checkinCount} checked in`;
+  card.className = 'result-card show';
+  document.getElementById('result-name').textContent = name;
+  document.getElementById('result-meta').textContent = `${reg.role || ''} · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
+  setTimeout(() => card.className = 'result-card', 3500);
+
+  const log = document.getElementById('checkin-log');
+  const row = document.createElement('div');
+  row.className = 'log-row';
+  row.innerHTML = `
+    <div class="avatar avatar-gold" style="width:28px;height:28px;font-size:.72rem;">${(reg.first_name[0]||'')}${(reg.last_name?.[0]||'')}</div>
+    <div style="flex:1"><div style="font-weight:500;">${name}</div><div class="text-xs text-muted">${reg.role||''}</div></div>
+    <div class="log-time">${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div>`;
+  log.prepend(row);
+}
+</script>
+</body>
+</html>

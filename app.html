@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ChurchOS</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="stylesheet" href="/css/theme.css"/>
+<style>
+  /* page-specific overrides */
+  .member-photo { width:40px;height:40px;border-radius:50%;background:var(--cream2);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:600;color:var(--ink3);flex-shrink:0; }
+  .attendance-live-badge { display:inline-flex;align-items:center;gap:.35rem;background:var(--green-light);color:var(--green);font-size:.72rem;font-weight:600;padding:.15rem .55rem;border-radius:999px; }
+  .attendance-live-badge::before { content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+  .finance-tab-bar { display:flex;gap:.25rem;background:var(--cream2);border-radius:var(--r);padding:.25rem;display:inline-flex;margin-bottom:1.25rem; }
+  .finance-tab-btn { padding:.38rem .9rem;border-radius:6px;font-size:.82rem;font-weight:500;color:var(--ink3);cursor:pointer;transition:all .15s; }
+  .finance-tab-btn.active { background:#fff;color:var(--ink);box-shadow:var(--shadow); }
+  .ledger-debit  { color:var(--green);font-weight:500; }
+  .ledger-credit { color:var(--red);font-weight:500; }
+  .welfare-status-pending  { background:var(--gold-pale);color:var(--gold-dark); }
+  .welfare-status-approved { background:var(--blue-light);color:var(--blue); }
+  .welfare-status-disbursed{ background:var(--green-light);color:var(--green); }
+  .welfare-status-closed   { background:var(--cream2);color:var(--ink3); }
+  .budget-bar { height:6px;border-radius:3px;background:var(--cream3);overflow:hidden;margin-top:.35rem; }
+  .budget-bar-fill { height:100%;background:var(--gold);border-radius:3px;transition:width .4s; }
+  .budget-bar-fill.over { background:var(--red); }
+  .qr-pending-row { background:var(--gold-pale); }
+  .settings-section { margin-bottom:2rem; }
+  .settings-section h3 { margin-bottom:1rem; }
+  .settings-row { display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:1px solid var(--cream2); }
+  .settings-row:last-child { border-bottom:none; }
+  .settings-row-label h4 { font-size:.88rem;margin-bottom:.1rem; }
+  .settings-row-label p  { font-size:.76rem;color:var(--ink3); }
+  .toggle { position:relative;width:40px;height:22px;flex-shrink:0; }
+  .toggle input { opacity:0;width:0;height:0; }
+  .toggle-slider { position:absolute;inset:0;background:var(--cream3);border-radius:11px;cursor:pointer;transition:.2s; }
+  .toggle-slider::before { content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s; }
+  .toggle input:checked + .toggle-slider { background:var(--gold); }
+  .toggle input:checked + .toggle-slider::before { transform:translateX(18px); }
+  .rollup-card { background:var(--navy);color:#fff;border-radius:var(--rl);padding:1.1rem 1.25rem;box-shadow:var(--shadow); }
+  .rollup-card-label { font-size:.72rem;color:rgba(255,255,255,.5);font-weight:500;letter-spacing:.02em; }
+  .rollup-card-value { font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:#fff;margin:.2rem 0 .1rem; }
+  .rollup-card-sub { font-size:.72rem;color:rgba(255,255,255,.4); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-icon">⛪</div>
+    <div>
+      <div class="sidebar-brand-name" id="brand-name">ChurchOS</div>
+      <div class="sidebar-brand-sub" id="brand-sub">Loading…</div>
+    </div>
+  </div>
+
+  <div class="nav-section-label">Modules</div>
+  <div class="nav-item active" data-page="page-dashboard" data-title="Dashboard"><span class="nav-icon">◈</span> Dashboard</div>
+  <div class="nav-item" data-page="page-members"    data-title="Members"><span class="nav-icon">👥</span> Members</div>
+  <div class="nav-item" data-page="page-attendance" data-title="Attendance"><span class="nav-icon">✅</span> Attendance</div>
+  <div class="nav-item" data-page="page-groups"     data-title="Groups"><span class="nav-icon">🫂</span> Groups</div>
+  <div class="nav-item" data-page="page-giving"     data-title="Giving"><span class="nav-icon">💛</span> Giving</div>
+  <div class="nav-item" data-page="page-volunteers" data-title="Volunteers"><span class="nav-icon">🙌</span> Volunteers</div>
+  <div class="nav-item" data-page="page-visitors"   data-title="Visitors"><span class="nav-icon">🚶</span> Visitors</div>
+  <div class="nav-item" data-page="page-family"     data-title="Family Life"><span class="nav-icon">🏠</span> Family Life</div>
+  <div class="nav-item" data-page="page-comms"      data-title="Communications"><span class="nav-icon">📢</span> Communications</div>
+  <div class="nav-item" data-page="page-events"     data-title="Events"><span class="nav-icon">📅</span> Events</div>
+  <div class="nav-item" data-page="page-welfare"    data-title="Welfare"><span class="nav-icon">🤝</span> Welfare</div>
+  <div class="nav-item" data-page="page-education"  data-title="Education"><span class="nav-icon">🎓</span> Education</div>
+  <div class="nav-item" data-page="page-missions"   data-title="Mission &amp; Evangelism"><span class="nav-icon">🌍</span> Mission &amp; Evangelism</div>
+  <div class="nav-item" data-page="page-scholarship" data-title="Scholarship"><span class="nav-icon">📚</span> Scholarship</div>
+  <div class="nav-item" data-page="page-expenses"   data-title="Expenses"><span class="nav-icon">🧾</span> Expenses</div>
+  <div class="nav-item" data-page="page-budget"     data-title="Budget &amp; Finance"><span class="nav-icon">💰</span> Budget &amp; Finance</div>
+  <div class="nav-divider"></div>
+  <div class="nav-section-label">Administration</div>
+  <div class="nav-item" data-page="page-qr"         data-title="QR Check-In"><span class="nav-icon">📷</span> QR Check-In</div>
+  <div class="nav-item" data-page="page-settings"   data-title="Settings"><span class="nav-icon">⚙️</span> Settings</div>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar" id="sb-avatar">?</div>
+      <div>
+        <div class="sidebar-user-name" id="sb-name">Loading…</div>
+        <div class="sidebar-user-role" id="sb-role">—</div>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:.6rem;color:rgba(255,255,255,.5);font-size:.75rem;" id="signout-btn">Sign out</button>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<div class="main-wrap">
+  <div class="offline-banner" id="offline-banner">⚠ You're offline — changes will sync when reconnected.</div>
+
+  <div class="topbar">
+    <button class="btn btn-ghost btn-sm" id="menu-toggle" style="display:none;">☰</button>
+    <span class="topbar-page-title" id="topbar-title">Dashboard</span>
+    <div class="topbar-right">
+      <div class="topbar-status">
+        <span class="topbar-badge" id="status-dot"></span>
+        <span id="status-text">Online</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DASHBOARD ══════════════════════════════════════════════════════════ -->
+  <div class="erp-page active page-content" id="page-dashboard">
+    <div class="stats-grid" id="dash-stats">
+      <div class="stat-card"><div class="stat-card-label">Total Members</div><div class="stat-card-value" id="ds-members">—</div><div class="stat-card-sub">Active</div></div>
+      <div class="stat-card"><div class="stat-card-label">Last Sunday</div><div class="stat-card-value" id="ds-att">—</div><div class="stat-card-sub">Attendance</div></div>
+      <div class="stat-card"><div class="stat-card-label">Giving This Month</div><div class="stat-card-value" id="ds-giving">—</div><div class="stat-card-sub" id="ds-giving-currency">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">New Visitors</div><div class="stat-card-value" id="ds-visitors">—</div><div class="stat-card-sub">This month</div></div>
+      <div class="stat-card"><div class="stat-card-label">Pending Welfare</div><div class="stat-card-value" id="ds-welfare">—</div><div class="stat-card-sub">Cases</div></div>
+      <div class="stat-card"><div class="stat-card-label">QR Pending Import</div><div class="stat-card-value" id="ds-qrpending">—</div><div class="stat-card-sub"><a href="#" data-page="page-qr" style="color:var(--gold-dark)">Review →</a></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;">
+      <div class="chart-card">
+        <div class="chart-card-header"><span class="chart-card-title">Sunday Attendance Trend</span></div>
+        <div class="chart-wrap"><canvas id="att-chart" height="180"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-header"><span class="chart-card-title">Giving by Category</span></div>
+        <div class="chart-wrap"><canvas id="giving-chart" height="180"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MEMBERS ════════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-members">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Members</h2><p>Active congregation members</p></div>
+      <div class="page-actions">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="members-search" placeholder="Search name, phone, #…"/></div>
+        <select class="form-control" id="members-group-filter" style="width:auto;min-height:40px;font-size:.82rem;"></select>
+        <button class="btn btn-primary btn-sm" id="member-add-btn">+ Add Member</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Name</th><th>Membership #</th><th>Group</th><th>Role</th><th>Phone</th><th>Joined</th><th></th></tr></thead>
+        <tbody id="members-tbody"></tbody>
+      </table>
+    </div>
+    <div id="member-count-bar" style="font-size:.76rem;color:var(--ink3);margin-top:.75rem;"></div>
+  </div>
+
+  <!-- ══ ATTENDANCE ═════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-attendance">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Attendance</h2><p id="att-subtitle">Sunday Service</p></div>
+      <div class="page-actions">
+        <input type="date" id="att-date" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;"/>
+        <select id="att-type" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option>Sunday Service</option>
+          <option>Prayer Meeting</option>
+          <option>Group Meeting</option>
+          <option>Special Service</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="att-add-btn">+ Record</button>
+        <span class="attendance-live-badge" id="att-live-badge" style="display:none;">Live QR</span>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Name</th><th>Role / Group</th><th>Method</th><th>Time</th><th></th></tr></thead>
+        <tbody id="att-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:.75rem;font-size:.76rem;color:var(--ink3);" id="att-count"></div>
+  </div>
+
+  <!-- ══ GROUPS ═════════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-groups">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Groups</h2><p>Small groups &amp; fellowship circles</p></div>
+      <div class="page-actions"><button class="btn btn-primary btn-sm" id="group-add-btn">+ Add Group</button></div>
+    </div>
+    <div id="groups-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;"></div>
+  </div>
+
+  <!-- ══ GIVING ══════════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-giving">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Giving</h2><p>Tithes, offerings &amp; donations</p></div>
+      <div class="page-actions">
+        <select id="giving-year" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;"></select>
+        <button class="btn btn-primary btn-sm" id="giving-add-btn">+ Record Gift</button>
+      </div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">
+      <div class="stat-card"><div class="stat-card-label">Total This Year</div><div class="stat-card-value" id="gv-total">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">This Month</div><div class="stat-card-value" id="gv-month">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">Unique Givers</div><div class="stat-card-value" id="gv-givers">—</div></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Member</th><th>Amount</th><th>Category</th><th>Method</th><th>Date</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="giving-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ VOLUNTEERS ═════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-volunteers">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Volunteers</h2><p>Ministry team roster</p></div>
+      <div class="page-actions">
+        <select id="vol-dept-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;"><option value="">All Departments</option></select>
+        <button class="btn btn-primary btn-sm" id="vol-add-btn">+ Add Volunteer</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Name</th><th>Department</th><th>Role</th><th>Joined</th><th></th></tr></thead>
+        <tbody id="vol-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ VISITORS ═══════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-visitors">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Visitors</h2><p>Guest tracking &amp; follow-up</p></div>
+      <div class="page-actions">
+        <select id="vis-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All Visitors</option><option value="false">Needs Follow-up</option><option value="true">Followed Up</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="vis-add-btn">+ Add Visitor</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Name</th><th>Phone</th><th>Visit Date</th><th>How Heard</th><th>Follow-up</th><th></th></tr></thead>
+        <tbody id="vis-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ FAMILY LIFE ════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-family">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Family Life</h2><p>Births, marriages, bereavements &amp; milestones</p></div>
+      <div class="page-actions">
+        <select id="fl-type-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All Events</option><option>Birth</option><option>Naming</option><option>Marriage</option><option>Death</option><option>Anniversary</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="fl-add-btn">+ Add Record</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Type</th><th>Member</th><th>Description</th><th>Date</th><th></th></tr></thead>
+        <tbody id="fl-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ COMMUNICATIONS ═════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-comms">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Communications</h2><p>Announcements, bulletins &amp; newsletters</p></div>
+      <div class="page-actions"><button class="btn btn-primary btn-sm" id="comms-add-btn">+ New Message</button></div>
+    </div>
+    <div id="comms-list" style="display:flex;flex-direction:column;gap:.75rem;"></div>
+  </div>
+
+  <!-- ══ EVENTS ═════════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-events">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Events</h2><p>Services, programs &amp; special occasions</p></div>
+      <div class="page-actions">
+        <select id="evt-type-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All Types</option><option>Service</option><option>Meeting</option><option>Outreach</option><option>Concert</option><option>Conference</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="evt-add-btn">+ Add Event</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Location</th><th></th></tr></thead>
+        <tbody id="evt-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ WELFARE ════════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-welfare">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Welfare</h2><p>Member assistance &amp; benevolence</p></div>
+      <div class="page-actions">
+        <select id="wf-status-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="disbursed">Disbursed</option><option value="closed">Closed</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="wf-add-btn">+ New Case</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Member</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead>
+        <tbody id="wf-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ EDUCATION ══════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-education">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Education</h2><p>Academic programs &amp; certifications</p></div>
+      <div class="page-actions"><button class="btn btn-primary btn-sm" id="edu-add-btn">+ Add Record</button></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Member</th><th>Program</th><th>Institution</th><th>Year</th><th>Status</th><th></th></tr></thead>
+        <tbody id="edu-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ MISSIONS ═══════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-missions">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Mission &amp; Evangelism</h2><p>Outreach programs &amp; missionaries</p></div>
+      <div class="page-actions"><button class="btn btn-primary btn-sm" id="mis-add-btn">+ Add Mission</button></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Title</th><th>Missionary</th><th>Location</th><th>Start</th><th>Budget</th><th>Status</th><th></th></tr></thead>
+        <tbody id="mis-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ SCHOLARSHIP ════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-scholarship">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Scholarship</h2><p>Academic support for members</p></div>
+      <div class="page-actions"><button class="btn btn-primary btn-sm" id="sch-add-btn">+ Add Scholarship</button></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Member</th><th>Institution</th><th>Field</th><th>Year</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+        <tbody id="sch-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ EXPENSES ═══════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-expenses">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Expenses</h2><p>Church expenditure records</p></div>
+      <div class="page-actions">
+        <select id="exp-status-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="paid">Paid</option><option value="rejected">Rejected</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="exp-add-btn">+ Add Expense</button>
+      </div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">
+      <div class="stat-card"><div class="stat-card-label">Total This Month</div><div class="stat-card-value" id="exp-month">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">Pending Approval</div><div class="stat-card-value" id="exp-pending-count">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">Paid This Month</div><div class="stat-card-value" id="exp-paid">—</div></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable">
+        <thead><tr><th>Title</th><th>Category</th><th>Amount</th><th>Vendor</th><th>Date</th><th>Status</th><th></th></tr></thead>
+        <tbody id="exp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ BUDGET & FINANCE ════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-budget">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Budget &amp; Finance</h2><p>Ledger, budgets, payroll &amp; transfers</p></div>
+    </div>
+    <div class="finance-tab-bar">
+      <div class="finance-tab-btn active" data-ftab="ledger">Ledger</div>
+      <div class="finance-tab-btn" data-ftab="budgets">Budgets</div>
+      <div class="finance-tab-btn" data-ftab="payroll">Payroll</div>
+      <div class="finance-tab-btn" data-ftab="accounts">Accounts</div>
+    </div>
+
+    <!-- Ledger -->
+    <div id="ftab-ledger">
+      <div class="page-header" style="margin-bottom:.75rem;">
+        <div></div>
+        <div class="page-actions"><button class="btn btn-primary btn-sm" id="txn-add-btn">+ New Entry</button></div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dtable">
+          <thead><tr><th>Date</th><th>Description</th><th>Debit Account</th><th>Credit Account</th><th>Amount</th><th></th></tr></thead>
+          <tbody id="txn-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Budgets -->
+    <div id="ftab-budgets" style="display:none;">
+      <div class="page-header" style="margin-bottom:.75rem;">
+        <div></div>
+        <div class="page-actions"><button class="btn btn-primary btn-sm" id="budget-add-btn">+ New Budget</button></div>
+      </div>
+      <div id="budgets-list" style="display:flex;flex-direction:column;gap:.75rem;"></div>
+    </div>
+
+    <!-- Payroll -->
+    <div id="ftab-payroll" style="display:none;">
+      <div class="page-header" style="margin-bottom:.75rem;">
+        <div></div>
+        <div class="page-actions">
+          <select id="payroll-period" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;"></select>
+          <button class="btn btn-primary btn-sm" id="payroll-add-btn">+ Add Staff Pay</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dtable">
+          <thead><tr><th>Name</th><th>Role</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Period</th><th>Status</th><th></th></tr></thead>
+          <tbody id="payroll-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Accounts -->
+    <div id="ftab-accounts" style="display:none;">
+      <div class="page-header" style="margin-bottom:.75rem;">
+        <div></div>
+        <div class="page-actions"><button class="btn btn-primary btn-sm" id="acct-add-btn">+ Add Account</button></div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dtable">
+          <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Balance</th><th></th></tr></thead>
+          <tbody id="acct-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ QR CHECK-IN ════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-qr">
+    <div class="page-header">
+      <div class="page-header-left"><h2>QR Check-In</h2><p>Manage QR self-registrations &amp; live check-ins</p></div>
+      <div class="page-actions">
+        <button class="btn btn-outline btn-sm" id="qr-copy-link">Copy QR Link</button>
+        <a id="qr-open-link" href="#" target="_blank" class="btn btn-navy btn-sm">Open QR Page ↗</a>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+      <div class="stat-card"><div class="stat-card-label">Pending Import</div><div class="stat-card-value" id="qr-pending-count">—</div><div class="stat-card-sub">Self-registered, not yet in members</div></div>
+      <div class="stat-card"><div class="stat-card-label">QR Check-Ins Today</div><div class="stat-card-value" id="qr-today-count">—</div><div class="stat-card-sub">Via QR app</div></div>
+    </div>
+    <div class="tabs">
+      <div class="tab-btn active" data-tab="qr-pending">Pending Import</div>
+      <div class="tab-btn" data-tab="qr-today">Today's QR Check-Ins</div>
+    </div>
+    <div class="tab-panel active" id="qr-pending-panel">
+      <div class="tbl-wrap">
+        <table class="dtable">
+          <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Membership #</th><th>Role</th><th>Registered</th><th>Actions</th></tr></thead>
+          <tbody id="qr-pending-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="tab-panel" id="qr-today-panel">
+      <div class="tbl-wrap">
+        <table class="dtable">
+          <thead><tr><th>Name</th><th>Role</th><th>Time</th></tr></thead>
+          <tbody id="qr-today-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SETTINGS ═══════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-settings">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Settings</h2><p>Organization &amp; account configuration</p></div>
+    </div>
+    <div style="max-width:680px;">
+      <div class="settings-section card" style="margin-bottom:1.25rem;">
+        <h3 style="margin-bottom:1rem;">Organization</h3>
+        <div class="form-group"><label class="form-label">Organization Name</label><input type="text" id="set-org-name" class="form-control"/></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Tagline / Location</label><input type="text" id="set-org-sub" class="form-control"/></div>
+          <div class="form-group"><label class="form-label">Denomination</label><input type="text" id="set-org-denom" class="form-control"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">URL Slug</label><input type="text" id="set-org-slug" class="form-control" readonly style="background:var(--cream2);color:var(--ink3);"/></div>
+          <div class="form-group"><label class="form-label">Default Currency</label>
+            <select id="set-org-currency" class="form-control">
+              <option value="USD">USD</option><option value="GHS">GHS</option><option value="NGN">NGN</option>
+              <option value="KES">KES</option><option value="ZAR">ZAR</option><option value="GBP">GBP</option>
+              <option value="EUR">EUR</option><option value="CAD">CAD</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions" style="justify-content:flex-start;margin-top:.5rem;">
+          <button class="btn btn-primary btn-sm" id="save-org-btn">Save Changes</button>
+        </div>
+      </div>
+
+      <div class="settings-section card" style="margin-bottom:1.25rem;">
+        <h3 style="margin-bottom:.75rem;">QR Check-In</h3>
+        <div class="settings-row">
+          <div class="settings-row-label"><h4>QR Registration Link</h4><p id="qr-link-display2" style="font-family:monospace;font-size:.78rem;word-break:break-all;"></p></div>
+          <button class="btn btn-outline btn-sm" id="copy-qr-link-btn">Copy</button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label"><h4>Admin Reset Code</h4><p>Code to unlock a device's QR registration</p></div>
+          <span class="mono" id="qr-reset-code" style="font-size:.88rem;background:var(--cream2);padding:.25rem .6rem;border-radius:4px;">—</span>
+        </div>
+      </div>
+
+      <div class="settings-section card">
+        <h3 style="margin-bottom:.75rem;">Account</h3>
+        <div class="settings-row">
+          <div class="settings-row-label"><h4>Email</h4><p id="set-email">—</p></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label"><h4>Role</h4><p id="set-role">—</p></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label"><h4>Plan</h4><p id="set-plan">—</p></div>
+          <span class="badge badge-gold" id="set-plan-badge">Free</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main-wrap -->
+</div><!-- /app-shell -->
+
+<!-- ══ MODALS ════════════════════════════════════════════════════════════════ -->
+
+<!-- Member modal -->
+<div class="modal-overlay hidden" id="modal-member">
+  <div class="modal">
+    <div class="modal-header"><h3 class="modal-title" id="member-modal-title">Add Member</h3><button class="modal-close" onclick="closeModal('modal-member')">✕</button></div>
+    <form id="member-form">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">First Name *</label><input type="text" id="mf-first" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">Last Name *</label><input type="text" id="mf-last" class="form-control" required/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Phone</label><input type="tel" id="mf-phone" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Email</label><input type="email" id="mf-email" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Membership #</label><input type="text" id="mf-mno" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Gender</label>
+          <select id="mf-gender" class="form-control"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Role</label><input type="text" id="mf-role" class="form-control" placeholder="General"/></div>
+        <div class="form-group"><label class="form-label">Group</label><input type="text" id="mf-group" class="form-control" list="group-list"/><datalist id="group-list"></datalist></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" id="mf-dob" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Date Joined</label><input type="date" id="mf-joined" class="form-control"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea id="mf-notes" class="form-control" rows="2"></textarea></div>
+      <input type="hidden" id="mf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-member')">Cancel</button><button type="submit" class="btn btn-primary" id="mf-submit">Save Member</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Attendance modal -->
+<div class="modal-overlay hidden" id="modal-att">
+  <div class="modal">
+    <div class="modal-header"><h3 class="modal-title">Record Attendance</h3><button class="modal-close" onclick="closeModal('modal-att')">✕</button></div>
+    <form id="att-form">
+      <div class="form-group"><label class="form-label">Member Name</label><input type="text" id="af-member-name" class="form-control" placeholder="Type to search…" autocomplete="off"/><input type="hidden" id="af-member-id"/></div>
+      <div class="form-group" id="af-guest-fields" style="display:none;">
+        <div style="background:var(--cream2);border-radius:var(--r);padding:.75rem;font-size:.82rem;color:var(--ink3);">Not a registered member — recording as guest.</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Guest Role (if not member)</label><input type="text" id="af-guest-role" class="form-control" placeholder="Visitor, YPG…"/></div>
+        <div class="form-group"><label class="form-label">Group</label><input type="text" id="af-group" class="form-control" list="group-list"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" id="af-notes" class="form-control"/></div>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-att')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Giving modal -->
+<div class="modal-overlay hidden" id="modal-giving">
+  <div class="modal">
+    <div class="modal-header"><h3 class="modal-title">Record Gift</h3><button class="modal-close" onclick="closeModal('modal-giving')">✕</button></div>
+    <form id="giving-form">
+      <div class="form-group"><label class="form-label">Member</label><input type="text" id="gf-member-name" class="form-control" placeholder="Type to search…" autocomplete="off"/><input type="hidden" id="gf-member-id"/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input type="number" id="gf-amount" class="form-control" step="0.01" min="0.01" required/></div>
+        <div class="form-group"><label class="form-label">Category</label>
+          <select id="gf-cat" class="form-control"><option>Tithe</option><option>Offering</option><option>Pledge</option><option>Donation</option><option>Building Fund</option><option>Missions</option><option>Special</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Payment Method</label>
+          <select id="gf-method" class="form-control"><option>Cash</option><option>Bank Transfer</option><option>Mobile Money</option><option>Cheque</option><option>Card</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Date *</label><input type="date" id="gf-date" class="form-control" required/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" id="gf-notes" class="form-control"/></div>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-giving')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Group modal -->
+<div class="modal-overlay hidden" id="modal-group">
+  <div class="modal">
+    <div class="modal-header"><h3 class="modal-title" id="group-modal-title">Add Group</h3><button class="modal-close" onclick="closeModal('modal-group')">✕</button></div>
+    <form id="group-form">
+      <div class="form-group"><label class="form-label">Group Name *</label><input type="text" id="grf-name" class="form-control" required/></div>
+      <div class="form-group"><label class="form-label">Description</label><input type="text" id="grf-desc" class="form-control"/></div>
+      <div class="form-group"><label class="form-label">Meeting Days</label>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;" id="day-checkboxes"></div>
+      </div>
+      <input type="hidden" id="grf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-group')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Generic simple modals (volunteer, visitor, welfare, education, mission, scholarship, family, event, comms, txn, budget, payroll, account, expense) -->
+<div class="modal-overlay hidden" id="modal-volunteer">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Volunteer</h3><button class="modal-close" onclick="closeModal('modal-volunteer')">✕</button></div>
+    <form id="volunteer-form">
+      <div class="form-group"><label class="form-label">Member</label><input type="text" id="volf-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="volf-member-id"/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Department *</label><input type="text" id="volf-dept" class="form-control" required placeholder="Ushering, Choir…"/></div>
+        <div class="form-group"><label class="form-label">Role</label><input type="text" id="volf-role" class="form-control"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Joined Date</label><input type="date" id="volf-date" class="form-control"/></div>
+      <input type="hidden" id="volf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-volunteer')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-visitor">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Visitor</h3><button class="modal-close" onclick="closeModal('modal-visitor')">✕</button></div>
+    <form id="visitor-form">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">First Name *</label><input type="text" id="visf-first" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">Last Name</label><input type="text" id="visf-last" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Phone</label><input type="tel" id="visf-phone" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Visit Date *</label><input type="date" id="visf-date" class="form-control" required/></div>
+      </div>
+      <div class="form-group"><label class="form-label">How did they hear about us?</label><input type="text" id="visf-how" class="form-control"/></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea id="visf-notes" class="form-control" rows="2"></textarea></div>
+      <input type="hidden" id="visf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-visitor')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-welfare">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">New Welfare Case</h3><button class="modal-close" onclick="closeModal('modal-welfare')">✕</button></div>
+    <form id="welfare-form">
+      <div class="form-group"><label class="form-label">Member</label><input type="text" id="wff-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="wff-member-id"/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Type *</label>
+          <select id="wff-type" class="form-control"><option>Bereavement</option><option>Hospital</option><option>Financial Assistance</option><option>Food</option><option>Other</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Amount</label><input type="number" id="wff-amount" class="form-control" step="0.01"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Date</label><input type="date" id="wff-date" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Status</label>
+          <select id="wff-status" class="form-control"><option value="pending">Pending</option><option value="approved">Approved</option><option value="disbursed">Disbursed</option><option value="closed">Closed</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Description</label><textarea id="wff-desc" class="form-control" rows="2"></textarea></div>
+      <input type="hidden" id="wff-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-welfare')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-education">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Education Record</h3><button class="modal-close" onclick="closeModal('modal-education')">✕</button></div>
+    <form id="education-form">
+      <div class="form-group"><label class="form-label">Member</label><input type="text" id="eduf-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="eduf-member-id"/></div>
+      <div class="form-group"><label class="form-label">Program *</label><input type="text" id="eduf-prog" class="form-control" required placeholder="BSc Computer Science…"/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Institution</label><input type="text" id="eduf-inst" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Year</label><input type="text" id="eduf-year" class="form-control" placeholder="2025"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select id="eduf-status" class="form-control"><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="withdrawn">Withdrawn</option></select>
+      </div>
+      <input type="hidden" id="eduf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-education')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-mission">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Mission</h3><button class="modal-close" onclick="closeModal('modal-mission')">✕</button></div>
+    <form id="mission-form">
+      <div class="form-group"><label class="form-label">Title *</label><input type="text" id="misf-title" class="form-control" required/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Missionary Name</label><input type="text" id="misf-name" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Location</label><input type="text" id="misf-loc" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start Date</label><input type="date" id="misf-start" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">End Date</label><input type="date" id="misf-end" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Budget</label><input type="number" id="misf-budget" class="form-control" step="0.01"/></div>
+        <div class="form-group"><label class="form-label">Status</label>
+          <select id="misf-status" class="form-control"><option value="active">Active</option><option value="completed">Completed</option><option value="paused">Paused</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea id="misf-notes" class="form-control" rows="2"></textarea></div>
+      <input type="hidden" id="misf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-mission')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-scholarship">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Scholarship</h3><button class="modal-close" onclick="closeModal('modal-scholarship')">✕</button></div>
+    <form id="scholarship-form">
+      <div class="form-group"><label class="form-label">Member</label><input type="text" id="schf-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="schf-member-id"/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Institution</label><input type="text" id="schf-inst" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Field of Study</label><input type="text" id="schf-field" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Academic Year</label><input type="text" id="schf-year" class="form-control" placeholder="2024/2025"/></div>
+        <div class="form-group"><label class="form-label">Amount</label><input type="number" id="schf-amount" class="form-control" step="0.01"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select id="schf-status" class="form-control"><option value="active">Active</option><option value="completed">Completed</option><option value="suspended">Suspended</option></select>
+      </div>
+      <input type="hidden" id="schf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-scholarship')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-family">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Family Life Record</h3><button class="modal-close" onclick="closeModal('modal-family')">✕</button></div>
+    <form id="family-form">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Type *</label>
+          <select id="flf-type" class="form-control"><option>Birth</option><option>Naming</option><option>Marriage</option><option>Death</option><option>Anniversary</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Date *</label><input type="date" id="flf-date" class="form-control" required/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Member</label><input type="text" id="flf-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="flf-member-id"/></div>
+      <div class="form-group"><label class="form-label">Description</label><input type="text" id="flf-desc" class="form-control"/></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea id="flf-notes" class="form-control" rows="2"></textarea></div>
+      <input type="hidden" id="flf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-family')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-event">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Event</h3><button class="modal-close" onclick="closeModal('modal-event')">✕</button></div>
+    <form id="event-form">
+      <div class="form-group"><label class="form-label">Title *</label><input type="text" id="evtf-title" class="form-control" required/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Type</label>
+          <select id="evtf-type" class="form-control"><option>Service</option><option>Meeting</option><option>Outreach</option><option>Concert</option><option>Conference</option><option>Other</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Location</label><input type="text" id="evtf-loc" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start *</label><input type="datetime-local" id="evtf-start" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">End</label><input type="datetime-local" id="evtf-end" class="form-control"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Description</label><textarea id="evtf-desc" class="form-control" rows="2"></textarea></div>
+      <input type="hidden" id="evtf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-event')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-comms">
+  <div class="modal modal-lg"><div class="modal-header"><h3 class="modal-title">New Message</h3><button class="modal-close" onclick="closeModal('modal-comms')">✕</button></div>
+    <form id="comms-form">
+      <div class="form-group"><label class="form-label">Title *</label><input type="text" id="cf-title" class="form-control" required/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Type</label>
+          <select id="cf-type" class="form-control"><option>announcement</option><option>newsletter</option><option>bulletin</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Audience</label>
+          <select id="cf-audience" class="form-control"><option value="all">All Members</option><option value="leaders">Leaders</option><option value="youth">Youth</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Message Body</label><textarea id="cf-body" class="form-control" rows="5"></textarea></div>
+      <input type="hidden" id="cf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-comms')">Cancel</button><button type="submit" class="btn btn-primary">Save &amp; Publish</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-expense">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Expense</h3><button class="modal-close" onclick="closeModal('modal-expense')">✕</button></div>
+    <form id="expense-form">
+      <div class="form-group"><label class="form-label">Title *</label><input type="text" id="expf-title" class="form-control" required/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input type="number" id="expf-amount" class="form-control" step="0.01" min="0.01" required/></div>
+        <div class="form-group"><label class="form-label">Category</label>
+          <select id="expf-cat" class="form-control"><option>General</option><option>Utilities</option><option>Maintenance</option><option>Supplies</option><option>Salaries</option><option>Events</option><option>Missions</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Vendor</label><input type="text" id="expf-vendor" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Date *</label><input type="date" id="expf-date" class="form-control" required/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" id="expf-notes" class="form-control"/></div>
+      <input type="hidden" id="expf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-expense')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-txn">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">New Ledger Entry</h3><button class="modal-close" onclick="closeModal('modal-txn')">✕</button></div>
+    <form id="txn-form">
+      <div class="form-group"><label class="form-label">Description *</label><input type="text" id="txnf-desc" class="form-control" required/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Debit Account *</label><select id="txnf-debit" class="form-control" required></select></div>
+        <div class="form-group"><label class="form-label">Credit Account *</label><select id="txnf-credit" class="form-control" required></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input type="number" id="txnf-amount" class="form-control" step="0.01" min="0.01" required/></div>
+        <div class="form-group"><label class="form-label">Date *</label><input type="date" id="txnf-date" class="form-control" required/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Category</label><input type="text" id="txnf-cat" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Reference #</label><input type="text" id="txnf-ref" class="form-control"/></div>
+      </div>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-txn')">Cancel</button><button type="submit" class="btn btn-primary">Post Entry</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-account">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Account</h3><button class="modal-close" onclick="closeModal('modal-account')">✕</button></div>
+    <form id="account-form">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Code</label><input type="text" id="acctf-code" class="form-control" placeholder="1001"/></div>
+        <div class="form-group"><label class="form-label">Name *</label><input type="text" id="acctf-name" class="form-control" required/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Type *</label>
+        <select id="acctf-type" class="form-control"><option value="asset">Asset</option><option value="liability">Liability</option><option value="equity">Equity</option><option value="income">Income</option><option value="expense">Expense</option></select>
+      </div>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-account')">Cancel</button><button type="submit" class="btn btn-primary">Add Account</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-payroll">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Staff Pay</h3><button class="modal-close" onclick="closeModal('modal-payroll')">✕</button></div>
+    <form id="payroll-form">
+      <div class="form-group"><label class="form-label">Member</label><input type="text" id="prf-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="prf-member-id"/></div>
+      <div class="form-group"><label class="form-label">Name (if not a member) *</label><input type="text" id="prf-name" class="form-control"/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Role</label><input type="text" id="prf-role" class="form-control" placeholder="Pastor, Admin…"/></div>
+        <div class="form-group"><label class="form-label">Pay Period *</label><input type="month" id="prf-period" class="form-control" required/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Gross Amount *</label><input type="number" id="prf-gross" class="form-control" step="0.01" required/></div>
+        <div class="form-group"><label class="form-label">Deductions</label><input type="number" id="prf-deduct" class="form-control" step="0.01" value="0"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" id="prf-notes" class="form-control"/></div>
+      <input type="hidden" id="prf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-payroll')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script type="module" src="/js/app-main.js"></script>
+</body>
+</html>

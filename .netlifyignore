@@ -1,0 +1,15 @@
+# Old app files (replaced by v2)
+churchos.html
+churchos_hierarchy.html
+churchos_provisioning.html
+churchos.json
+
+# Old QR app (replaced by qr/register/)
+qr/qrselfreg/
+qr/index.html.bak
+
+# DB migrations — run manually in Supabase, not served
+supabase/
+
+# Dev tooling
+.claude/

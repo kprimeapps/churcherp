@@ -1,0 +1,57 @@
+{
+  "rules": {
+    "provisioning_admins": {
+      ".read": false,
+      ".write": false
+    },
+    "users": {
+      ".read": "auth != null && root.child('provisioning_admins').child(auth.uid).exists()",
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "auth != null && root.child('provisioning_admins').child(auth.uid).exists()"
+      }
+    },
+    "up_scopes": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('provisioning_admins').child(auth.uid).exists()"
+    },
+    "congregations": {
+      "$congregationId": {
+        "erp_checkins_v1": {
+          ".write": true,
+          ".read": "auth != null && (root.child('users').child(auth.uid).child('congregationId').val() === $congregationId || root.child('users').child(auth.uid).child('role').val() === 'national_admin')"
+        },
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('congregationId').val() === $congregationId || root.child('users').child(auth.uid).child('role').val() === 'national_admin' || root.child('users').child(auth.uid).child('role').val() === 'district_admin' || root.child('users').child(auth.uid).child('role').val() === 'presbytery_admin')",
+        ".write": "auth != null && (root.child('provisioning_admins').child(auth.uid).exists() || (root.child('users').child(auth.uid).child('congregationId').val() === $congregationId && root.child('users').child(auth.uid).child('level').val() === 'congregation'))"
+      }
+    },
+    "districts": {
+      "$districtId": {
+        "congregations": {
+          "$congregationId": {
+            "index": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('congregationId').val() === $congregationId && root.child('users').child(auth.uid).child('districtId').val() === $districtId && root.child('users').child(auth.uid).child('level').val() === 'congregation'",
+              ".read": "auth != null && (root.child('users').child(auth.uid).child('districtId').val() === $districtId || root.child('users').child(auth.uid).child('role').val() === 'national_admin' || root.child('users').child(auth.uid).child('role').val() === 'presbytery_admin')"
+            },
+            "cdo": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('congregationId').val() === $congregationId && root.child('users').child(auth.uid).child('districtId').val() === $districtId && root.child('users').child(auth.uid).child('level').val() === 'congregation'",
+              ".read": "auth != null && (root.child('users').child(auth.uid).child('districtId').val() === $districtId || root.child('users').child(auth.uid).child('role').val() === 'national_admin' || root.child('users').child(auth.uid).child('role').val() === 'presbytery_admin')"
+            }
+          }
+        },
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('districtId').val() === $districtId || root.child('users').child(auth.uid).child('role').val() === 'national_admin' || root.child('users').child(auth.uid).child('role').val() === 'presbytery_admin')",
+        ".write": "auth != null && (root.child('provisioning_admins').child(auth.uid).exists() || (root.child('users').child(auth.uid).child('districtId').val() === $districtId && root.child('users').child(auth.uid).child('level').val() === 'district'))"
+      }
+    },
+    "presbyteries": {
+      "$presbyteryId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('presbyteryId').val() === $presbyteryId || root.child('users').child(auth.uid).child('role').val() === 'national_admin')",
+        ".write": "auth != null && (root.child('provisioning_admins').child(auth.uid).exists() || (root.child('users').child(auth.uid).child('presbyteryId').val() === $presbyteryId && root.child('users').child(auth.uid).child('level').val() === 'presbytery'))"
+      }
+    },
+    "national": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'national_admin'",
+      ".write": "auth != null && (root.child('provisioning_admins').child(auth.uid).exists() || root.child('users').child(auth.uid).child('role').val() === 'national_admin')"
+    }
+  }
+}

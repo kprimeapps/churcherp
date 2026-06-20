@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --navy:#0A1628;--navy-2:#0F1E38;--navy-3:#162240;--navy-4:#1C2A4E;
+  --gold:#C9A84C;--gold-2:#E2C06A;--gold-dim:rgba(201,168,76,0.18);--gold-glow:rgba(201,168,76,0.08);
+  --white:#F8F5EE;--white-dim:rgba(248,245,238,0.72);--white-faint:rgba(248,245,238,0.12);
+  --muted:rgba(248,245,238,0.45);--border:rgba(201,168,76,0.15);--border-2:rgba(201,168,76,0.28);
+  --success:#2ECC71;--success-bg:rgba(46,204,113,0.12);
+  --danger:#E74C3C;
+  --display:'Playfair Display',Georgia,serif;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:8px;--rl:14px;--tap:48px;
+}
+html,body{height:100%;background:var(--navy);color:var(--white);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+
+.app{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 0 60px}
+
+/* Top bar */
+.top-bar{width:100%;max-width:480px;padding:32px 20px 12px;text-align:center}
+.church-name{font-family:var(--display);font-size:20px;font-weight:700;color:var(--gold);letter-spacing:0.03em}
+.church-sub{font-size:11px;color:var(--muted);letter-spacing:0.09em;text-transform:uppercase;margin-top:4px}
+.gold-rule{width:calc(100% - 40px);max-width:440px;height:0.5px;background:var(--border-2);margin:12px 0 20px}
+
+/* Form area */
+.page{width:100%;max-width:480px;padding:0 20px}
+.card{background:var(--navy-2);border:0.5px solid var(--border);border-radius:var(--rl);padding:22px 20px;margin-bottom:16px}
+.card-eye{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.field-label{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:6px}
+input[type=text],input[type=tel]{
+  width:100%;font-family:var(--sans);font-size:15px;padding:12px 14px;
+  border:0.5px solid var(--border-2);border-radius:var(--r);
+  background:var(--navy-3);color:var(--white);outline:none;-webkit-appearance:none;
+  transition:border-color 0.15s,box-shadow 0.15s;
+}
+input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-glow)}
+input::placeholder{color:var(--muted)}
+
+/* Buttons */
+.btn{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;min-height:var(--tap);padding:0 20px;
+  font-family:var(--sans);font-size:15px;font-weight:600;
+  border:none;border-radius:var(--r);cursor:pointer;
+  background:var(--white-faint);color:var(--white);
+  transition:opacity 0.15s,transform 0.1s;
+}
+.btn:active{transform:scale(0.97);opacity:0.85}
+.btn.primary{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--navy);font-weight:700;font-size:16px}
+.btn.outline{background:transparent;border:0.5px solid var(--border-2)}
+.btn:disabled{opacity:0.4;pointer-events:none}
+.btn-row{display:grid;gap:10px;margin-top:16px}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);
+  background:var(--navy-4);border:0.5px solid var(--border-2);border-radius:var(--rl);
+  padding:11px 22px;font-size:13px;font-weight:500;color:var(--white);
+  opacity:0;transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:999;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Loading / error states */
+.state-screen{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:80vh;gap:18px;padding:32px 28px;text-align:center;
+}
+.spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.state-icon{font-size:48px;line-height:1}
+.state-title{font-family:var(--display);font-size:22px;color:var(--white);line-height:1.3}
+.state-msg{font-size:13px;color:var(--muted);line-height:1.7;max-width:300px}
+.state-id{font-family:var(--mono);font-size:12px;color:var(--gold);letter-spacing:0.08em;
+  background:var(--gold-dim);border-radius:20px;padding:4px 14px;margin-top:4px}
+
+/* Thank you screen */
+.thankyou-name{font-family:var(--display);font-size:26px;font-weight:700;color:var(--gold)}
+.thankyou-card{
+  background:var(--navy-2);border:0.5px solid var(--border);border-radius:var(--rl);
+  padding:22px;text-align:center;width:100%;max-width:340px;
+}
+.thankyou-qr-wrap{display:inline-block;background:#fff;padding:12px;border-radius:var(--r);margin:16px 0 10px}
+.thankyou-qr-id{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:18px}
+
+/* Locked screen */
+.lock-icon{font-size:52px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="state-screen">
+    <div class="spinner"></div>
+    <div class="state-msg">Loading…</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// SELF-REGISTRATION APP
+//
+// Config is loaded from a Supabase `app_config` table by ?church=slug.
+// The app locks permanently after one successful registration per device.
+//
+// URL params:
+//   ?church=slug     — required (matches slug column in app_config table)
+//   ?reset=CODE      — unlocks this device (admin use only)
+//
+// Supabase app_config table SQL (run once):
+//   create table app_config (
+//     slug text primary key,
+//     fb_url text, fb_key text, congregation_id text,
+//     sb_url text, sb_key text, sb_table text,
+//     church_name text, church_sub text,
+//     admin_reset_code text   -- secret code for ?reset= unlock
+//   );
+//   alter table app_config enable row level security;
+//   create policy "public read" on app_config for select using (true);
+// ─────────────────────────────────────────────────────────────────────────────
+
+const params     = new URLSearchParams(location.search);
+const churchSlug = params.get('church') || '';
+const resetCode  = params.get('reset')  || '';
+
+// ── Hardcoded Supabase credentials (public anon key — safe to include) ──────
+// Edit these two lines, push to GitHub, done. No setup needed for end users.
+const SUPABASE_URL = 'https://rtzbjfjxijaweyuvnrop.supabase.co';          // ← edit
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0emJqZmp4aWphd2V5dXZucm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNjI2NTUsImV4cCI6MjA5MzgzODY1NX0.3EdMsMOLJeZO8Uxbmo7YfEUHmDRRM07lkEqLfcpeuz4'; // ← edit
+const bootSbUrl = SUPABASE_URL;
+const bootSbKey = SUPABASE_KEY;
+
+// Per-device state keys
+const LS_LOCKED  = 'reg_locked_' + churchSlug;   // 'true' when done
+const LS_PERSON  = 'reg_person_' + churchSlug;    // JSON of registered person
+const LS_CFG     = 'reg_cfg_'    + churchSlug;    // cached config JSON
+
+let cfg = null;
+let currentQRPerson = null;
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+function toast(msg, dur=2400){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+function uid(){return 'P'+Math.random().toString(36).slice(2,10).toUpperCase();}
+function setApp(html){document.getElementById('app').innerHTML=html;}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+async function boot(){
+  if(!churchSlug) return showError('No church specified',
+    'Open the link with <code>?church=your-slug</code>.');
+
+  // Load config (cached or fresh)
+  cfg = await loadConfig();
+  if(!cfg) return; // loadConfig shows its own error
+
+  // Handle ?reset=CODE — check against admin_reset_code in config
+  if(resetCode){
+    if(resetCode === cfg.adminResetCode){
+      localStorage.removeItem(LS_LOCKED);
+      localStorage.removeItem(LS_PERSON);
+      // Strip reset param from URL without reload
+      const url=new URL(location.href);url.searchParams.delete('reset');
+      history.replaceState(null,'',url.toString());
+      toast('Device unlocked — form ready');
+    } else {
+      return showError('Invalid reset code','The reset code in the URL is incorrect.');
+    }
+  }
+
+  // Check if already registered on this device
+  const locked = localStorage.getItem(LS_LOCKED);
+  if(locked === 'true'){
+    const personJson = localStorage.getItem(LS_PERSON);
+    const person = personJson ? JSON.parse(personJson) : null;
+    return showAlreadyRegistered(person);
+  }
+
+  renderForm();
+}
+
+// ── Config loading ────────────────────────────────────────────────────────────
+async function loadConfig(){
+  // Try cache first
+  const cached = localStorage.getItem(LS_CFG);
+  if(cached){
+    try{
+      cfg = JSON.parse(cached);
+      // Refresh in background silently
+      fetchConfig().then(fresh=>{
+        if(fresh) localStorage.setItem(LS_CFG, JSON.stringify(fresh));
+      }).catch(()=>{});
+      return cfg;
+    }catch(e){}
+  }
+  return fetchConfig();
+}
+
+async function fetchConfig(){
+  if(!bootSbUrl || !bootSbKey){
+    showError('Not configured','Supabase credentials are missing from the app.');
+    return null;
+  }
+  try{
+    const url = `${bootSbUrl.replace(/\/+$/,'')}/rest/v1/app_config?slug=eq.${encodeURIComponent(churchSlug)}&limit=1`;
+    const resp = await fetch(url,{headers:{apikey:bootSbKey,'Authorization':'Bearer '+bootSbKey}});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const rows = await resp.json();
+    if(!rows||!rows.length){
+      showError('Church not found',`No configuration found for "<strong>${churchSlug}</strong>".<br>Check the URL or contact your administrator.`);
+      return null;
+    }
+    const r = rows[0];
+    const config = {
+      fbUrl:         r.fb_url          || '',
+      fbKey:         r.fb_key          || '',
+      congregationId:r.congregation_id || '',
+      sbUrl:         r.sb_url          || bootSbUrl,
+      sbKey:         r.sb_key          || bootSbKey,
+      sbTable:       r.sb_table        || 'attendees',
+      churchName:    r.church_name     || 'Church Registration',
+      churchSub:     r.church_sub      || '',
+      adminResetCode:r.admin_reset_code|| '',
+    };
+    localStorage.setItem(LS_CFG, JSON.stringify(config));
+    return config;
+  }catch(e){
+    showError('Could not load configuration',
+      'Check your internet connection and try again.<br><small style="opacity:0.55">'+e.message+'</small>');
+    return null;
+  }
+}
+
+// ── Form ──────────────────────────────────────────────────────────────────────
+function renderForm(){
+  setApp(`
+    <div class="top-bar">
+      <div class="church-name">${cfg.churchName}</div>
+      ${cfg.churchSub?`<div class="church-sub">${cfg.churchSub}</div>`:''}
+    </div>
+    <div class="gold-rule"></div>
+    <div class="page">
+      <div class="card">
+        <div class="card-eye">Member Self-Registration</div>
+        <div class="field">
+          <label class="field-label">First Name *</label>
+          <input type="text" id="reg-fname" placeholder="e.g. Kofi" autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label class="field-label">Last Name *</label>
+          <input type="text" id="reg-lname" placeholder="e.g. Mensah" autocomplete="family-name">
+        </div>
+        <div class="field">
+          <label class="field-label">Phone</label>
+          <input type="tel" id="reg-phone" placeholder="+233 24 000 0000" autocomplete="tel">
+        </div>
+        <div class="field">
+          <label class="field-label">Membership No</label>
+          <input type="text" id="reg-membno" placeholder="e.g. PCG/IMM/0042" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="field-label">Role / Group</label>
+          <input type="text" id="reg-role" placeholder="e.g. Agent, YPG, Visitor">
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="reg-btn" onclick="registerPerson()">Add &amp; Generate QR</button>
+        </div>
+      </div>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;line-height:1.8;letter-spacing:0.04em;padding:0 8px">
+        Your details are saved to the church registry.<br>
+        The QR code generated is your personal check-in pass.<br>
+        <strong style="color:var(--gold)">You can only register once on this device.</strong>
+      </p>
+    </div>`);
+}
+
+// ── Registration ──────────────────────────────────────────────────────────────
+async function registerPerson(){
+  const fn   = (document.getElementById('reg-fname').value  ||'').trim();
+  const ln   = (document.getElementById('reg-lname').value  ||'').trim();
+  const phone= (document.getElementById('reg-phone').value  ||'').trim();
+  const memb = (document.getElementById('reg-membno').value ||'').trim();
+  const role = (document.getElementById('reg-role').value   ||'').trim() || 'General';
+
+  if(!fn){ toast('First name is required'); document.getElementById('reg-fname').focus(); return; }
+  if(!ln){ toast('Last name is required');  document.getElementById('reg-lname').focus(); return; }
+
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const person = {
+    id: uid(), firstName: fn, lastName: ln,
+    email: memb,  // stored in email field — compatible with main app
+    phone, role, createdAt: Date.now(), checkedIn: false
+  };
+
+  // Save via Edge Function — it creates the org table if needed, then inserts.
+  // Using the Edge Function (not direct REST) so the service-role key can run DDL.
+  try{
+    const fnUrl = `${cfg.sbUrl.replace(/\/+$/,'')}/functions/v1/register-checkin`;
+    const resp  = await fetch(fnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + cfg.sbKey,
+      },
+      body: JSON.stringify({ person, tableName: cfg.sbTable })
+    });
+    const result = await resp.json();
+    if(!resp.ok){
+      btn.disabled=false; btn.textContent='Add & Generate QR';
+      if(resp.status===409 || result.code==='23505' || result.error==='duplicate'){
+        showError(
+          'Already registered',
+          `Someone with the name <strong>${fn}</strong> and this phone number is already in the registry.<br><br>If this is you and you need your QR code, contact your church administrator.`
+        );
+      }else{
+        toast('Could not save: '+(result.error||resp.status), 4000);
+      }
+      return;
+    }
+  }catch(e){
+    btn.disabled=false; btn.textContent='Add & Generate QR';
+    toast('Could not save: '+e.message, 4000);
+    return;
+  }
+
+  // Lock device immediately after successful save
+  localStorage.setItem(LS_LOCKED, 'true');
+  localStorage.setItem(LS_PERSON, JSON.stringify(person));
+
+  // Show thank-you / QR screen
+  showThankYou(person);
+}
+
+// ── Thank-you screen ──────────────────────────────────────────────────────────
+function showThankYou(person){
+  currentQRPerson = person;
+  setApp(`
+    <div class="top-bar">
+      <div class="church-name">${cfg.churchName}</div>
+      ${cfg.churchSub?`<div class="church-sub">${cfg.churchSub}</div>`:''}
+    </div>
+    <div class="gold-rule"></div>
+    <div class="page">
+      <div style="text-align:center;padding:8px 0 24px">
+        <div style="font-size:44px;margin-bottom:12px">🎉</div>
+        <div class="thankyou-name">${person.firstName} ${person.lastName}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6">
+          You're registered! Save your QR code below — it's your personal check-in pass.
+        </div>
+      </div>
+
+      <div class="thankyou-card">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:4px">Your QR Pass</div>
+        <div class="thankyou-qr-wrap" id="thankyou-qr"></div>
+        <div class="thankyou-qr-id">${person.id}</div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="downloadQR()">💾 Save to device</button>
+          <button class="btn outline" onclick="shareQR()">Share</button>
+        </div>
+      </div>
+
+      <div style="margin-top:28px;background:rgba(46,204,113,0.08);border:0.5px solid rgba(46,204,113,0.25);border-radius:var(--r);padding:14px 16px;font-size:12px;color:rgba(46,204,113,0.9);line-height:1.7;text-align:center">
+        ✓ Registration complete. This device is now locked.<br>
+        <span style="opacity:0.7">Bring this QR code when attending service.</span>
+      </div>
+    </div>`);
+
+  // Render QR
+  setTimeout(()=>{
+    try{
+      new QRCode(document.getElementById('thankyou-qr'),{
+        text:person.id, width:200, height:200, correctLevel:QRCode.CorrectLevel.H
+      });
+    }catch(e){}
+  }, 80);
+}
+
+// ── Already registered screen ─────────────────────────────────────────────────
+function showAlreadyRegistered(person){
+  currentQRPerson = person;
+  const hasPerson = !!person;
+  setApp(`
+    <div class="top-bar">
+      <div class="church-name">${cfg.churchName}</div>
+      ${cfg.churchSub?`<div class="church-sub">${cfg.churchSub}</div>`:''}
+    </div>
+    <div class="gold-rule"></div>
+    <div class="page">
+      <div style="text-align:center;padding:8px 0 24px">
+        <div style="font-size:44px;margin-bottom:12px">✅</div>
+        <div class="thankyou-name">${hasPerson?person.firstName+' '+person.lastName:'Already Registered'}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.6">
+          You have already registered on this device.${hasPerson?'<br>Here is your QR pass — save it if you need a copy.':''}
+        </div>
+      </div>
+      ${hasPerson?`
+      <div class="thankyou-card">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:4px">Your QR Pass</div>
+        <div class="thankyou-qr-wrap" id="thankyou-qr"></div>
+        <div class="thankyou-qr-id">${person.id}</div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="downloadQR()">💾 Save to device</button>
+          <button class="btn outline" onclick="shareQR()">Share</button>
+        </div>
+      </div>`:''}
+      <div style="margin-top:24px;background:var(--navy-2);border:0.5px solid var(--border);border-radius:var(--r);padding:14px 16px;font-size:12px;color:var(--muted);line-height:1.7;text-align:center">
+        🔒 This device is locked to your registration.<br>
+        If you need to correct your details, contact your church administrator.
+      </div>
+    </div>`);
+
+  if(hasPerson){
+    setTimeout(()=>{
+      try{
+        new QRCode(document.getElementById('thankyou-qr'),{
+          text:person.id, width:200, height:200, correctLevel:QRCode.CorrectLevel.H
+        });
+      }catch(e){}
+    }, 80);
+  }
+}
+
+// ── Error screen ──────────────────────────────────────────────────────────────
+function showError(title, msg){
+  setApp(`
+    <div class="state-screen">
+      <div class="state-icon">⛪</div>
+      <div class="state-title">${title}</div>
+      <div class="state-msg">${msg}</div>
+    </div>`);
+}
+
+// ── QR Download / Share ───────────────────────────────────────────────────────
+function getQRCanvas(){
+  const el=document.getElementById('thankyou-qr');
+  return el?el.querySelector('canvas'):null;
+}
+
+function downloadQR(){
+  const p=currentQRPerson; if(!p) return;
+  const qc=getQRCanvas(); if(!qc){toast('QR not ready yet'); return;}
+  const pad=28,qs=qc.width,w=qs+pad*2,h=qs+pad*2+72;
+  const cv=document.createElement('canvas'); cv.width=w*2; cv.height=h*2;
+  const ctx=cv.getContext('2d'); ctx.scale(2,2);
+  ctx.fillStyle='#0A1628'; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#C9A84C'; ctx.fillRect(0,0,w,3);
+  ctx.fillStyle='#ffffff';
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(pad-8,pad-8,qs+16,qs+16,8); else ctx.rect(pad-8,pad-8,qs+16,qs+16);
+  ctx.fill();
+  ctx.drawImage(qc,pad,pad,qs,qs);
+  ctx.fillStyle='#F8F5EE'; ctx.font='600 15px "Playfair Display",Georgia,serif'; ctx.textAlign='center';
+  ctx.fillText(p.firstName+' '+p.lastName, w/2, qs+pad+28);
+  ctx.fillStyle='#C9A84C'; ctx.font='500 10px "DM Mono",monospace';
+  ctx.fillText((p.role||'').toUpperCase(), w/2, qs+pad+46);
+  if(p.email){ ctx.fillStyle='rgba(248,245,238,0.5)'; ctx.fillText(p.email, w/2, qs+pad+60); }
+  ctx.fillStyle='rgba(248,245,238,0.3)';
+  ctx.fillText(p.id, w/2, qs+pad+74);
+  const a=document.createElement('a');
+  a.download='qr-'+p.firstName+'-'+p.lastName+'.png';
+  a.href=cv.toDataURL('image/png'); a.click();
+  toast('QR saved!');
+}
+
+async function shareQR(){
+  const p=currentQRPerson; if(!p) return;
+  const qc=getQRCanvas();
+  if(qc&&navigator.share&&navigator.canShare){
+    qc.toBlob(async blob=>{
+      const file=new File([blob],'qr-'+p.id+'.png',{type:'image/png'});
+      if(navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:p.firstName+' '+p.lastName+' — QR Pass'});toast('Shared!');}
+        catch(e){if(e.name!=='AbortError')downloadQR();}
+      }else{downloadQR();}
+    });
+  }else{downloadQR();}
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>

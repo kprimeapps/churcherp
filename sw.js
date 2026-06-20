@@ -1,0 +1,60 @@
+// ChurchOS v2 — Service Worker
+const CACHE = 'churchos-v2';
+const PRECACHE = [
+  '/',
+  '/index.html',
+  '/app.html',
+  '/admin.html',
+  '/css/theme.css',
+  '/js/config.js',
+  '/js/auth.js',
+  '/js/db.js',
+  '/js/ui.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
+  'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+];
+
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+
+  // Pass Supabase API calls through — never cache them
+  if (url.hostname.includes('supabase.co')) {
+    e.respondWith(
+      fetch(e.request).catch(() => new Response(JSON.stringify({ error: 'offline' }), {
+        headers: { 'Content-Type': 'application/json' }
+      }))
+    );
+    return;
+  }
+
+  // For everything else: cache-first for GET, network-only for mutations
+  if (e.request.method !== 'GET') return;
+
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      const network = fetch(e.request).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => cached);
+      return cached || network;
+    })
+  );
+});

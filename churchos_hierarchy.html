@@ -1,0 +1,3133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChurchOS — Hierarchical Admin Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════
+   RESET & ROOT VARIABLES
+═══════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#B8964A;--gold-light:#F5E9CC;--gold-dark:#7A5F28;
+  --ink:#1A1614;--ink2:#3D322C;--ink3:#6B5B52;
+  --cream:#FAF7F2;--cream2:#F0EAE0;--cream3:#E3D9CC;
+  --navy:#0F2340;--navy-mid:#1A3A5C;--navy-light:#2A5285;
+  --pcg-gold:#C9932A;--pcg-gold-light:#E8B84B;
+  --green:#1E7E56;--green-light:#27AE60;
+  --red:#C0392B;--red-light:#E74C3C;
+  --blue:#1A3A8B;
+  --sidebar-w:240px;
+  --topbar-h:56px;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink)}
+body{display:flex;flex-direction:column;min-height:100vh}
+
+/* ═══════════════════════════════════════
+   LOGIN OVERLAY
+═══════════════════════════════════════ */
+#login-overlay{
+  position:fixed;inset:0;z-index:900;
+  background:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  background-image:radial-gradient(ellipse at 30% 20%, rgba(184,150,74,.12) 0%, transparent 60%),
+                   radial-gradient(ellipse at 80% 80%, rgba(42,82,133,.2) 0%, transparent 60%);
+}
+.login-card{
+  background:rgba(255,255,255,.04);border:1px solid rgba(184,150,74,.2);
+  border-radius:18px;padding:44px 40px;width:100%;max-width:420px;
+  backdrop-filter:blur(10px);box-shadow:0 30px 80px rgba(0,0,0,.5);
+}
+.login-logo{font-family:'Playfair Display',serif;font-size:26px;color:var(--gold);text-align:center;margin-bottom:4px}
+.login-sub{text-align:center;font-size:12px;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase;margin-bottom:32px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.login-field input{
+  width:100%;padding:11px 14px;
+  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);
+  border-radius:9px;color:#fff;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;
+  transition:border-color .15s;
+}
+.login-field input:focus{border-color:var(--gold)}
+.login-field input::placeholder{color:rgba(255,255,255,.2)}
+.login-btn{
+  width:100%;padding:12px;margin-top:8px;
+  background:var(--gold);color:var(--ink);border:none;border-radius:9px;
+  font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;
+  transition:background .14s;
+}
+.login-btn:hover{background:var(--pcg-gold-light)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+#login-error{
+  display:none;margin-top:12px;padding:9px 13px;
+  background:rgba(192,57,43,.15);border:1px solid rgba(192,57,43,.3);border-radius:7px;
+  color:#F1948A;font-size:12.5px;text-align:center;
+}
+#login-loading{display:none;text-align:center;margin-top:10px;font-size:12px;color:var(--gold);letter-spacing:.05em}
+.login-reset{display:block;text-align:center;margin-top:14px;font-size:11.5px;color:rgba(255,255,255,.3);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.login-reset:hover{color:var(--gold)}
+
+/* ═══════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════ */
+#topbar{
+  height:var(--topbar-h);background:var(--ink);
+  display:flex;align-items:center;padding:0 22px;gap:14px;
+  position:sticky;top:0;z-index:200;flex-shrink:0;
+}
+.topbar-logo{font-family:'Playfair Display',serif;font-size:18px;color:var(--gold);letter-spacing:.02em}
+.topbar-logo span{font-family:'DM Sans',sans-serif;font-size:11px;color:rgba(250,247,242,.35);font-weight:300;margin-left:8px;letter-spacing:.05em}
+.level-badge{
+  padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+}
+.lb-district{background:rgba(30,126,86,.2);color:#4ADE80;border:1px solid rgba(30,126,86,.4)}
+.lb-presbytery{background:rgba(26,58,92,.4);color:#93C5FD;border:1px solid rgba(42,82,133,.5)}
+.lb-national{background:rgba(184,150,74,.2);color:var(--gold);border:1px solid rgba(184,150,74,.4)}
+.topbar-name{font-size:12.5px;color:rgba(250,247,242,.5);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.topbar-user{display:flex;align-items:center;gap:8px}
+.topbar-avatar{width:30px;height:30px;border-radius:50%;background:var(--navy-light);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0}
+#logout-btn{
+  padding:5px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.5);border-radius:6px;font-size:11px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .14s;
+}
+#logout-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+#refresh-btn{
+  padding:5px 12px;background:rgba(184,150,74,.15);border:1px solid rgba(184,150,74,.3);
+  color:var(--gold);border-radius:6px;font-size:11px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .14s;display:flex;align-items:center;gap:5px;
+}
+#refresh-btn:hover{background:rgba(184,150,74,.25)}
+
+/* ═══════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════ */
+#app{display:flex;flex:1;height:calc(100vh - var(--topbar-h));overflow:hidden}
+#sidebar{
+  width:var(--sidebar-w);background:var(--ink2);flex-shrink:0;
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+#main{flex:1;overflow-y:auto;background:var(--cream)}
+
+/* ═══════════════════════════════════════
+   SIDEBAR NAV
+═══════════════════════════════════════ */
+.nav-section-label{
+  padding:18px 16px 6px;
+  font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  color:rgba(184,150,74,.4);
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;
+  color:rgba(245,233,204,.55);font-size:13px;transition:all .13s;
+  border-left:3px solid transparent;line-height:1.3;
+}
+.nav-item:hover{background:rgba(255,255,255,.04);color:rgba(245,233,204,.85)}
+.nav-item.active{background:rgba(184,150,74,.11);color:var(--gold);border-left-color:var(--gold)}
+.nav-icon{width:18px;text-align:center;font-size:15px;flex-shrink:0}
+.nav-divider{height:1px;background:rgba(255,255,255,.05);margin:8px 16px}
+.nav-scope{padding:6px 16px 2px;font-size:10px;color:rgba(245,233,204,.25);font-weight:500}
+.nav-sub-item{
+  display:flex;align-items:center;gap:8px;padding:7px 16px 7px 28px;cursor:pointer;
+  color:rgba(245,233,204,.4);font-size:12px;transition:all .13s;border-left:3px solid transparent;
+}
+.nav-sub-item:hover{color:rgba(245,233,204,.75);background:rgba(255,255,255,.03)}
+.nav-sub-item.active{color:var(--gold-light);border-left-color:rgba(184,150,74,.5)}
+.sidebar-footer{margin-top:auto;padding:14px 16px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:rgba(245,233,204,.2)}
+
+/* ═══════════════════════════════════════
+   PAGE STRUCTURE
+═══════════════════════════════════════ */
+.page{display:none;padding:26px 28px;animation:fadein .2s ease}
+.page.active{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.page-header{margin-bottom:24px}
+.page-header h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--ink);margin-bottom:4px}
+.page-header p{font-size:12.5px;color:var(--ink3)}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3);margin-bottom:12px}
+.breadcrumb span{color:var(--gold)}
+.section-title{
+  font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);
+  margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--cream3);
+  display:flex;align-items:center;gap:8px;
+}
+
+/* ═══════════════════════════════════════
+   STAT CARDS
+═══════════════════════════════════════ */
+.stat-grid{display:grid;gap:12px;margin-bottom:20px}
+.stat-grid-4{grid-template-columns:repeat(4,1fr)}
+.stat-grid-3{grid-template-columns:repeat(3,1fr)}
+.stat-grid-6{grid-template-columns:repeat(6,1fr)}
+@media(max-width:1200px){.stat-grid-6{grid-template-columns:repeat(3,1fr)}.stat-grid-4{grid-template-columns:repeat(2,1fr)}}
+.stat-card{
+  background:#fff;border-radius:14px;padding:16px 18px;
+  border:1px solid var(--cream3);box-shadow:0 1px 6px rgba(26,22,20,.06);
+  position:relative;overflow:hidden;
+}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.sc-gold::before{background:var(--gold)}
+.sc-green::before{background:var(--green)}
+.sc-red::before{background:var(--red)}
+.sc-navy::before{background:var(--navy)}
+.sc-blue::before{background:var(--blue)}
+.sc-teal::before{background:#0E7490}
+.stat-label{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px}
+.stat-value{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1;color:var(--ink);margin-bottom:3px}
+.stat-sub{font-size:10.5px;color:var(--ink3)}
+.stat-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:20px;opacity:.15}
+.trend-up{color:var(--green);font-weight:600}
+.trend-dn{color:var(--red);font-weight:600}
+
+/* ═══════════════════════════════════════
+   CONTENT CARDS
+═══════════════════════════════════════ */
+.card{background:#fff;border-radius:14px;border:1px solid var(--cream3);box-shadow:0 1px 6px rgba(26,22,20,.06);margin-bottom:16px;overflow:hidden}
+.card-hdr{padding:14px 18px;border-bottom:1px solid var(--cream2);display:flex;align-items:center;justify-content:space-between}
+.card-hdr h3{font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--ink)}
+.card-hdr-right{display:flex;align-items:center;gap:8px}
+.card-body{padding:16px 18px}
+.card-badge{font-size:10px;background:var(--cream2);color:var(--ink3);padding:2px 8px;border-radius:20px;font-weight:500}
+
+/* ═══════════════════════════════════════
+   TABLES
+═══════════════════════════════════════ */
+.tbl-wrap{overflow-x:auto}
+.dtable{width:100%;border-collapse:collapse;font-size:12.5px}
+.dtable thead tr{background:var(--cream);border-bottom:2px solid var(--cream3)}
+.dtable th{padding:9px 13px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);text-align:left;white-space:nowrap}
+.dtable th.num{text-align:right}
+.dtable td{padding:9px 13px;color:var(--ink2);border-bottom:1px solid var(--cream2)}
+.dtable td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:'DM Mono',monospace;font-size:12px}
+.dtable tr:last-child td{border-bottom:none}
+.dtable tr:hover td{background:var(--cream)}
+.dtable tr.total-row td{background:var(--navy)!important;color:#fff!important;font-weight:700;font-family:'Playfair Display',serif;font-size:12.5px}
+.dtable tr.total-row td.num{text-align:right}
+.cong-name{font-weight:600;color:var(--ink)}
+.sub-text{font-size:10.5px;color:var(--ink3)}
+.status-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.sb-ok{background:#E6F4ED;color:var(--green)}
+.sb-warn{background:#FEF3CD;color:#92400E}
+.sb-err{background:#FDECEA;color:var(--red)}
+.sb-na{background:var(--cream2);color:var(--ink3)}
+
+/* ═══════════════════════════════════════
+   TWO COLUMN LAYOUT
+═══════════════════════════════════════ */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px}
+@media(max-width:1000px){.two-col,.three-col{grid-template-columns:1fr}}
+
+/* ═══════════════════════════════════════
+   CHART
+═══════════════════════════════════════ */
+.chart-wrap{height:220px;position:relative}
+.chart-wrap-lg{height:280px;position:relative}
+
+/* ═══════════════════════════════════════
+   FILTER BAR
+═══════════════════════════════════════ */
+.filter-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:18px}
+.filter-sel{
+  padding:6px 11px;border:1.5px solid var(--cream3);border-radius:7px;
+  font-size:12px;font-family:'DM Sans',sans-serif;color:var(--ink);background:#fff;outline:none;cursor:pointer;
+}
+.filter-sel:focus{border-color:var(--gold)}
+.filter-label{font-size:10.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+
+/* ═══════════════════════════════════════
+   PROGRESS BARS
+═══════════════════════════════════════ */
+.prog-wrap{height:6px;background:var(--cream2);border-radius:3px;overflow:hidden;margin-top:4px}
+.prog-fill{height:100%;border-radius:3px;transition:width .4s ease}
+
+/* ═══════════════════════════════════════
+   ENTITY CARDS (congregation/district cards)
+═══════════════════════════════════════ */
+.entity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px}
+.entity-card{
+  background:#fff;border-radius:14px;padding:16px 18px;
+  border:1px solid var(--cream3);box-shadow:0 1px 6px rgba(26,22,20,.06);
+  cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.entity-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold)}
+.entity-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,22,20,.1);border-color:var(--gold)}
+.entity-card.selected{border-color:var(--gold);box-shadow:0 0 0 2px rgba(184,150,74,.3)}
+.ec-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.ec-sub{font-size:10.5px;color:var(--ink3);margin-bottom:12px}
+.ec-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.ec-stat{text-align:center}
+.ec-stat-v{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--ink);line-height:1}
+.ec-stat-l{font-size:9.5px;color:var(--ink3);margin-top:2px}
+.ec-footer{margin-top:10px;padding-top:10px;border-top:1px solid var(--cream2);display:flex;justify-content:space-between;align-items:center}
+
+/* ═══════════════════════════════════════
+   SOUL WINNING / M&E HIGHLIGHT
+═══════════════════════════════════════ */
+.highlight-banner{
+  background:linear-gradient(135deg,rgba(30,126,86,.06) 0%,rgba(26,58,92,.06) 100%);
+  border:1px solid rgba(30,126,86,.2);border-radius:12px;padding:14px 18px;
+  display:flex;align-items:center;gap:16px;margin-bottom:16px;
+}
+.hb-icon{font-size:28px;line-height:1}
+.hb-main{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--green);line-height:1}
+.hb-label{font-size:11.5px;color:var(--ink3);margin-top:3px}
+
+/* ═══════════════════════════════════════
+   CONGREGATION CDO VIEW
+═══════════════════════════════════════ */
+.cong-tabs{display:flex;gap:0;border-bottom:2px solid var(--cream3);margin-bottom:22px;overflow-x:auto;flex-shrink:0}
+.cong-tab{
+  padding:9px 18px;font-size:12px;font-weight:600;color:var(--ink3);
+  cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;
+  white-space:nowrap;transition:all .15s;user-select:none;
+}
+.cong-tab:hover{color:var(--ink);background:var(--cream)}
+.cong-tab.active{color:var(--navy);border-bottom-color:var(--gold);background:#fff}
+.cdo-ro-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:0}
+.cdo-ro-table th{
+  padding:7px 10px;font-size:9.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--ink3);background:var(--cream);
+  border-bottom:2px solid var(--cream3);text-align:left;white-space:nowrap;
+}
+.cdo-ro-table th.num{text-align:right}
+.cdo-ro-table td{padding:6px 10px;border-bottom:1px solid var(--cream2);color:var(--ink2);vertical-align:middle}
+.cdo-ro-table td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:'DM Mono',monospace;font-size:11.5px}
+.cdo-ro-table td.code{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink3)}
+.cdo-ro-table td.auto{background:rgba(201,147,42,.05)}
+.cdo-ro-table td.auto.num{background:rgba(201,147,42,.05)}
+.cdo-ro-section th[colspan]{
+  background:var(--navy-mid);color:var(--pcg-gold-light);
+  font-weight:700;font-size:10px;text-transform:uppercase;
+  letter-spacing:.5px;padding:6px 10px;
+}
+.cdo-ro-table tr:hover td{background:var(--cream)}
+.cdo-ro-table .total-row td{
+  background:var(--navy)!important;color:#fff!important;
+  font-weight:700;font-family:'Playfair Display',serif;font-size:12px;
+}
+.cdo-ro-table .total-row td.num{text-align:right}
+.cdo-block{margin-bottom:28px}
+.cdo-block-title{
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--navy);background:var(--cream2);padding:7px 12px;
+  border-left:3px solid var(--gold);margin-bottom:0;
+}
+.loading-state{text-align:center;padding:60px 20px;color:var(--ink3)}
+.loading-spinner{width:36px;height:36px;border:3px solid var(--cream3);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:50px 20px}
+.empty-icon{font-size:36px;margin-bottom:10px;opacity:.4}
+.empty-msg{font-size:13px;color:var(--ink3)}
+
+/* ═══════════════════════════════════════
+   TOAST
+═══════════════════════════════════════ */
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999;
+  background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;
+  display:none;box-shadow:0 8px 24px rgba(0,0,0,.3);
+}
+
+/* ═══════════════════════════════════════
+   UPDATED AT
+═══════════════════════════════════════ */
+.updated-badge{font-size:10.5px;color:var(--ink3);display:flex;align-items:center;gap:5px}
+.updated-dot{width:6px;height:6px;border-radius:50%;background:var(--green-light)}
+
+/* ═══════════════════════════════════════
+   RESET PASSWORD
+═══════════════════════════════════════ */
+#reset-panel{display:none}
+#login-panel{display:block}
+
+/* ═══════════════════════════════════════
+   CDO SUMMARY TABLE
+═══════════════════════════════════════ */
+.cdo-table td{padding:6px 9px;font-size:12px;vertical-align:middle}
+.cdo-table .cdo-section-hdr td{
+  background:var(--navy-mid);color:var(--pcg-gold-light);
+  font-weight:700;font-size:11px;text-transform:uppercase;
+  letter-spacing:.5px;padding:7px 9px;
+}
+.cdo-table .cdo-auto td{background:rgba(201,147,42,.06)}
+.cdo-ro-val{display:block;text-align:right;font-size:12px;padding:2px 4px;color:var(--ink)}
+.cdo-ro-val.empty{color:var(--ink3);opacity:.45}
+.cdo-ro-val.highlight{font-weight:600;color:var(--navy)}
+#page-cdo-summary .section-title{
+  font-family:'Playfair Display',serif;font-size:15px;color:var(--navy);
+  font-weight:700;margin:22px 0 10px;display:flex;align-items:center;gap:8px;
+}
+#page-cdo-summary .section-title::after{
+  content:'';flex:1;height:1px;background:var(--cream3);margin-left:6px;
+}
+#page-cdo-summary .page-note{font-size:11px;color:var(--ink3);margin-top:8px;margin-bottom:32px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="login-logo">ChurchOS</div>
+    <div class="login-sub">PCG · Hierarchical Admin Portal</div>
+
+    <div id="login-panel">
+      <div class="login-field">
+        <label>Email Address</label>
+        <input id="login-email" type="email" placeholder="admin@pcg.org.gh" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+      <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+      <div id="login-error"></div>
+      <div id="login-loading">Authenticating…</div>
+      <span class="login-reset" onclick="showReset()">Forgot your password?</span>
+    </div>
+
+    <div id="reset-panel">
+      <div class="login-field">
+        <label>Your Email Address</label>
+        <input id="reset-email" type="email" placeholder="admin@pcg.org.gh">
+      </div>
+      <button class="login-btn" onclick="doReset()">Send Reset Link</button>
+      <div id="reset-msg" style="display:none;margin-top:12px;padding:9px 13px;border-radius:7px;font-size:12.5px"></div>
+      <span class="login-reset" onclick="showLogin()">← Back to Sign In</span>
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar" style="visibility:hidden">
+  <div class="topbar-logo">ChurchOS <span>HIERARCHY PORTAL</span></div>
+  <span id="level-badge" class="level-badge"></span>
+  <span id="scope-label" class="topbar-name"></span>
+  <div class="topbar-user" style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <button id="refresh-btn" onclick="refreshData()">⟳ Refresh</button>
+    <div class="topbar-avatar" id="user-avatar">?</div>
+    <button id="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app" style="visibility:hidden">
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="nav-section-label">Overview</div>
+    <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+
+    <div class="nav-section-label" style="margin-top:4px">Congregational Data</div>
+    <div class="nav-item" data-page="membership" onclick="showPage('membership',this)">
+      <span class="nav-icon">👥</span> Membership
+    </div>
+    <div class="nav-item" data-page="attendance" onclick="showPage('attendance',this)">
+      <span class="nav-icon">⛪</span> Attendance
+    </div>
+    <div class="nav-item" data-page="souls" onclick="showPage('souls',this)">
+      <span class="nav-icon">✨</span> Souls Won / M&amp;E
+    </div>
+    <div class="nav-item" data-page="groups" onclick="showPage('groups',this)">
+      <span class="nav-icon">🤝</span> Group Meetings
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-item" data-page="finance" onclick="showPage('finance',this)">
+      <span class="nav-icon">💰</span> Finance
+    </div>
+    <div class="nav-item" data-page="welfare" onclick="showPage('welfare',this)">
+      <span class="nav-icon">🤲</span> Welfare &amp; Scholarship
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-item" data-page="land" onclick="showPage('land',this)">
+      <span class="nav-icon">🏘️</span> Land &amp; Property
+    </div>
+    <div class="nav-item" data-page="entities" onclick="showPage('entities',this)">
+      <span class="nav-icon">🏛️</span> <span id="entities-label">Congregations</span>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-item" data-page="cdo-summary" onclick="showPage('cdo-summary',this)">
+      <span class="nav-icon">📋</span> Cong. Summary
+    </div>
+
+    <div class="nav-item" data-page="congregations" onclick="showPage('congregations',this)">
+      <span class="nav-icon">⛪</span> Congregations
+    </div>
+
+    <div class="sidebar-footer" id="sidebar-footer"></div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="main">
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div id="dash-loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <div>Loading data from Firebase…</div>
+      </div>
+      <div id="dash-content" style="display:none">
+        <div class="page-header">
+          <div class="breadcrumb" id="dash-breadcrumb"></div>
+          <h2 id="dash-title">Dashboard</h2>
+          <p id="dash-subtitle"></p>
+        </div>
+
+        <!-- KPI Strip -->
+        <div class="stat-grid stat-grid-6" id="dash-kpis"></div>
+
+        <!-- Souls Won Highlight -->
+        <div class="highlight-banner" id="souls-highlight">
+          <div class="hb-icon">✝️</div>
+          <div>
+            <div class="hb-main" id="hl-souls">0</div>
+            <div class="hb-label">Total Souls Won through M&amp;E events across all congregations</div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="two-col">
+          <div class="card">
+            <div class="card-hdr"><h3>Membership by Group</h3></div>
+            <div class="card-body"><div class="chart-wrap"><canvas id="chart-membership"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><h3>Finance Overview</h3><span class="card-badge">GH₵</span></div>
+            <div class="card-body"><div class="chart-wrap"><canvas id="chart-finance"></canvas></div></div>
+          </div>
+        </div>
+
+        <!-- Entity Breakdown Table -->
+        <div class="card">
+          <div class="card-hdr">
+            <h3 id="breakdown-title">Congregation Breakdown</h3>
+            <div class="card-hdr-right">
+              <div class="updated-badge"><div class="updated-dot"></div><span id="last-updated">—</span></div>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="dtable" id="breakdown-table">
+              <thead><tr id="breakdown-thead"></tr></thead>
+              <tbody id="breakdown-tbody"></tbody>
+              <tfoot><tr id="breakdown-tfoot"></tr></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMBERSHIP -->
+    <div id="page-membership" class="page">
+      <div class="page-header">
+        <h2>Membership Summary</h2>
+        <p id="mem-subtitle">Aggregated membership data across all congregations</p>
+      </div>
+      <div class="stat-grid stat-grid-4" id="mem-stats"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hdr"><h3>Membership by Group Type</h3></div>
+          <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-mem-group"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><h3>Q1–Q4 Membership Trend</h3></div>
+          <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-mem-trend"></canvas></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Membership by Group — Detailed Breakdown</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="mem-detail-table">
+            <thead><tr><th>Group</th><th class="num">${BASELINE_YEAR} Baseline</th><th class="num">Q1</th><th class="num">Q2</th><th class="num">Q3</th><th class="num">Q4</th><th class="num">Change</th></tr></thead>
+            <tbody id="mem-detail-body"></tbody>
+            <tfoot><tr class="total-row" id="mem-detail-foot"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3 id="mem-entity-title">Per-Congregation Membership</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="mem-entity-table">
+            <thead><tr id="mem-entity-thead"></tr></thead>
+            <tbody id="mem-entity-body"></tbody>
+            <tfoot><tr id="mem-entity-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE -->
+    <div id="page-attendance" class="page">
+      <div class="page-header"><h2>Attendance Summary</h2><p>Sunday service and special service attendance across all congregations</p></div>
+      <div class="stat-grid stat-grid-4" id="att-stats"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hdr"><h3>Q1–Q4 Attendance Trend</h3></div>
+          <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-att-trend"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><h3>Attendance by Service Type</h3></div>
+          <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-att-service"></canvas></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Attendance Projection vs Actual — By Service</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="att-detail-table">
+            <thead><tr><th>Service</th><th class="num">${BASELINE_YEAR} Baseline</th><th class="num">Q1</th><th class="num">Q2</th><th class="num">Q3</th><th class="num">Q4</th><th class="num">Change</th></tr></thead>
+            <tbody id="att-detail-body"></tbody>
+            <tfoot><tr id="att-detail-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Recent Service Attendance Records</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="att-records-table">
+            <thead><tr><th>Congregation</th><th>Date</th><th>Service</th><th class="num">Svc 1</th><th class="num">Svc 2</th><th class="num">J. Youth</th><th class="num">Children</th><th class="num">Total</th></tr></thead>
+            <tbody id="att-records-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOULS WON -->
+    <div id="page-souls" class="page">
+      <div class="page-header"><h2>Souls Won / Mission &amp; Evangelism</h2><p>Evangelism events and souls won across all congregations</p></div>
+      <div class="stat-grid stat-grid-3" id="souls-stats"></div>
+      <div class="card">
+        <div class="card-hdr"><h3>M&amp;E Event Log — All Congregations</h3><span class="card-badge" id="souls-event-count">0 events</span></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="souls-table">
+            <thead><tr><th>Congregation</th><th>Event</th><th>Date</th><th>Type</th><th class="num">Participants</th><th class="num">Souls Won</th></tr></thead>
+            <tbody id="souls-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Souls Won by Congregation</h3></div>
+        <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-souls"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- GROUP MEETINGS -->
+    <div id="page-groups" class="page">
+      <div class="page-header"><h2>Group Meeting Attendance</h2><p>YPG, YAF, Women's, Men's, Bible Club and other group meetings</p></div>
+      <div class="stat-grid stat-grid-3" id="grp-stats"></div>
+      <div class="card">
+        <div class="card-hdr"><h3>Group Meeting Summary — Q1 to Q4</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="grp-summary-table">
+            <thead><tr><th>Group</th><th class="num">${BASELINE_YEAR} Baseline</th><th class="num">Q1 Avg</th><th class="num">Q2 Avg</th><th class="num">Q3 Avg</th><th class="num">Q4 Avg</th><th class="num">Total Meetings</th></tr></thead>
+            <tbody id="grp-summary-body"></tbody>
+            <tfoot><tr id="grp-summary-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Group Attendance Chart</h3></div>
+        <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-groups"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- FINANCE -->
+    <div id="page-finance" class="page">
+      <div class="page-header"><h2>Finance Summary</h2><p>Receipts, payments, transfers and financial health across congregations</p></div>
+      <div class="stat-grid stat-grid-4" id="fin-stats"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hdr"><h3>Receipts vs Payments</h3></div>
+          <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-fin-bar"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><h3>Receipt Categories (Top 10)</h3></div>
+          <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-fin-cat"></canvas></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Quarterly Earmarked Expenditure</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="fin-exp-table">
+            <thead><tr><th>Category</th><th class="num">${BASELINE_YEAR} Baseline</th><th class="num">Target</th><th class="num">Q1</th><th class="num">Q2</th><th class="num">Q3</th><th class="num">Q4</th><th class="num">Total</th></tr></thead>
+            <tbody id="fin-exp-body"></tbody>
+            <tfoot><tr id="fin-exp-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3 id="fin-entity-title">Per-Congregation Finance</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="fin-entity-table">
+            <thead><tr><th>Entity</th><th class="num">Total Receipts</th><th class="num">Total Payments</th><th class="num">Net</th><th class="num">Kutunse Transfer</th></tr></thead>
+            <tbody id="fin-entity-body"></tbody>
+            <tfoot><tr id="fin-entity-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- WELFARE & SCHOLARSHIP -->
+    <div id="page-welfare" class="page">
+      <div class="page-header"><h2>Welfare &amp; Scholarship</h2><p>Welfare support and scholarship disbursements across all congregations</p></div>
+      <div class="stat-grid stat-grid-4" id="wel-stats"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hdr"><h3>Welfare by Congregation</h3></div>
+          <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-welfare"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><h3>Scholarship Disbursements</h3></div>
+          <div class="card-body"><div class="chart-wrap-lg"><canvas id="chart-scholarship"></canvas></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Welfare &amp; Scholarship by Entity</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="wel-table">
+            <thead><tr><th>Entity</th><th class="num">Welfare Cases</th><th class="num">Welfare (GH₵)</th><th class="num">Scholarship Recipients</th><th class="num">Scholarship (GH₵)</th><th class="num">Total Support</th></tr></thead>
+            <tbody id="wel-body"></tbody>
+            <tfoot><tr id="wel-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAND & PROPERTY -->
+    <div id="page-land" class="page">
+      <div class="page-header"><h2>Land &amp; Property</h2><p>All land parcels and landed properties across congregations</p></div>
+      <div class="stat-grid stat-grid-4" id="land-stats"></div>
+      <div class="card">
+        <div class="card-hdr"><h3>Land &amp; Property Register</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="land-table">
+            <thead><tr><th>Congregation</th><th>Property Name</th><th>Location</th><th class="num">Size (ha)</th><th>Title Status</th><th>Litigation</th><th>Notes</th></tr></thead>
+            <tbody id="land-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Land per Congregation</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable" id="land-entity-table">
+            <thead><tr><th>Congregation</th><th class="num">Parcels</th><th class="num">Area (ha)</th><th class="num">In Litigation</th><th>Status</th></tr></thead>
+            <tbody id="land-entity-body"></tbody>
+            <tfoot><tr id="land-entity-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENTITIES PAGE -->
+    <div id="page-entities" class="page">
+      <div class="page-header">
+        <h2 id="entities-page-title">Congregations</h2>
+        <p id="entities-page-sub">Click any card to filter other dashboards to that entity</p>
+      </div>
+      <div class="filter-bar">
+        <span class="filter-label">Sort by</span>
+        <select class="filter-sel" id="entity-sort" onchange="renderEntityCards()">
+          <option value="name">Name</option>
+          <option value="members">Members (High→Low)</option>
+          <option value="attendance">Attendance (High→Low)</option>
+          <option value="receipts">Receipts (High→Low)</option>
+        </select>
+      </div>
+      <div class="entity-grid" id="entity-grid"></div>
+    </div>
+
+    <!-- CDO SUMMARY PAGE -->
+    <div id="page-cdo-summary" class="page">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+        <div>
+          <div class="breadcrumb" id="cdo-breadcrumb"></div>
+          <h2 id="cdo-summary-title">Cong. Summary — CDO Aggregate</h2>
+          <p id="cdo-summary-subtitle">Aggregated Congregational Data Output across all congregations</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span id="cdo-sum-year-badge" style="background:var(--navy);color:var(--pcg-gold-light);padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600"></span>
+          <span id="cdo-sum-cong-count" style="background:var(--cream2);color:var(--ink3);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600"></span>
+        </div>
+      </div>
+
+      <!-- CDO-1 KPI -->
+      <div class="section-title">📊 CDO-1 · Congregational KPI Data Output</div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-hdr">
+          <h3>KPI Performance — All Committees</h3>
+          <div class="updated-badge"><div class="updated-dot"></div><span id="cdo-sum-updated">—</span></div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="dtable cdo-table" id="cdo-sum-kpi-table">
+            <thead>
+              <tr>
+                <th style="width:72px">Code</th>
+                <th style="min-width:230px">Goals / KPI</th>
+                <th style="width:48px">Unit</th>
+                <th class="num" style="width:88px" id="cdo-sum-th-prev">Prev Year</th>
+                <th class="num" style="width:88px">Q1</th>
+                <th class="num" style="width:88px">Q2</th>
+                <th class="num" style="width:88px">Q3</th>
+                <th class="num" style="width:88px">Q4</th>
+              </tr>
+            </thead>
+            <tbody id="cdo-sum-kpi-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CDO-2 Membership -->
+      <div class="section-title">👥 CDO-2 · Congregational Membership Data Output</div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-hdr"><h3>Membership by Category — District Total</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable cdo-table" id="cdo-sum-mem-table">
+            <thead>
+              <tr>
+                <th style="width:72px">Code</th>
+                <th style="min-width:230px">Category</th>
+                <th style="width:48px">Unit</th>
+                <th class="num" style="width:88px">Prev Year</th>
+                <th class="num" style="width:88px">Q1</th>
+                <th class="num" style="width:88px">Q2</th>
+                <th class="num" style="width:88px">Q3</th>
+                <th class="num" style="width:88px">Q4</th>
+              </tr>
+            </thead>
+            <tbody id="cdo-sum-mem-body"></tbody>
+            <tfoot><tr id="cdo-sum-mem-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- CDO-3 Attendance -->
+      <div class="section-title">⛪ CDO-3 · Congregational Attendance Data Output</div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-hdr"><h3>Attendance by Service &amp; Group — District Total</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable cdo-table" id="cdo-sum-att-table">
+            <thead>
+              <tr>
+                <th style="width:72px">Code</th>
+                <th style="min-width:230px">Service / Group</th>
+                <th style="width:48px">Unit</th>
+                <th class="num" style="width:88px">Prev Year</th>
+                <th class="num" style="width:88px">Q1</th>
+                <th class="num" style="width:88px">Q2</th>
+                <th class="num" style="width:88px">Q3</th>
+                <th class="num" style="width:88px">Q4</th>
+              </tr>
+            </thead>
+            <tbody id="cdo-sum-att-body"></tbody>
+            <tfoot><tr id="cdo-sum-att-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- CDO-4 Land -->
+      <div class="section-title">🏘️ CDO-4 · Congregational Land Ownership Data Output</div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-hdr"><h3>Land &amp; Property — District Total</h3></div>
+        <div class="tbl-wrap">
+          <table class="dtable cdo-table" id="cdo-sum-land-table">
+            <thead>
+              <tr>
+                <th style="width:72px">Code</th>
+                <th style="min-width:230px">Land Type</th>
+                <th style="width:48px">Unit</th>
+                <th class="num" style="width:88px">Prev Year</th>
+                <th class="num" style="width:88px">Q1</th>
+                <th class="num" style="width:88px">Q2</th>
+                <th class="num" style="width:88px">Q3</th>
+                <th class="num" style="width:88px">Q4</th>
+              </tr>
+            </thead>
+            <tbody id="cdo-sum-land-body"></tbody>
+            <tfoot><tr id="cdo-sum-land-foot" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <p class="page-note">
+        ⓘ <strong>Prev Year</strong> = prior year actuals (baseline). &nbsp;
+        <strong>Q1–Q4</strong> = summed actuals across all congregations that have saved their CDO. &nbsp;
+        Percentage (%) and Date rows carry the first congregation's value. &nbsp;
+        Only congregations that have saved their Cong. Summary are included.
+      </p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         CONGREGATIONS PAGE — per-congregation CDO view with tabs
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-congregations" class="page">
+      <div class="page-header">
+        <div class="breadcrumb" id="cong-breadcrumb"></div>
+        <h2>Congregations — CDO Summary</h2>
+        <p>Full Congregational Data Output for each congregation, exactly as entered in ChurchOS.</p>
+      </div>
+      <!-- Horizontal congregation tabs (built dynamically) -->
+      <div class="cong-tabs" id="cong-tabs"></div>
+      <!-- Per-congregation CDO content (built dynamically) -->
+      <div id="cong-panels"></div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<!-- FIREBASE SCRIPTS -->
+<script type="module">
+import { initializeApp }             from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut,
+         sendPasswordResetEmail, onAuthStateChanged }
+                                     from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getDatabase, ref, get, onValue }
+                                     from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyA3vzjg1s6JwEjTzkLy9sptXoqrgfoAkQQ",
+  authDomain:        "pcg-erp-1e1d0.firebaseapp.com",
+  databaseURL:       "https://pcg-erp-1e1d0-default-rtdb.firebaseio.com",
+  projectId:         "pcg-erp-1e1d0",
+  storageBucket:     "pcg-erp-1e1d0.firebasestorage.app",
+  messagingSenderId: "97661604507",
+  appId:             "1:97661604507:web:646869f00c6b14aa07ac3e"
+};
+
+const fbApp  = initializeApp(firebaseConfig);
+const fbAuth = getAuth(fbApp);
+const fbDb   = getDatabase(fbApp);
+
+// Reporting year (module-owned; not dependent on the render script block)
+const CURRENT_YEAR  = new Date().getFullYear();
+const BASELINE_YEAR = CURRENT_YEAR - 1;
+const PREV_YEAR     = BASELINE_YEAR;
+const CURRENT_Q     = Math.ceil((new Date().getMonth() + 1) / 3);
+
+// ═══════════════════════════════════
+// EXPOSE TO GLOBAL
+// ═══════════════════════════════════
+window._fb = { fbAuth, fbDb, ref, get, onValue, signInWithEmailAndPassword, signOut, sendPasswordResetEmail };
+Object.assign(window, { CURRENT_YEAR, BASELINE_YEAR, PREV_YEAR, CURRENT_Q });
+
+// ═══════════════════════════════════
+// AUTH STATE
+// ═══════════════════════════════════
+onAuthStateChanged(fbAuth, async (user) => {
+  if (!user) {
+    document.getElementById('login-overlay').style.display = 'flex';
+    document.getElementById('app').style.visibility = 'hidden';
+    document.getElementById('topbar').style.visibility = 'hidden';
+    window._session = null;
+    return;
+  }
+
+  // Load user profile
+  const snap = await get(ref(fbDb, 'users/' + user.uid));
+  const profile = snap.exists() ? snap.val() : {};
+
+  const role = profile.role || 'readonly';
+  const level = profile.level || 'congregation';
+  const congregationId = profile.congregationId || '';
+  const districtId     = profile.districtId     || '';
+  const presbyteryId   = profile.presbyteryId   || '';
+  const displayName    = profile.displayName || user.email || 'Admin';
+
+  // Only allow hierarchy-level roles
+  const allowedRoles = ['district_admin','presbytery_admin','national_admin'];
+  if (!allowedRoles.includes(role)) {
+    document.getElementById('login-error').textContent = 'This portal is for district, presbytery, or national administrators only. Please use the congregation app.';
+    document.getElementById('login-error').style.display = 'block';
+    await signOut(fbAuth);
+    return;
+  }
+
+  window._session = { uid: user.uid, email: user.email, role, level, congregationId, districtId, presbyteryId, displayName };
+
+  // Update UI
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('app').style.visibility = 'visible';
+  document.getElementById('topbar').style.visibility = 'visible';
+  document.getElementById('user-avatar').textContent = displayName.charAt(0).toUpperCase();
+
+  const levelMap = {
+    district_admin:   { badge: 'District Admin',   cls: 'lb-district',   entitiesLabel: 'Congregations', scope: districtId, scopeLabel: districtId },
+    presbytery_admin: { badge: 'Presbytery Admin',  cls: 'lb-presbytery', entitiesLabel: 'Districts',     scope: presbyteryId, scopeLabel: presbyteryId },
+    national_admin:   { badge: 'National Admin',    cls: 'lb-national',   entitiesLabel: 'Presbyteries',  scope: 'Ghana', scopeLabel: 'National' },
+  };
+  const lm = levelMap[role] || levelMap.national_admin;
+
+  const badgeEl = document.getElementById('level-badge');
+  badgeEl.textContent = lm.badge;
+  badgeEl.className = 'level-badge ' + lm.cls;
+  document.getElementById('scope-label').textContent = lm.scopeLabel || lm.scope;
+  document.getElementById('entities-label').textContent = lm.entitiesLabel;
+  document.getElementById('sidebar-footer').textContent = displayName + ' · ' + lm.badge;
+
+  // Load data
+  await window.loadHierarchyData();
+});
+
+// ═══════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════
+window.doLogin = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  const loadEl= document.getElementById('login-loading');
+  const btn   = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+  if (!email || !pass) { errEl.textContent='Enter your email and password.'; errEl.style.display='block'; return; }
+  btn.disabled = true; loadEl.style.display = 'block';
+  try {
+    await signInWithEmailAndPassword(fbAuth, email, pass);
+  } catch(err) {
+    btn.disabled = false; loadEl.style.display = 'none';
+    const msgs = {
+      'auth/user-not-found': 'No account found for this email.',
+      'auth/wrong-password': 'Incorrect password.',
+      'auth/invalid-credential': 'Invalid email or password.',
+      'auth/too-many-requests': 'Too many attempts. Please wait.',
+      'auth/invalid-email': 'Invalid email address.',
+    };
+    errEl.textContent = msgs[err.code] || ('Error: ' + err.code);
+    errEl.style.display = 'block';
+  }
+};
+
+window.doLogout = async function() { await signOut(fbAuth); };
+
+window.doReset = async function() {
+  const email = document.getElementById('reset-email').value.trim();
+  const msgEl = document.getElementById('reset-msg');
+  if (!email) { msgEl.style.cssText='display:block;background:#FDECEA;color:#C0392B;padding:9px 13px;border-radius:7px;font-size:12.5px'; msgEl.textContent='Enter your email.'; return; }
+  try {
+    await sendPasswordResetEmail(fbAuth, email);
+    msgEl.style.cssText='display:block;background:#E8F8F0;color:#1E7E56;padding:9px 13px;border-radius:7px;font-size:12.5px';
+    msgEl.textContent='Reset link sent! Check your inbox.';
+  } catch(e) {
+    msgEl.style.cssText='display:block;background:#FDECEA;color:#C0392B;padding:9px 13px;border-radius:7px;font-size:12.5px';
+    msgEl.textContent='Error: ' + e.message;
+  }
+};
+
+// ═══════════════════════════════════
+// DATA LOADING
+// ═══════════════════════════════════
+window.loadHierarchyData = async function() {
+  if (!window._session) return;
+  const { role, districtId, presbyteryId } = window._session;
+  const { ref, get, fbDb } = window._fb;
+
+  document.getElementById('dash-loading').style.display = 'block';
+  document.getElementById('dash-content').style.display = 'none';
+
+  // CDO data: each congregation saves erp_cdo_summary_v1 under
+  //   congregations/{congId}/erp_cdo_summary_v1
+  // We load congregation IDs from the district/presbytery hierarchy,
+  // then fetch each congregation's CDO summary directly.
+  let congIds = [];   // congregation IDs in scope
+  let entityMeta = {}; // id → { name, districtId, presbyteryId }
+
+  try {
+    if (role === 'district_admin') {
+      const snap = await get(ref(fbDb, 'districts/' + districtId + '/congregations'));
+      if (snap.exists()) {
+        const congMap = snap.val();
+        congIds = Object.keys(congMap);
+        congIds.forEach(cid => {
+          const meta = congMap[cid];
+          const name = (meta.index && meta.index.name) || meta.name || meta.summary?.name || cid;
+          entityMeta[cid] = { name, districtId, parentId: districtId };
+        });
+      }
+    } else if (role === 'presbytery_admin') {
+      // Load all districts under this presbytery, then get their congregations
+      const snap = await get(ref(fbDb, 'presbyteries/' + presbyteryId + '/districts'));
+      if (snap.exists()) {
+        const distMap = snap.val();
+        // For presbytery level we aggregate per-district.
+        // Each district gets its own entity; its CDO = sum of its congregation CDOs.
+        window._districtIds = Object.keys(distMap);
+        window._presbyCongMap = {}; // districtId → [congIds]
+        const distCongFetches = window._districtIds.map(did =>
+          get(ref(fbDb, 'districts/' + did + '/congregations'))
+            .then(cs => ({ did, val: cs.exists() ? cs.val() : {} }))
+            .catch(() => ({ did, val: {} }))
+        );
+        const distResults = await Promise.all(distCongFetches);
+        distResults.forEach(({ did, val }) => {
+          const cids = Object.keys(val);
+          window._presbyCongMap[did] = cids;
+          cids.forEach(cid => {
+            congIds.push(cid);
+            const m2 = val[cid]; const nm2 = (m2.index&&m2.index.name)||m2.name||m2.summary?.name||cid;
+            entityMeta[cid] = { name: nm2, districtId: did, parentId: did };
+          });
+          entityMeta['__dist__' + did] = { name: distMap[did]?.name || did,
+                                            isDistrict: true, districtId: did };
+        });
+      }
+    } else if (role === 'national_admin') {
+      // Load all presbyteries → districts → congregations
+      const snap = await get(ref(fbDb, 'presbyteries'));
+      if (snap.exists()) {
+        const presMap = snap.val();
+        const presFetches = Object.keys(presMap).map(pid =>
+          get(ref(fbDb, 'presbyteries/' + pid + '/districts'))
+            .then(ds => ({ pid, val: ds.exists() ? ds.val() : {} }))
+            .catch(() => ({ pid, val: {} }))
+        );
+        const presResults = await Promise.all(presFetches);
+        window._nationalMap = {}; // presId → distIds
+        for (const { pid, val: distMap } of presResults) {
+          window._nationalMap[pid] = [];
+          const distFetches = Object.keys(distMap).map(did =>
+            get(ref(fbDb, 'districts/' + did + '/congregations'))
+              .then(cs => ({ did, val: cs.exists() ? cs.val() : {} }))
+              .catch(() => ({ did, val: {} }))
+          );
+          const distResults = await Promise.all(distFetches);
+          distResults.forEach(({ did, val }) => {
+            window._nationalMap[pid].push(did);
+            Object.keys(val).forEach(cid => {
+              congIds.push(cid);
+              entityMeta[cid] = { name: val[cid].name || cid,
+                                   districtId: did, presbyteryId: pid, parentId: pid };
+            });
+          });
+          entityMeta['__pres__' + pid] = { name: presMap[pid]?.name || pid,
+                                            isPresbytery: true, presbyteryId: pid };
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('Firebase hierarchy load error:', e);
+    showToast('Error loading hierarchy: ' + e.message);
+  }
+
+  // Deduplicate congregation IDs
+  congIds = [...new Set(congIds)];
+
+  // Fetch both paths for every congregation in parallel:
+  //  /summary          — auto-written on every login (dashboard fields: membership, attendance, etc.)
+  //  /erp_cdo_summary_v1 — written when user saves CDO tab (has kpi/mem/att/land arrays)
+  const EXTRA_DATA_KEYS = ['erp_attendance', 'erp_grp_recs_v5', 'erp_admin_lands_v1'];
+  const cdoFetches = congIds.map(cid =>
+    Promise.all([
+      get(ref(fbDb, 'congregations/' + cid + '/summary'))
+        .then(s => s.exists() ? s.val() : null).catch(() => null),
+      get(ref(fbDb, 'congregations/' + cid + '/erp_cdo_summary_v1'))
+        .then(s => s.exists() ? s.val() : null).catch(() => null),
+      ...EXTRA_DATA_KEYS.map(key =>
+        get(ref(fbDb, 'congregations/' + cid + '/' + fbKeyToPath(key)))
+          .then(s => s.exists() ? parseStoredJson(s.val()) : null)
+          .catch(() => null)
+      ),
+    ]).then(([summary, cdoV1, att, grp, adminLands]) => ({ cid, summary, cdoV1, att, grp, adminLands }))
+  );
+  const cdoResults = await Promise.all(cdoFetches);
+
+  // cdoMap: congId → summary object (for dashboard aggregation)
+  // cdoV1Map: congId → raw CDO arrays (kpi/mem/att/land) for the CDO read-only tables
+  const cdoMap   = {};
+  const cdoV1Map = {};
+  const attByCong = {};
+  const grpByCong = {};
+  const adminLandsByCong = {};
+  cdoResults.forEach(({ cid, summary, cdoV1, att, grp, adminLands }) => {
+    if (summary) cdoMap[cid]   = summary;
+    if (cdoV1) {
+      const normalized = normalizeCdoV1(cdoV1);
+      if (normalized) cdoV1Map[cid] = normalized;
+    }
+    if (Array.isArray(att)) attByCong[cid] = att;
+    if (grp && typeof grp === 'object') grpByCong[cid] = grp;
+    if (Array.isArray(adminLands)) adminLandsByCong[cid] = adminLands;
+  });
+
+  window._cdoMap    = cdoMap;
+  window._cdoV1Map  = cdoV1Map;
+  window._attByCong = attByCong;
+  window._grpByCong = grpByCong;
+  window._adminLandsByCong = adminLandsByCong;
+  window._entityMeta = entityMeta;
+  window._congIds   = congIds;
+
+  // Build entity list from summary data
+  window._entities = buildEntityListFromCDO(cdoMap, entityMeta, window._session.role);
+
+  if (!window._entities.length) {
+    showToast('No summary data found. Congregations must log in to the main app to publish their summary.');
+  }
+
+  renderAllPages();
+
+  const congPg = document.getElementById('page-congregations');
+  if (congPg && congPg.classList.contains('active')) renderCongsPage();
+
+  document.getElementById('dash-loading').style.display = 'none';
+  document.getElementById('dash-content').style.display = 'block';
+};
+
+window.refreshData = async function() {
+  showToast('Refreshing data…');
+  await window.loadHierarchyData();
+  showToast('Data refreshed ✓');
+};
+
+// ═══════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════
+function mergeDeep(target, source) {
+  const out = Object.assign({}, target);
+  if (isObj(target) && isObj(source)) {
+    Object.keys(source).forEach(k => {
+      if (isObj(source[k])) {
+        if (!target[k]) out[k] = source[k];
+        else out[k] = mergeDeep(target[k], source[k]);
+      } else out[k] = source[k];
+    });
+  }
+  return out;
+}
+function isObj(v){ return v && typeof v === 'object' && !Array.isArray(v); }
+
+// ── CDO helpers ──────────────────────────────────────────────
+
+// Firebase stores JS arrays as {"0":x,"1":y}; churchos saves CDO as a JSON string.
+function fbRestoreArrays(val) {
+  if (val === null || val === undefined) return val;
+  if (Array.isArray(val)) return val.map(fbRestoreArrays);
+  if (typeof val === 'object') {
+    const keys = Object.keys(val);
+    const isNumericObj = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
+    if (isNumericObj) {
+      const arr = [];
+      keys.sort((a, b) => Number(a) - Number(b)).forEach(k => arr.push(fbRestoreArrays(val[k])));
+      return arr;
+    }
+    const out = {};
+    keys.forEach(k => { out[k] = fbRestoreArrays(val[k]); });
+    return out;
+  }
+  return val;
+}
+
+// Normalise congregations/{id}/erp_cdo_summary_v1 for read-only CDO tables.
+function normalizeCdoV1(val) {
+  if (val == null) return null;
+  let data = val;
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data); } catch (e) { return null; }
+  }
+  if (typeof data !== 'object') return null;
+  return fbRestoreArrays(data);
+}
+window.normalizeCdoV1 = normalizeCdoV1;
+window.parseLandSizeHa = parseLandSizeHa;
+window.grpMeetingAttendance = grpMeetingAttendance;
+window.landParcelsFromAdminLands = landParcelsFromAdminLands;
+
+function fbKeyToPath(key) {
+  return key.replace(/\./g, '_').replace(/-/g, '_');
+}
+
+function parseStoredJson(val) {
+  if (val == null) return null;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch (e) { return null; }
+  }
+  return fbRestoreArrays(val);
+}
+
+// Admin lands store size in hectares; legacy rows may use acres in sizeStr.
+function parseLandSizeHa(size, sizeStr) {
+  const fromStr = (s) => {
+    if (!s) return null;
+    const acres = String(s).match(/([\d.]+)\s*acres?/i);
+    if (acres) return parseFloat(acres[1]) * 0.404686;
+    const ha = String(s).match(/([\d.]+)\s*ha\b/i);
+    if (ha) return parseFloat(ha[1]);
+    return null;
+  };
+  const parsed = fromStr(sizeStr) ?? fromStr(size);
+  if (parsed != null && !isNaN(parsed)) return parsed;
+  const n = parseFloat(size);
+  return isNaN(n) ? 0 : n;
+}
+
+function grpMeetingAttendance(r) {
+  return (parseInt(r.attOffline, 10) || parseInt(r.attendance, 10) || 0)
+       + (parseInt(r.attOnline, 10) || 0);
+}
+
+function landParcelsFromAdminLands(adminLands) {
+  if (!Array.isArray(adminLands) || !adminLands.length) return null;
+  return adminLands.map(al => ({
+    name:       al.name || '',
+    location:   al.location || '',
+    size:       parseLandSizeHa(al.size, al.sizeStr),
+    sizeStr:    al.sizeStr || '',
+    title:      al.title || '',
+    litigation: al.litigation || 'No',
+    notes:      al.notes || '',
+    status:     al.title || '',
+  }));
+}
+
+// Build one normalised summary object from congregations/{id}/summary data.
+// This path is written automatically by publishCongregationSummary() on every
+// congregation login — no manual CDO save required.
+//
+// Summary shape (from publishCongregationSummary):
+//   { name, district, presbytery, currentYear, updatedAt,
+//     membership:  { total2024, totalQ1-Q4, byGroup, activeCount, totalCount, byStatus }
+//     attendance:  { total2024, totalQ1-Q4, byService }
+//     groups:      { totalMeetings, byGroup }
+//     visitors:    { total, newConverts, visitors }
+//     events:      { total, totalParticipants, soulsWon, byCoordinator, byType }
+//     finance:     { totalReceipts, totalPayments, totalGiving, givingCount, expenditure }
+//     welfare:     { count, total }
+//     scholarship: { count, total }
+//     land:        { count, parcels:[{name,location,size,litigation,status}] }
+//   }
+function cdoToSummary(summary, name) {
+  if (!summary) return { name };
+
+  // Use the current-quarter field for scalar KPIs shown on the dashboard.
+  // Falls back through earlier quarters so partially-complete years still show data.
+  const qField = 'totalQ' + CURRENT_Q;
+  const qFallback = s => s[qField] || s['totalQ' + (CURRENT_Q-1)] || s['totalQ' + (CURRENT_Q-2)] || s.totalQ4 || s.totalQ1 || 0;
+
+  const mem  = summary.membership  || {};
+  const att  = summary.attendance  || {};
+  const fin  = summary.finance     || {};
+  const wel  = summary.welfare     || {};
+  const sch  = summary.scholarship || {};
+  const land = summary.land        || {};
+  const ev   = summary.events      || {};
+  const vis  = summary.visitors    || {};
+  const grp  = summary.groups      || {};
+  const edu  = summary.education   || {};
+
+  // Membership — keep the full quarterly shape that aggregateTotals expects
+  const membership = {
+    totalPrev:   mem.totalPrev || mem.total2024 || 0,
+    totalQ1:     mem.totalQ1   || 0,
+    totalQ2:     mem.totalQ2   || 0,
+    totalQ3:     mem.totalQ3   || 0,
+    totalQ4:     mem.totalQ4   || 0,
+    activeCount: mem.activeCount || mem.totalCount || 0,
+    byGroup: (function() {
+      const bg = mem.byGroup;
+      if (!bg) return [];
+      return (Array.isArray(bg) ? bg : Object.values(bg)).map(g => ({
+        label: g.label,
+        prev: g.a2024 || g.prev || 0,
+        q1:    g.q1    || 0,
+        q2:    g.q2    || 0,
+        q3:    g.q3    || 0,
+        q4:    g.q4    || 0,
+      }));
+    })(),
+  };
+
+  // Attendance — keep the full quarterly shape
+  const attendance = {
+    totalPrev:   att.totalPrev || att.total2024 || 0,
+    totalQ1:     att.totalQ1   || 0,
+    totalQ2:     att.totalQ2   || 0,
+    totalQ3:     att.totalQ3   || 0,
+    totalQ4:     att.totalQ4   || 0,
+    byService: (function() {
+      const bs = att.byService;
+      if (!bs) return [];
+      return (Array.isArray(bs) ? bs : Object.values(bs)).map(s => ({
+        label: s.label,
+        prev: s.a2024 || s.prev || 0,
+        q1:    s.q1    || 0,
+        q2:    s.q2    || 0,
+        q3:    s.q3    || 0,
+        q4:    s.q4    || 0,
+      }));
+    })(),
+  };
+
+  // Land — parcels carry {name, location, size (ha), title, litigation}
+  const landData = {
+    count:   land.count || 0,
+    parcels: (function() {
+      const p = land.parcels;
+      if (!p) return [];
+      return (Array.isArray(p) ? p : Object.values(p)).map(r => ({
+        name:       r.name       || '',
+        location:   r.location   || '',
+        size:       parseLandSizeHa(r.size, r.sizeStr),
+        sizeStr:    r.sizeStr    || '',
+        litigation: r.litigation || 'No',
+        title:      r.title      || r.status || '',
+        status:     r.status     || r.title  || '',
+        notes:      r.notes      || '',
+      }));
+    })(),
+  };
+  if (!landData.count && landData.parcels.length) landData.count = landData.parcels.length;
+
+  // KPI scalars for dashboard cards — sourced directly from structured fields.
+  // Use current quarter's data; fall back to the most recent available quarter.
+  const soulsWon         = ev.soulsWon            || 0;
+  const meActivities     = ev.total               || 0;
+  const personsReached   = ev.totalParticipants   || 0;
+  const newConverts      = vis.newConverts         || 0;
+  const welfareCount     = wel.count              || 0;
+  const welfareAmt       = wel.total              || 0;
+  const schCount         = sch.count              || 0;
+  const schTotal         = sch.total              || 0;
+  const receipts         = fin.totalReceipts      || 0;
+  const payments         = fin.totalPayments      || 0;
+
+  // Land title counts from parcels
+  const ltcStatuses = ['Land Title Certificate','Registered Deed','Missionary Deed'];
+  const landsLTC    = landData.parcels.filter(p => ltcStatuses.includes(p.title)).length;
+  const propsInsured = 0; // not in summary shape — would need erp_cdo for this
+
+  // Training person-days: not in summary shape (no training module in publishCongregationSummary)
+  const agentsPD = 0;
+  const staffPD  = 0;
+
+  // DSS/ESR activities: events.byCoordinator / byType carry these if populated
+  const byCoord = ev.byCoordinator || {};
+  const dssAct  = (byCoord['DSS'] || byCoord['Development & Social Services'] || 0);
+  const esrAct  = (byCoord['ESR'] || byCoord['Ecumenical & Social Relations'] || 0);
+  const entAct  = (byCoord['Entrepreneurial'] || 0);
+  const prisonVisits = (byCoord['Prison'] || byCoord['Prison Ministry'] || 0);
+  const counselAct   = grp.totalMeetings || 0; // best proxy available from summary
+  const personsCounselled = 0;
+
+  // Education — quarterly breakdowns from eduSummary
+  // Each qN sub-object carries: academicPersons, worshipServices, nupsgActivities,
+  // visitsSHS, visitsTertiary, mentorYouth (from publishCongregationSummary)
+  const education = {
+    academicActivities:    edu.academicActivities    || 0,
+    academicPersons:       edu.academicPersons       || 0,
+    schoolWorshipServices: edu.schoolWorshipServices || 0,
+    langEnrolled:          edu.langEnrolled          || 0,
+    langCompleted:         edu.langCompleted          || 0,
+    nupsgActivities:       edu.nupsgActivities       || 0,
+    nupsgPersons:          edu.nupsgPersons          || 0,
+    visitsSHS:             edu.visitsSHS             || 0,
+    visitsTertiary:        edu.visitsTertiary        || 0,
+    mentorYouth:           edu.mentorYouth           || 0,
+    q1: edu.q1 || {},
+    q2: edu.q2 || {},
+    q3: edu.q3 || {},
+    q4: edu.q4 || {},
+  };
+  const expenditure = (function() {
+    const ex = fin.expenditure;
+    if (!ex) return [];
+    return (Array.isArray(ex) ? ex : Object.values(ex)).map(r => ({
+      label:  r.label  || '',
+      prev:  r.a2024  || r.prev  || 0,
+      target: r.target || r.t1 || 0,
+      q1:     r.q1     || 0,
+      q2:     r.q2     || 0,
+      q3:     r.q3     || 0,
+      q4:     r.q4     || 0,
+    }));
+  })();
+
+  return {
+    // Identity
+    name:        summary.name        || name,
+    district:    summary.district    || '',
+    presbytery:  summary.presbytery  || '',
+    year:        summary.currentYear || CURRENT_YEAR,
+    prevYear:    (summary.currentYear ? summary.currentYear - 2 : BASELINE_YEAR),
+    updatedAt:   summary.updatedAt   || 0,
+
+    // Structured sections (used by aggregateTotals + render functions)
+    membership,
+    attendance,
+    land:        landData,
+    finance:     { totalReceipts: receipts, totalPayments: payments,
+                   totalGiving: fin.totalGiving || 0, expenditure },
+    welfare:     { count: welfareCount, total: welfareAmt },
+    scholarship: { count: schCount,     total: schTotal },
+    events:      { total: meActivities, soulsWon, totalParticipants: personsReached,
+                   byCoordinator: ev.byCoordinator || {}, byType: ev.byType || {},
+                   q1: ev.q1||{}, q2: ev.q2||{}, q3: ev.q3||{}, q4: ev.q4||{} },
+    visitors:    { total: vis.total || 0, newConverts,
+                   q1: vis.q1||{}, q2: vis.q2||{}, q3: vis.q3||{}, q4: vis.q4||{} },
+    groups:      { totalMeetings: grp.totalMeetings || 0, byGroup: grp.byGroup || {},
+                   q1: grp.q1||{}, q2: grp.q2||{}, q3: grp.q3||{}, q4: grp.q4||{} },
+    education,
+
+    // Flat KPI scalars (used by aggregateTotals + dashboard cards)
+    soulsWon, meActivities, personsReached, newConverts, prisonVisits,
+    agentsPD, staffPD,
+    welfareCount, welfareAmt,
+    schCount, schTotal,
+    receipts, payments,
+    dssAct, entAct, esrAct,
+    counselAct, personsCounselled,
+    landsLTC, propsInsured,
+    // Education flat scalars
+    eduAcademicAct:   education.academicActivities,
+    eduAcademicPax:   education.academicPersons,
+    eduWorship:       education.schoolWorshipServices,
+    eduLangEnrolled:  education.langEnrolled,
+    eduLangCompleted: education.langCompleted,
+    eduNupsgAct:      education.nupsgActivities,
+    eduNupsgPax:      education.nupsgPersons,
+    eduVisits:        (education.visitsSHS || 0) + (education.visitsTertiary || 0),
+    eduMentorYouth:   education.mentorYouth,
+
+    // kpi/mem/att/land raw arrays are NOT available from the summary path.
+    // renderCDOSummary checks for their presence and shows a graceful message.
+    kpi: null, mem: null, att: null,
+  };
+}
+
+// Build entity list from congregations/{id}/summary data
+function buildEntityListFromCDO(cdoMap, entityMeta, role) {
+  const entities = [];
+
+  // cdoV1Map holds the raw kpi/mem/att/land arrays from erp_cdo_summary_v1
+  const cdoV1Map = window._cdoV1Map || {};
+
+  if (role === 'district_admin') {
+    // Each congregation is one entity
+    // Use all known congregations from entityMeta (even those with no summary yet)
+    const allCids = [...new Set([...Object.keys(cdoMap), ...Object.keys(entityMeta).filter(k => !k.startsWith('__'))])];
+    allCids.forEach(cid => {
+      const meta    = entityMeta[cid] || {};
+      const summary = cdoMap[cid] || null;
+      const v1      = cdoV1Map[cid] || null;
+      const name    = (summary && summary.name) || meta.name || cid;
+      const mapped  = cdoToSummary(summary || {}, name);
+      const adminParcels = landParcelsFromAdminLands((window._adminLandsByCong || {})[cid]);
+      if (adminParcels) {
+        mapped.land = { count: adminParcels.length, parcels: adminParcels };
+        const ltcStatuses = ['Land Title Certificate', 'Registered Deed', 'Missionary Deed'];
+        mapped.landsLTC = adminParcels.filter(p => ltcStatuses.includes(p.title)).length;
+      }
+      // raw = saved Cong. Summary (erp_cdo_summary_v1); empty sections → summary fallback in UI
+      const raw = v1
+        ? { ...v1, kpi: v1.kpi || [], mem: v1.mem || [], att: v1.att || [], land: v1.land || [] }
+        : { kpi:[], mem:[], att:[], land:[], year: CURRENT_YEAR, prevYear: BASELINE_YEAR };
+      entities.push({ id: cid, name, summary: mapped, raw });
+    });
+  } else if (role === 'presbytery_admin') {
+    // Each district is one entity; roll up all its congregations' summaries
+    (window._districtIds || []).forEach(did => {
+      const meta = entityMeta['__dist__' + did] || {};
+      const distName = meta.name || did;
+      const cids = (window._presbyCongMap || {})[did] || [];
+      const distSummaries = cids.map(cid => cdoMap[cid] ? cdoToSummary(cdoMap[cid], entityMeta[cid]?.name || cid) : null).filter(Boolean);
+      const aggSummary = aggregateCDOSummaries(distSummaries, distName);
+      entities.push({ id: did, name: distName, summary: aggSummary, raw: {}, congCount: cids.length });
+    });
+  } else if (role === 'national_admin') {
+    // Each presbytery is one entity; roll up all its congregations' summaries
+    Object.entries(window._nationalMap || {}).forEach(([pid, distIds]) => {
+      const meta = entityMeta['__pres__' + pid] || {};
+      const presName = meta.name || pid;
+      const cids = Object.keys(entityMeta).filter(k => !k.startsWith('__') && entityMeta[k].presbyteryId === pid);
+      const presSummaries = [...new Set(cids)].map(cid => cdoMap[cid] ? cdoToSummary(cdoMap[cid], entityMeta[cid]?.name || cid) : null).filter(Boolean);
+      const aggSummary = aggregateCDOSummaries(presSummaries, presName);
+      entities.push({ id: pid, name: presName, summary: aggSummary, raw: {}, congCount: presSummaries.length });
+    });
+  }
+
+  return entities.sort((a,b) => a.name.localeCompare(b.name));
+}
+
+// Aggregate multiple mapped summary objects (output of cdoToSummary) into one.
+// Used by presbytery (aggregates congregations per district) and national (per presbytery).
+function aggregateCDOSummaries(summaries, name) {
+  const agg = {
+    name,
+    membership: { totalPrev:0, totalQ1:0, totalQ2:0, totalQ3:0, totalQ4:0, byGroup:{}, activeCount:0 },
+    attendance: { totalPrev:0, totalQ1:0, totalQ2:0, totalQ3:0, totalQ4:0, byService:{} },
+    finance:    { totalReceipts:0, totalPayments:0, totalGiving:0, expenditure:[] },
+    welfare:    { count:0, total:0 },
+    scholarship:{ count:0, total:0 },
+    land:       { count:0, parcels:[] },
+    events:     { total:0, soulsWon:0, totalParticipants:0 },
+    visitors:   { total:0, newConverts:0 },
+    groups:     { totalMeetings:0 },
+    soulsWon:0, meActivities:0, personsReached:0, newConverts:0,
+    agentsPD:0, staffPD:0, welfareCount:0, welfareAmt:0, schCount:0, schTotal:0,
+    receipts:0, payments:0, dssAct:0, entAct:0, esrAct:0, prisonVisits:0,
+    counselAct:0, personsCounselled:0, landsLTC:0, propsInsured:0,
+    // Education flat scalars
+    eduAcademicAct:0, eduAcademicPax:0, eduWorship:0,
+    eduLangEnrolled:0, eduLangCompleted:0,
+    eduNupsgAct:0, eduNupsgPax:0, eduVisits:0, eduMentorYouth:0,
+    // Education structured with quarterly breakdowns
+    education: {
+      academicActivities:0, academicPersons:0, schoolWorshipServices:0,
+      langEnrolled:0, langCompleted:0, nupsgActivities:0, nupsgPersons:0,
+      visitsSHS:0, visitsTertiary:0, mentorYouth:0,
+      q1:{academicPersons:0,worshipServices:0,nupsgActivities:0,visitsSHS:0,visitsTertiary:0,mentorYouth:0},
+      q2:{academicPersons:0,worshipServices:0,nupsgActivities:0,visitsSHS:0,visitsTertiary:0,mentorYouth:0},
+      q3:{academicPersons:0,worshipServices:0,nupsgActivities:0,visitsSHS:0,visitsTertiary:0,mentorYouth:0},
+      q4:{academicPersons:0,worshipServices:0,nupsgActivities:0,visitsSHS:0,visitsTertiary:0,mentorYouth:0},
+    },
+    updatedAt:0,
+    kpi: null, mem: null, att: null,
+  };
+  if (!summaries.length) return agg;
+
+  summaries.forEach(s => {
+    if (!s) return;
+    const m  = s.membership  || {};
+    const a  = s.attendance  || {};
+    const f  = s.finance     || {};
+    const w  = s.welfare     || {};
+    const sc = s.scholarship || {};
+    const l  = s.land        || {};
+    const ev = s.events      || {};
+    const vi = s.visitors    || {};
+    const gr = s.groups      || {};
+
+    // Membership quarterly totals
+    agg.membership.totalPrev   += (m.totalPrev   || m.total2024 || 0);
+    agg.membership.totalQ1     += (m.totalQ1     || 0);
+    agg.membership.totalQ2     += (m.totalQ2     || 0);
+    agg.membership.totalQ3     += (m.totalQ3     || 0);
+    agg.membership.totalQ4     += (m.totalQ4     || 0);
+    agg.membership.activeCount += (m.activeCount || 0);
+    // byGroup — accumulate by label
+    (Array.isArray(m.byGroup) ? m.byGroup : Object.values(m.byGroup||{})).forEach(g => {
+      if (!g || !g.label) return;
+      if (!agg.membership.byGroup[g.label])
+        agg.membership.byGroup[g.label] = { label:g.label, prev:0, q1:0, q2:0, q3:0, q4:0 };
+      const bg = agg.membership.byGroup[g.label];
+      bg.prev += (g.a2024||g.prev||0); bg.q1 += (g.q1||0); bg.q2 += (g.q2||0);
+      bg.q3   += (g.q3||0);    bg.q4 += (g.q4||0);
+    });
+
+    // Attendance quarterly totals
+    agg.attendance.totalPrev += (a.totalPrev || a.total2024 || 0);
+    agg.attendance.totalQ1   += (a.totalQ1   || 0);
+    agg.attendance.totalQ2   += (a.totalQ2   || 0);
+    agg.attendance.totalQ3   += (a.totalQ3   || 0);
+    agg.attendance.totalQ4   += (a.totalQ4   || 0);
+    // byService — accumulate by label
+    (Array.isArray(a.byService) ? a.byService : Object.values(a.byService||{})).forEach(sv => {
+      if (!sv || !sv.label) return;
+      if (!agg.attendance.byService[sv.label])
+        agg.attendance.byService[sv.label] = { label:sv.label, prev:0, q1:0, q2:0, q3:0, q4:0 };
+      const as = agg.attendance.byService[sv.label];
+      as.prev += (sv.a2024||sv.prev||0); as.q1 += (sv.q1||0); as.q2 += (sv.q2||0);
+      as.q3   += (sv.q3||0);    as.q4 += (sv.q4||0);
+    });
+
+    // Finance
+    agg.finance.totalReceipts += (f.totalReceipts || 0);
+    agg.finance.totalPayments += (f.totalPayments || 0);
+    agg.finance.totalGiving   += (f.totalGiving   || 0);
+    // Expenditure — accumulate by label
+    (Array.isArray(f.expenditure) ? f.expenditure : Object.values(f.expenditure||{})).forEach(ex => {
+      if (!ex || !ex.label) return;
+      const existing = agg.finance.expenditure.find(e => e.label === ex.label);
+      if (existing) {
+        existing.prev   += (ex.a2024||ex.prev||0); existing.target += (ex.target || 0);
+        existing.q1     += (ex.q1     || 0); existing.q2     += (ex.q2     || 0);
+        existing.q3     += (ex.q3     || 0); existing.q4     += (ex.q4     || 0);
+      } else {
+        agg.finance.expenditure.push({ ...ex });
+      }
+    });
+
+    // Welfare / scholarship / land / events / visitors / groups
+    agg.welfare.count          += (w.count          || 0);
+    agg.welfare.total          += (w.total          || 0);
+    agg.scholarship.count      += (sc.count         || 0);
+    agg.scholarship.total      += (sc.total         || 0);
+    agg.land.count             += (l.count          || 0);
+    const parcels = Array.isArray(l.parcels) ? l.parcels : Object.values(l.parcels||{});
+    parcels.forEach(p => agg.land.parcels.push({ ...p, _entity: s.name }));
+    agg.events.total           += (ev.total          || 0);
+    agg.events.soulsWon        += (ev.soulsWon       || 0);
+    agg.events.totalParticipants += (ev.totalParticipants || 0);
+    agg.visitors.total         += (vi.total          || 0);
+    agg.visitors.newConverts   += (vi.newConverts    || 0);
+    agg.groups.totalMeetings   += (gr.totalMeetings  || 0);
+
+    // Flat KPI scalars
+    agg.soulsWon             += (s.soulsWon          || 0);
+    agg.meActivities         += (s.meActivities      || 0);
+    agg.personsReached       += (s.personsReached    || 0);
+    agg.newConverts          += (s.newConverts       || 0);
+    agg.agentsPD             += (s.agentsPD          || 0);
+    agg.staffPD              += (s.staffPD           || 0);
+    agg.welfareCount         += (s.welfareCount      || 0);
+    agg.welfareAmt           += (s.welfareAmt        || 0);
+    agg.schCount             += (s.schCount          || 0);
+    agg.schTotal             += (s.schTotal          || 0);
+    agg.receipts             += (s.receipts          || 0);
+    agg.payments             += (s.payments          || 0);
+    agg.dssAct               += (s.dssAct            || 0);
+    agg.entAct               += (s.entAct            || 0);
+    agg.esrAct               += (s.esrAct            || 0);
+    agg.prisonVisits         += (s.prisonVisits      || 0);
+    agg.counselAct           += (s.counselAct        || 0);
+    agg.personsCounselled    += (s.personsCounselled || 0);
+    agg.landsLTC             += (s.landsLTC          || 0);
+    agg.propsInsured         += (s.propsInsured      || 0);
+    // Education flat scalars
+    agg.eduAcademicAct   += (s.eduAcademicAct   || 0);
+    agg.eduAcademicPax   += (s.eduAcademicPax   || 0);
+    agg.eduWorship       += (s.eduWorship       || 0);
+    agg.eduLangEnrolled  += (s.eduLangEnrolled  || 0);
+    agg.eduLangCompleted += (s.eduLangCompleted || 0);
+    agg.eduNupsgAct      += (s.eduNupsgAct      || 0);
+    agg.eduNupsgPax      += (s.eduNupsgPax      || 0);
+    agg.eduVisits        += (s.eduVisits        || 0);
+    agg.eduMentorYouth   += (s.eduMentorYouth   || 0);
+    // Education structured quarterly accumulation
+    const sedu = s.education || {};
+    agg.education.academicActivities    += (sedu.academicActivities    || 0);
+    agg.education.academicPersons       += (sedu.academicPersons       || 0);
+    agg.education.schoolWorshipServices += (sedu.schoolWorshipServices || 0);
+    agg.education.langEnrolled          += (sedu.langEnrolled          || 0);
+    agg.education.langCompleted         += (sedu.langCompleted         || 0);
+    agg.education.nupsgActivities       += (sedu.nupsgActivities       || 0);
+    agg.education.nupsgPersons          += (sedu.nupsgPersons          || 0);
+    agg.education.visitsSHS             += (sedu.visitsSHS             || 0);
+    agg.education.visitsTertiary        += (sedu.visitsTertiary        || 0);
+    agg.education.mentorYouth           += (sedu.mentorYouth           || 0);
+    ['q1','q2','q3','q4'].forEach(q => {
+      const sq = sedu[q] || {};
+      const aq = agg.education[q];
+      aq.academicPersons  += (sq.academicPersons  || 0);
+      aq.worshipServices  += (sq.worshipServices  || 0);
+      aq.nupsgActivities  += (sq.nupsgActivities  || 0);
+      aq.visitsSHS        += (sq.visitsSHS        || 0);
+      aq.visitsTertiary   += (sq.visitsTertiary   || 0);
+      aq.mentorYouth      += (sq.mentorYouth      || 0);
+    });
+    if (s.updatedAt > agg.updatedAt) agg.updatedAt = s.updatedAt;
+  });
+
+  // Convert byGroup/byService maps back to arrays
+  agg.membership.byGroup   = Object.values(agg.membership.byGroup);
+  agg.attendance.byService = Object.values(agg.attendance.byService);
+  return agg;
+}
+
+// Keep old names as aliases for any residual calls
+function buildEntityList(rawData, role) { return window._entities || []; }
+function aggregateSubs(subs, parentId, parentData) { return {}; }
+
+window._buildEntityList = buildEntityListFromCDO;
+window._aggregateSubs   = aggregateCDOSummaries;
+
+</script>
+
+<script>
+const CURRENT_YEAR  = new Date().getFullYear();  // 2026
+// Baseline year: ERP stores previous year actuals under a2024 / total2024.
+// When summaries include currentYear, we derive baseline = currentYear-1 per entity.
+// For display labels we use BASELINE_YEAR (2024) and CURRENT_YEAR (2026).
+const BASELINE_YEAR = CURRENT_YEAR - 1;  // previous year — dynamic
+// PREV_YEAR kept for backwards compat with any remaining references
+const PREV_YEAR     = CURRENT_YEAR - 1;
+const CURRENT_Q     = Math.ceil((new Date().getMonth() + 1) / 3);
+
+// ═══════════════════════════════════════════════════
+// RENDER ENGINE (non-module global script)
+// ═══════════════════════════════════════════════════
+
+const fmtGH  = v => 'GH₵' + (v||0).toLocaleString('en-GH', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtN   = v => (v||0).toLocaleString();
+const fmtHa  = v => (parseFloat(v)||0).toFixed(2) + ' ha';
+const parseLandHa = (size, sizeStr) =>
+  (typeof window.parseLandSizeHa === 'function' ? window.parseLandSizeHa(size, sizeStr) : (parseFloat(size) || 0));
+const grpAtt = (r) =>
+  (typeof window.grpMeetingAttendance === 'function' ? window.grpMeetingAttendance(r) : (parseInt(r.attendance, 10) || 0));
+const escH   = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const pct    = (a,b) => b ? Math.round((a/b-1)*100) : null;
+const pctStr = v => v===null ? '—' : (v>=0?`<span class="trend-up">↑ ${v}%</span>`:`<span class="trend-dn">↓ ${Math.abs(v)}%</span>`);
+const fmtDate= s => { if(!s) return '—'; try{ return new Date(s+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); } catch(e){ return s; }};
+
+let _charts = {};
+function destroyChart(id) { if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; } }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+window.showToast = showToast;
+
+function showPage(page, navEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById('page-' + page);
+  if (pg) pg.classList.add('active');
+  if (navEl) navEl.classList.add('active');
+  // Build the congregations page on demand (lazy — only when first visited)
+  if (page === 'congregations') renderCongsPage();
+}
+window.showPage = showPage;
+
+function showLogin() {
+  document.getElementById('login-panel').style.display = 'block';
+  document.getElementById('reset-panel').style.display = 'none';
+}
+function showReset() {
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('reset-panel').style.display = 'block';
+}
+window.showLogin = showLogin;
+window.showReset = showReset;
+
+// ─────────────────────────────────────────────
+// CONGREGATIONS PAGE — full per-congregation CDO
+// ─────────────────────────────────────────────
+
+function renderCongsPage() {
+  const entities  = window._entities || [];
+  const tabsEl    = document.getElementById('cong-tabs');
+  const panelsEl  = document.getElementById('cong-panels');
+  if (!tabsEl || !panelsEl) return;
+
+  // Show all entities — fall back to summary data when CDO arrays aren't available
+  const congs = entities;
+
+  if (!congs.length) {
+    tabsEl.innerHTML   = '';
+    panelsEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No congregation data loaded yet.</div></div>';
+    return;
+  }
+
+  // Build breadcrumb
+  const bc = document.getElementById('cong-breadcrumb');
+  if (bc) { const s = window._session||{}; bc.textContent = (s.districtName||s.districtId||'') + (s.presbyteryId ? ' · ' + s.presbyteryId : ''); }
+
+  // Build tabs
+  tabsEl.innerHTML = congs.map((e, i) =>
+    `<div class="cong-tab${i === 0 ? ' active' : ''}" onclick="switchCongTab(${i})" id="cong-tab-${i}">${e.name}</div>`
+  ).join('');
+
+  // Build one panel per congregation
+  panelsEl.innerHTML = congs.map((e, i) =>
+    `<div id="cong-panel-${i}" style="${i === 0 ? '' : 'display:none'}">${buildCDOReadOnlyTables(e)}</div>`
+  ).join('');
+}
+window.renderCongsPage = renderCongsPage;
+
+function switchCongTab(idx) {
+  document.querySelectorAll('.cong-tab').forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('[id^="cong-panel-"]').forEach((p, i) => {
+    p.style.display = i === idx ? '' : 'none';
+  });
+}
+window.switchCongTab = switchCongTab;
+
+function buildCDOReadOnlyTables(entity) {
+  const raw  = normalizeCdoV1(entity.raw) || entity.raw || {};
+  // Guard: ensure all four sections are always arrays — never Firebase numeric-key objects
+  const kpi  = Array.isArray(raw.kpi)  ? raw.kpi  : [];
+  const mem  = Array.isArray(raw.mem)  ? raw.mem  : [];
+  const att  = Array.isArray(raw.att)  ? raw.att  : [];
+  const land = Array.isArray(raw.land) ? raw.land : [];
+  const CY   = raw.year     || window.CURRENT_YEAR;
+  const PY   = raw.prevYear || (CY - 1);
+  const hasSavedCdo = kpi.length || mem.length || att.length || land.length;
+
+  // No saved Cong. Summary yet — fall back to auto-published summary dashboard data
+  if (!hasSavedCdo) {
+    return buildSummaryTables(entity);
+  }
+
+  function fv(row, field) {
+    const v = row[field];
+    return (v !== undefined && v !== null && v !== '') ? v : '—';
+  }
+
+  function numCell(row, field) {
+    const v = row[field];
+    const n = parseFloat(v);
+    if (v === '' || v === null || v === undefined) return '<td class="num' + (row.auto ? ' auto' : '') + '">—</td>';
+    return `<td class="num${row.auto ? ' auto' : ''}">${isNaN(n) ? v : n.toLocaleString()}</td>`;
+  }
+
+  // ── CDO-1 KPI ──────────────────────────────────────────────────────
+  let lastSection = null;
+  const kpiRows = kpi.map(r => {
+    let sectionHdr = '';
+    if (r.section && r.section !== lastSection) {
+      lastSection = r.section;
+      sectionHdr = `<tr class="cdo-ro-section"><th colspan="9">${r.section}</th></tr>`;
+    }
+    const auto = r.auto ? ' auto' : '';
+    return sectionHdr + `<tr>
+      <td class="code${auto}">${r.code||''}</td>
+      <td${auto ? ' class="auto"' : ''}>${r.label}${r.auto ? ' <span style="font-size:9px;color:var(--gold-dark);font-style:italic">(auto)</span>' : ''}</td>
+      <td class="${auto}num">${r.unit||''}</td>
+      ${numCell(r,'prev')}${numCell(r,'target')}${numCell(r,'q1')}${numCell(r,'q2')}${numCell(r,'q3')}${numCell(r,'q4')}
+    </tr>`;
+  }).join('');
+
+  // ── CDO-2 Membership ───────────────────────────────────────────────
+  const memTotals = ['prev','q1','q2','q3','q4'].map(f => mem.reduce((a,r) => a + (parseFloat(r[f])||0), 0));
+  const memRows = mem.map(r => `<tr>
+    <td class="code">${r.code||''}</td><td>${r.label}</td><td>${r.unit||''}</td>
+    ${numCell(r,'prev')}${numCell(r,'target')}${numCell(r,'q1')}${numCell(r,'q2')}${numCell(r,'q3')}${numCell(r,'q4')}
+  </tr>`).join('') +
+  `<tr class="total-row">
+    <td colspan="3">Total</td>
+    ${memTotals.map((v,i) => `<td class="num">${v||'—'}</td>${i===0?'<td class="num">—</td>':''}`).join('')}
+  </tr>`;
+
+  // ── CDO-3 Attendance ───────────────────────────────────────────────
+  const attTotals = ['prev','q1','q2','q3','q4'].map(f => att.reduce((a,r) => a + (parseFloat(r[f])||0), 0));
+  const attRows = att.map(r => `<tr>
+    <td class="code">${r.code||''}</td><td>${r.label}</td><td>${r.unit||''}</td>
+    ${numCell(r,'prev')}${numCell(r,'target')}${numCell(r,'q1')}${numCell(r,'q2')}${numCell(r,'q3')}${numCell(r,'q4')}
+  </tr>`).join('') +
+  `<tr class="total-row">
+    <td colspan="3">Total</td>
+    ${attTotals.map((v,i) => `<td class="num">${v||'—'}</td>${i===0?'<td class="num">—</td>':''}`).join('')}
+  </tr>`;
+
+  // ── CDO-4 Land ─────────────────────────────────────────────────────
+  const landRows = land.map(r => `<tr>
+    <td class="code">${r.code||''}</td><td>${r.label}</td><td>${r.unit||''}</td>
+    ${numCell(r,'prev')}${numCell(r,'target')}${numCell(r,'q1')}${numCell(r,'q2')}${numCell(r,'q3')}${numCell(r,'q4')}
+  </tr>`).join('');
+
+  const thead = (prevLabel) => `<thead><tr>
+    <th style="width:70px">Code</th>
+    <th style="min-width:220px">Description</th>
+    <th style="width:55px">Unit</th>
+    <th class="num" style="width:86px">${prevLabel} Actual</th>
+    <th class="num" style="width:86px">${CY} Target</th>
+    <th class="num" style="width:86px">Q1</th>
+    <th class="num" style="width:86px">Q2</th>
+    <th class="num" style="width:86px">Q3</th>
+    <th class="num" style="width:86px">Q4</th>
+  </tr></thead>`;
+
+  return `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+      <span style="background:var(--navy);color:var(--pcg-gold-light);padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600">Reporting Year: ${CY}</span>
+      <span style="background:var(--cream2);color:var(--ink3);padding:4px 12px;border-radius:20px;font-size:11px">Prev Year: ${PY}</span>
+      <span style="background:var(--cream2);color:var(--ink3);padding:4px 12px;border-radius:20px;font-size:11px;font-style:italic">Read-only — edit in ChurchOS app</span>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">CDO-1 · Congregational KPI Data Output</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead(PY)}<tbody>${kpiRows}</tbody></table></div>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">CDO-2 · Congregational Membership Data Output</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead(PY)}<tbody>${memRows}</tbody></table></div>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">CDO-3 · Congregational Attendance Data Output</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead(PY)}<tbody>${attRows}</tbody></table></div>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">CDO-4 · Congregational Land Ownership Data Output</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead(PY)}<tbody>${landRows}</tbody></table></div>
+    </div>`;
+}
+window.buildCDOReadOnlyTables = buildCDOReadOnlyTables;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// buildSummaryTables — renderer from congregations/{id}/summary structured data.
+// Builds CDO-1 through CDO-4 + Finance + Education blocks.
+function buildSummaryTables(entity) {
+  const s   = entity.summary || {};
+  const m   = s.membership   || {};
+  const a   = s.attendance   || {};
+  const f   = s.finance      || {};
+  const w   = s.welfare      || {};
+  const sc  = s.scholarship  || {};
+  const l   = s.land         || {};
+  const ev  = s.events       || {};
+  const vis = s.visitors     || {};
+  const edu = s.education    || {};
+  const CY  = (typeof CURRENT_YEAR  !== 'undefined' ? CURRENT_YEAR  : (window.CURRENT_YEAR  || new Date().getFullYear()));
+  const PY  = (typeof BASELINE_YEAR !== 'undefined' ? BASELINE_YEAR : (window.BASELINE_YEAR || (CY - 1)));
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  // Right-aligned numeric cell
+  const nc = (v, cls='') => {
+    const n = parseFloat(v);
+    const content = (v === null || v === undefined || v === '') ? '—'
+                  : isNaN(n) ? v : n.toLocaleString();
+    return `<td class="num${cls ? ' '+cls : ''}">${content}</td>`;
+  };
+
+  // Quarter accessor for finance (falls back to empty object)
+  const fQ = q => f['q' + q] || {};
+  // Quarter accessor for events
+  const evQ = q => ev['q' + q] || {};
+  // Quarter accessor for visitors
+  const visQ = q => vis['q' + q] || {};
+  // Quarter accessor for welfare
+  const welQ = q => (w['q' + q]) || {};
+  // Quarter accessor for scholarship
+  const schQ = q => (sc['q' + q]) || {};
+  // Quarter accessor for education
+  const eduQ = q => edu['q' + q] || {};
+
+  // Full-row helper: code, label, unit, prev, q1, q2, q3, q4
+  const quarterRow = (code, label, unit, prev, q1, q2, q3, q4, opts={}) => {
+    const fmt = v => {
+      if (v === null || v === undefined || v === '' || v === 0 && !opts.showZero) return '—';
+      return opts.currency ? fmtGH(v) : fmtN(v);
+    };
+    const hi = (q, n) => {
+      const val = fmt(q);
+      const isActive = n === CURRENT_Q;
+      return `<td class="num"${isActive ? ' style="background:rgba(201,147,42,.07);font-weight:600"' : ''}>${val}</td>`;
+    };
+    return `<tr>
+      <td class="code">${code}</td>
+      <td>${label}</td>
+      <td>${unit}</td>
+      ${nc(prev === null || prev === undefined ? '' : (prev || ''))}
+      ${hi(q1,1)}${hi(q2,2)}${hi(q3,3)}${hi(q4,4)}
+    </tr>`;
+  };
+
+  // Section header row
+  const sectionHdr = label =>
+    `<tr class="cdo-section-hdr"><td colspan="8" style="padding:7px 12px;background:var(--navy);color:var(--pcg-gold-light);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">${label}</td></tr>`;
+
+  // ── thead — 7 cols: Code | Description | Unit | PY Actual | Q1 | Q2 | Q3 | Q4 ──
+  const thead = `<thead><tr>
+    <th style="width:70px">Code</th>
+    <th style="min-width:220px">Description</th>
+    <th style="width:55px">Unit</th>
+    <th class="num" style="width:86px">${PY} Actual</th>
+    <th class="num" style="width:82px">Q1</th>
+    <th class="num" style="width:82px">Q2</th>
+    <th class="num" style="width:82px">Q3</th>
+    <th class="num" style="width:82px">Q4</th>
+  </tr></thead>`;
+
+  // ── CDO-1  KPI rows — all sourced from structured summary sub-objects ──────
+  // Events quarterly
+  const kpiRows = [
+    sectionHdr('Mission & Evangelism'),
+    quarterRow('ME-01','Souls Won (M&E)',          'No.',  null, evQ(1).soulsWon,      evQ(2).soulsWon,      evQ(3).soulsWon,      evQ(4).soulsWon),
+    quarterRow('ME-02','M&E Activities',           'No.',  null, evQ(1).total,         evQ(2).total,         evQ(3).total,         evQ(4).total),
+    quarterRow('',     'Persons Reached',          'No.',  null, evQ(1).participants,  evQ(2).participants,  evQ(3).participants,  evQ(4).participants),
+    quarterRow('ME-04','New Converts',             'No.',  null, visQ(1).newConverts,  visQ(2).newConverts,  visQ(3).newConverts,  visQ(4).newConverts),
+
+    sectionHdr('Administration & HR'),
+    quarterRow('AHRM-01','Agents Trained (Person-Days)', 'P.Day', null, 0,0,0,0),
+    quarterRow('AHRM-02','Staff Trained (Person-Days)',  'P.Day', null, 0,0,0,0),
+
+    sectionHdr('Welfare & Development'),
+    quarterRow('DSS-06','Welfare Cases',           'No.',  null, welQ(1).count,        welQ(2).count,        welQ(3).count,        welQ(4).count),
+    quarterRow('',      'Welfare Amount (GH₵)',    'GH₵',  null, welQ(1).total,        welQ(2).total,        welQ(3).total,        welQ(4).total, {currency:true}),
+
+    sectionHdr('Scholarships'),
+    quarterRow('Edu-07','Scholarship Beneficiaries','No.', null, schQ(1).count,        schQ(2).count,        schQ(3).count,        schQ(4).count),
+    quarterRow('',      'Scholarship Amount (GH₵)','GH₵', null, schQ(1).total,        schQ(2).total,        schQ(3).total,        schQ(4).total, {currency:true}),
+
+    sectionHdr('Education'),
+    quarterRow('Edu-01','Academic Excellence Activities', 'No.', null, eduQ(1).academicPersons ? 1:null, eduQ(2).academicPersons ? 1:null, eduQ(3).academicPersons ? 1:null, eduQ(4).academicPersons ? 1:null),
+    quarterRow('',      'Persons Participating (Academic)','No.',null, eduQ(1).academicPersons, eduQ(2).academicPersons, eduQ(3).academicPersons, eduQ(4).academicPersons),
+    quarterRow('Edu-02','School Worship Services', 'No.',  null, eduQ(1).worshipServices, eduQ(2).worshipServices, eduQ(3).worshipServices, eduQ(4).worshipServices),
+    quarterRow('Edu-03','Persons Enrolled (Ghanaian Lang)','No.',null, null,null,null,null),
+    quarterRow('',      'Persons Completed (Ghanaian Lang)','No.',null,null,null,null,null),
+    quarterRow('Edu-04','NUPS-G Activities',       'No.',  null, eduQ(1).nupsgActivities, eduQ(2).nupsgActivities, eduQ(3).nupsgActivities, eduQ(4).nupsgActivities),
+    quarterRow('',      'Persons Participated (NUPS-G)','No.',null,null,null,null,null),
+    quarterRow('Edu-05','Members Visited (SHS+Tertiary)','No.',null,
+      (eduQ(1).visitsSHS||0)+(eduQ(1).visitsTertiary||0),
+      (eduQ(2).visitsSHS||0)+(eduQ(2).visitsTertiary||0),
+      (eduQ(3).visitsSHS||0)+(eduQ(3).visitsTertiary||0),
+      (eduQ(4).visitsSHS||0)+(eduQ(4).visitsTertiary||0)),
+    quarterRow('Edu-06','Youth Mentored',          'No.',  null, eduQ(1).mentorYouth,  eduQ(2).mentorYouth,  eduQ(3).mentorYouth,  eduQ(4).mentorYouth),
+
+    sectionHdr('Visitors'),
+    quarterRow('VIS-01','Total Visitors',          'No.',  null, visQ(1).total,        visQ(2).total,        visQ(3).total,        visQ(4).total),
+    quarterRow('VIS-02','New Converts (Visitor)','No.',    null, visQ(1).newConverts,  visQ(2).newConverts,  visQ(3).newConverts,  visQ(4).newConverts),
+  ].join('');
+
+  // ── CDO-2  Membership ───────────────────────────────────────────────────────
+  const byGroup = m.byGroup
+    ? (Array.isArray(m.byGroup) ? m.byGroup : Object.values(m.byGroup))
+    : [];
+  let memRows = '';
+  let tPrev=0, tQ1=0, tQ2=0, tQ3=0, tQ4=0;
+  if (byGroup.length) {
+    byGroup.forEach((g, i) => {
+      const prev = g.a2024 || g.prev || 0;
+      const q1=g.q1||0, q2=g.q2||0, q3=g.q3||0, q4=g.q4||0;
+      tPrev+=prev; tQ1+=q1; tQ2+=q2; tQ3+=q3; tQ4+=q4;
+      memRows += `<tr>
+        <td class="code">M${String(i+1).padStart(2,'0')}</td>
+        <td>${escH(g.label||'Group '+(i+1))}</td><td>No.</td>
+        ${nc(prev)}${nc(q1)}${nc(q2)}${nc(q3)}${nc(q4)}
+      </tr>`;
+    });
+  } else {
+    const prev=m.totalPrev||m.total2024||0, q1=m.totalQ1||0, q2=m.totalQ2||0, q3=m.totalQ3||0, q4=m.totalQ4||0;
+    tPrev=prev; tQ1=q1; tQ2=q2; tQ3=q3; tQ4=q4;
+    memRows = `<tr><td class="code">M01</td><td>Total Membership (aggregated)</td><td>No.</td>
+      ${nc(prev)}${nc(q1)}${nc(q2)}${nc(q3)}${nc(q4)}</tr>`;
+  }
+  memRows += `<tr class="total-row"><td colspan="3">Total</td>${nc(tPrev)}${nc(tQ1)}${nc(tQ2)}${nc(tQ3)}${nc(tQ4)}</tr>`;
+
+  // ── CDO-3  Attendance ───────────────────────────────────────────────────────
+  const byService = a.byService
+    ? (Array.isArray(a.byService) ? a.byService : Object.values(a.byService))
+    : [];
+  let attRows = '';
+  let aPrev=0, aQ1=0, aQ2=0, aQ3=0, aQ4=0;
+  if (byService.length) {
+    byService.forEach((sv, i) => {
+      const prev=sv.a2024||sv.prev||0, q1=sv.q1||0, q2=sv.q2||0, q3=sv.q3||0, q4=sv.q4||0;
+      aPrev+=prev; aQ1+=q1; aQ2+=q2; aQ3+=q3; aQ4+=q4;
+      attRows += `<tr>
+        <td class="code">A${String(i+1).padStart(2,'0')}</td>
+        <td>${escH(sv.label||'Service '+(i+1))}</td><td>No.</td>
+        ${nc(prev)}${nc(q1)}${nc(q2)}${nc(q3)}${nc(q4)}
+      </tr>`;
+    });
+  } else {
+    const prev=a.totalPrev||a.total2024||0, q1=a.totalQ1||0, q2=a.totalQ2||0, q3=a.totalQ3||0, q4=a.totalQ4||0;
+    aPrev=prev; aQ1=q1; aQ2=q2; aQ3=q3; aQ4=q4;
+    attRows = `<tr><td class="code">A01</td><td>Total Attendance (aggregated)</td><td>No.</td>
+      ${nc(prev)}${nc(q1)}${nc(q2)}${nc(q3)}${nc(q4)}</tr>`;
+  }
+  attRows += `<tr class="total-row"><td colspan="3">Total</td>${nc(aPrev)}${nc(aQ1)}${nc(aQ2)}${nc(aQ3)}${nc(aQ4)}</tr>`;
+
+  // ── CDO-4  Land ─────────────────────────────────────────────────────────────
+  const landCount = l.count || 0;
+  const landLTC   = s.landsLTC || 0;
+  const landRows = [
+    quarterRow('L01','Lands with LTC / Title Deeds','No.', null, landLTC,   landLTC,   landLTC,   landLTC,   {showZero:false}),
+    quarterRow('L02','Properties Insured',           'No.', null, s.propsInsured||0, s.propsInsured||0, s.propsInsured||0, s.propsInsured||0, {showZero:false}),
+    quarterRow('L03','Land Records (total)',         'No.', null, landCount, landCount, landCount, landCount, {showZero:false}),
+  ].join('');
+
+  // ── Finance ────────────────────────────────────────────────────────────────
+  const finRows = [
+    quarterRow('F01','Total Receipts','GH₵', f.totalReceipts, fQ(1).receipts, fQ(2).receipts, fQ(3).receipts, fQ(4).receipts, {currency:true}),
+    quarterRow('F02','Total Payments','GH₵', f.totalPayments, fQ(1).payments, fQ(2).payments, fQ(3).payments, fQ(4).payments, {currency:true}),
+    quarterRow('F03','Net Position', 'GH₵',
+      (f.totalReceipts||0)-(f.totalPayments||0),
+      (fQ(1).receipts||0)-(fQ(1).payments||0),
+      (fQ(2).receipts||0)-(fQ(2).payments||0),
+      (fQ(3).receipts||0)-(fQ(3).payments||0),
+      (fQ(4).receipts||0)-(fQ(4).payments||0), {currency:true}),
+  ].join('');
+
+  // ── Education block ─────────────────────────────────────────────────────────
+  const eduRows = [
+    quarterRow('Edu-01','Academic Excellence Activities','No.', edu.academicActivities,
+      null, null, null, null),
+    quarterRow('',     'Persons Participating (Academic)','No.', edu.academicPersons,
+      eduQ(1).academicPersons, eduQ(2).academicPersons, eduQ(3).academicPersons, eduQ(4).academicPersons),
+    quarterRow('Edu-02','School Worship Services','No.', edu.schoolWorshipServices,
+      eduQ(1).worshipServices, eduQ(2).worshipServices, eduQ(3).worshipServices, eduQ(4).worshipServices),
+    quarterRow('Edu-03','Persons Enrolled (Ghanaian Lang)','No.', edu.langEnrolled, null,null,null,null),
+    quarterRow('',     'Persons Completed (Ghanaian Lang)','No.', edu.langCompleted, null,null,null,null),
+    quarterRow('Edu-04','NUPS-G Activities','No.', edu.nupsgActivities,
+      eduQ(1).nupsgActivities, eduQ(2).nupsgActivities, eduQ(3).nupsgActivities, eduQ(4).nupsgActivities),
+    quarterRow('',     'Persons Participated (NUPS-G)','No.', edu.nupsgPersons, null,null,null,null),
+    quarterRow('Edu-05','Members Visited (SHS + Tertiary)','No.',
+      (edu.visitsSHS||0)+(edu.visitsTertiary||0),
+      (eduQ(1).visitsSHS||0)+(eduQ(1).visitsTertiary||0),
+      (eduQ(2).visitsSHS||0)+(eduQ(2).visitsTertiary||0),
+      (eduQ(3).visitsSHS||0)+(eduQ(3).visitsTertiary||0),
+      (eduQ(4).visitsSHS||0)+(eduQ(4).visitsTertiary||0)),
+    quarterRow('Edu-06','Youth Mentored (Career/Guidance)','No.', edu.mentorYouth,
+      eduQ(1).mentorYouth, eduQ(2).mentorYouth, eduQ(3).mentorYouth, eduQ(4).mentorYouth),
+  ].join('');
+
+  const updStr = s.updatedAt
+    ? new Date(s.updatedAt).toLocaleDateString('en-GH', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    : '—';
+
+  return `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+      <span style="background:var(--navy);color:var(--pcg-gold-light);padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600">Reporting Year: ${CY}</span>
+      <span style="background:var(--cream2);color:var(--ink3);padding:4px 12px;border-radius:20px;font-size:11px">Prev Year: ${PY}</span>
+      <span style="background:rgba(30,126,86,.12);color:var(--green);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600">📡 From summary path</span>
+      <span style="background:var(--cream2);color:var(--ink3);padding:4px 12px;border-radius:20px;font-size:11px">Last sync: ${updStr}</span>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">CDO-1 · Congregational KPI Data Output</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead}<tbody>${kpiRows}</tbody></table></div>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">CDO-2 · Congregational Membership Data Output</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead}<tbody>${memRows}</tbody></table></div>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">CDO-3 · Congregational Attendance Data Output</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead}<tbody>${attRows}</tbody></table></div>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">CDO-4 · Congregational Land Ownership Data Output</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead}<tbody>${landRows}</tbody></table></div>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">Finance Summary</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead}<tbody>${finRows}</tbody></table></div>
+    </div>
+
+    <div class="cdo-block">
+      <div class="cdo-block-title">Education Summary</div>
+      <div style="overflow-x:auto"><table class="cdo-ro-table">${thead}<tbody>${eduRows}</tbody></table></div>
+    </div>`;
+}
+window.buildSummaryTables = buildSummaryTables;
+
+// ─────────────────────────────────────────────
+// MAIN RENDER ENTRY
+// ─────────────────────────────────────────────
+function renderAllPages() {
+  const entities = window._entities || [];
+  const session  = window._session  || {};
+
+  if (!entities.length) return;
+
+  const isDistrict    = session.role === 'district_admin';
+  const isPresbytery  = session.role === 'presbytery_admin';
+  const isNational    = session.role === 'national_admin';
+
+  const childLabel    = isDistrict ? 'Congregation' : isPresbytery ? 'District' : 'Presbytery';
+  const scopeLabel    = isDistrict ? (session.districtId||'District') : isPresbytery ? (session.presbyteryId||'Presbytery') : 'National';
+  const levelLabel    = isDistrict ? 'District' : isPresbytery ? 'Presbytery' : 'National';
+
+  // Build aggregated totals
+  const totals = aggregateTotals(entities);
+
+  renderDashboard(entities, totals, childLabel, scopeLabel, levelLabel);
+  renderMembership(entities, totals, childLabel);
+  renderAttendance(entities, totals, childLabel);
+  renderSouls(entities, totals);
+  renderGroups(entities, totals);
+  renderFinance(entities, totals, childLabel);
+  renderWelfare(entities, totals, childLabel);
+  renderLand(entities, childLabel);
+  renderEntityCards(entities);
+  renderCDOSummary(entities, session);
+
+  // Update entities label
+  document.getElementById('entities-page-title').textContent = childLabel + 's';
+
+  const lastUpdated = Math.max(...entities.map(e => e.summary.updatedAt||0));
+  if (lastUpdated > 0) {
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date(lastUpdated).toLocaleString('en-GH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  }
+}
+window.renderAllPages = renderAllPages;
+
+function aggregateTotals(entities) {
+  const t = {
+    memPrev:0, memQ1:0, memQ2:0, memQ3:0, memQ4:0,
+    attPrev:0, attQ1:0, attQ2:0, attQ3:0, attQ4:0,
+    welfare:{count:0,total:0}, visitors:{total:0,newConverts:0},
+    events:{total:0,soulsWon:0,totalParticipants:0}, groups:{totalMeetings:0},
+    receipts:0, payments:0,
+    welCount:0, welTotal:0, schCount:0, schTotal:0,
+    landCount:0, soulsWon:0,
+    meActivities:0, personsReached:0, newConverts:0, prisonVisits:0,
+    agentsPD:0, staffPD:0, dssAct:0, entAct:0, esrAct:0,
+    counselAct:0, personsCounselled:0, landsLTC:0, propsInsured:0,
+    byGroup:{}, attByService:{}, events:[], attRecords:[],
+    grpRecords:{}, expenditure:{},
+  };
+
+  entities.forEach(e => {
+    const s = e.summary;
+    const m = s.membership    || {};
+    const a = s.attendance    || {};
+    const f = s.finance       || {};
+    const w = s.welfare       || {};
+    const sc= s.scholarship   || {};
+    const l = s.land          || {};
+
+    t.memPrev += (m.totalPrev||m.total2024||0); t.memQ1 += (m.totalQ1||0);
+    t.memQ2   += (m.totalQ2||0);   t.memQ3 += (m.totalQ3||0); t.memQ4 += (m.totalQ4||0);
+    t.attPrev += (a.totalPrev||a.total2024||0); t.attQ1 += (a.totalQ1||0);
+    t.attQ2   += (a.totalQ2||0);   t.attQ3 += (a.totalQ3||0); t.attQ4 += (a.totalQ4||0);
+    t.receipts  += (f.totalReceipts||0);
+    t.payments  += (f.totalPayments||0);
+    t.welCount  += (w.count||0);   t.welTotal  += (w.total||0);
+    t.schCount  += (sc.count||0);  t.schTotal  += (sc.total||0);
+    t.landCount += (l.count||0);
+    t.soulsWon  += (s.soulsWon||0);
+
+    // welfare/scholarship direct from structured objects (already added above)
+    t.welfare.count    += (w.count||0);
+    t.welfare.total    += (w.total||0);
+    t.visitors.total       += ((s.visitors||{}).total||0);
+    t.visitors.newConverts += ((s.visitors||{}).newConverts||0);
+    t.events.total           += ((s.events||{}).total||0);
+    t.events.soulsWon        += ((s.events||{}).soulsWon||0);
+    t.events.totalParticipants += ((s.events||{}).totalParticipants||0);
+    t.groups.totalMeetings   += ((s.groups||{}).totalMeetings||0);
+
+    // byGroup aggregation
+    const bg = m.byGroup ? (Array.isArray(m.byGroup)?m.byGroup:Object.values(m.byGroup)) : [];
+    bg.forEach(g => {
+      if (!t.byGroup[g.label]) t.byGroup[g.label] = {label:g.label,prev:0,q1:0,q2:0,q3:0,q4:0};
+      const bg2 = t.byGroup[g.label];
+      bg2.prev += (g.a2024||g.prev||0);
+      bg2.q1   += (g.q1||0); bg2.q2 += (g.q2||0); bg2.q3 += (g.q3||0); bg2.q4 += (g.q4||0);
+    });
+
+    // attendance by service — byService is an array in the mapped summary
+    const abArr = a.byService ? (Array.isArray(a.byService) ? a.byService : Object.values(a.byService)) : [];
+    abArr.forEach(sv => {
+      if (!sv || !sv.label) return;
+      if (!t.attByService[sv.label]) t.attByService[sv.label] = {label:sv.label,prev:0,q1:0,q2:0,q3:0,q4:0};
+      const as = t.attByService[sv.label];
+      as.prev+=(sv.a2024||sv.prev||0); as.q1+=(sv.q1||0); as.q2+=(sv.q2||0); as.q3+=(sv.q3||0); as.q4+=(sv.q4||0);
+    });
+
+    // Sunday attendance records + group meeting records (from Firebase module data)
+    const attRaw = (window._attByCong || {})[e.id];
+    if (Array.isArray(attRaw)) {
+      attRaw.forEach(r => {
+        t.attRecords.push({
+          ...r,
+          _entity: e.name,
+          total: r.total != null ? r.total
+            : (parseInt(r.svc1, 10) || 0) + (parseInt(r.svc2, 10) || 0)
+              + (parseInt(r.jyouths, 10) || 0) + (parseInt(r.children, 10) || 0),
+        });
+      });
+    }
+    const grpRaw = (window._grpByCong || {})[e.id];
+    if (grpRaw && typeof grpRaw === 'object') {
+      Object.entries(grpRaw).forEach(([gk, recs]) => {
+        const arr = Array.isArray(recs) ? recs : Object.values(recs || {});
+        if (!t.grpRecords[gk]) t.grpRecords[gk] = [];
+        arr.forEach(r => t.grpRecords[gk].push({ ...r, _entity: e.name }));
+      });
+    }
+
+    // expenditure — from finance.expenditure[]
+    const expArr = f.expenditure ? (Array.isArray(f.expenditure) ? f.expenditure : Object.values(f.expenditure)) : [];
+    expArr.forEach(ex => {
+      if (!ex || !ex.label) return;
+      if (!t.expenditure[ex.label]) t.expenditure[ex.label] = {label:ex.label,prev:0,target:0,q1:0,q2:0,q3:0,q4:0};
+      const te = t.expenditure[ex.label];
+      te.prev+=(ex.a2024||ex.prev||0); te.target+=(ex.target||ex.t1||0);
+      te.q1+=(ex.q1||0); te.q2+=(ex.q2||0); te.q3+=(ex.q3||0); te.q4+=(ex.q4||0);
+    });
+    // CDO-specific fields
+    t.meActivities    += (s.meActivities||0);
+    t.personsReached  += (s.personsReached||0);
+    t.newConverts     += (s.newConverts||0);
+    t.prisonVisits    += (s.prisonVisits||0);
+    t.agentsPD        += (s.agentsPD||0);
+    t.staffPD         += (s.staffPD||0);
+    t.dssAct          += (s.dssAct||0);
+    t.entAct          += (s.entAct||0);
+    t.esrAct          += (s.esrAct||0);
+    t.counselAct      += (s.counselAct||0);
+    t.personsCounselled+=(s.personsCounselled||0);
+    t.landsLTC        += (s.landsLTC||0);
+    t.propsInsured    += (s.propsInsured||0);
+  });
+
+  // also compute souls from events if soulsWon not in summary
+  if (t.soulsWon === 0 && t.events.length) {
+    t.soulsWon = t.events.reduce((a,ev) => {
+      const s = parseInt(ev.souls || ev.soulsWon || 0) || 0;
+      return a + s;
+    }, 0);
+  }
+
+  return t;
+}
+
+// ─────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────
+function renderDashboard(entities, totals, childLabel, scopeLabel, levelLabel) {
+  document.getElementById('dash-title').textContent = levelLabel + ' Dashboard';
+  document.getElementById('dash-subtitle').textContent = `Aggregated data from ${entities.length} ${childLabel.toLowerCase()}${entities.length!==1?'s':''} · ${scopeLabel}`;
+
+  const bc = document.getElementById('dash-breadcrumb');
+  bc.innerHTML = `PCG <span>›</span> ${levelLabel} <span>›</span> ${scopeLabel}`;
+
+  // KPI cards
+  const net = totals.receipts - totals.payments;
+  const kpis = [
+    { l:CURRENT_YEAR+' Members (Q'+CURRENT_Q+')',   v:fmtN(totals['memQ'+CURRENT_Q]),          sub:`${BASELINE_YEAR} baseline: ${fmtN(totals.memPrev)}`, cls:'sc-gold' },
+    { l:'Attendance (Q'+CURRENT_Q+')',              v:fmtN(totals['attQ'+CURRENT_Q]),           sub:`${BASELINE_YEAR} baseline: ${fmtN(totals.attPrev)}`, cls:'sc-navy' },
+    { l:'Souls Won',                    v:fmtN(totals.soulsWon),        sub:'M&E activities: '+fmtN(totals.meActivities),         cls:'sc-green'},
+    { l:'New Converts',                 v:fmtN(totals.newConverts),     sub:'Persons reached: '+fmtN(totals.personsReached),      cls:'sc-teal' },
+    { l:'Prison/Cell Visits',           v:fmtN(totals.prisonVisits),    sub:'M&E outreach',                                        cls:'sc-navy' },
+    { l:'Agents Trained (P.Days)',      v:fmtN(totals.agentsPD),        sub:'Staff: '+fmtN(totals.staffPD)+' P.Days',              cls:'sc-blue' },
+    { l:'Sanitation Activities (DSS)',  v:fmtN(totals.dssAct),          sub:'Entrepreneurial: '+fmtN(totals.entAct),               cls:'sc-gold' },
+    { l:'Public Interest (ESR)',        v:fmtN(totals.esrAct),          sub:'Activities',                                          cls:'sc-teal' },
+    { l:'Welfare Cases',                v:fmtN(totals.welfareCount),    sub:fmtGH(totals.welfareAmt),                              cls:'sc-blue' },
+    { l:'Counselling Activities',       v:fmtN(totals.counselAct),      sub:'Persons counselled: '+fmtN(totals.personsCounselled), cls:'sc-navy' },
+    { l:'Lands (LTC)',                  v:fmtN(totals.landsLTC),        sub:'Properties insured: '+fmtN(totals.propsInsured),      cls:'sc-teal' },
+    { l:'Scholarships',                 v:fmtN(totals.schCount),        sub:'Beneficiaries',                                       cls:'sc-gold' },
+    { l:childLabel+'s Reporting',       v:fmtN(entities.length),        sub:'CDO data submitted',                                  cls:'sc-navy' },
+  ];
+  const kpiGrid = document.getElementById('dash-kpis');
+  kpiGrid.className = 'stat-grid stat-grid-6';
+  kpiGrid.style.cssText = 'grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px';
+  kpiGrid.innerHTML = kpis.slice(0,9).map(k => `
+    <div class="stat-card ${k.cls}">
+      <div class="stat-label">${k.l}</div>
+      <div class="stat-value">${k.v}</div>
+      <div class="stat-sub">${k.sub||''}</div>
+    </div>`).join('');
+
+  // Souls highlight
+  document.getElementById('hl-souls').textContent = fmtN(totals.soulsWon);
+
+  // Chart: Membership by group
+  destroyChart('chart-membership');
+  const bgData = Object.values(totals.byGroup).sort((a,b)=>b.q4-a.q4).slice(0,10);
+  if (bgData.length) {
+    _charts['chart-membership'] = new Chart(
+      document.getElementById('chart-membership').getContext('2d'), {
+        type:'doughnut',
+        data:{
+          labels: bgData.map(g => g.label),
+          datasets:[{ data: bgData.map(g => g.q4||g.prev||0),
+            backgroundColor: ['#B8964A','#1E7E56','#0F2340','#8B2020','#1A3A8B','#0E7490','#5B4B8A','#7A5F28','#27AE60','#2A5285'] }]
+        },
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ position:'right', labels:{boxWidth:10,padding:10,font:{size:10}}}}
+        }
+      }
+    );
+  }
+
+  // Chart: Finance bar
+  destroyChart('chart-finance');
+  _charts['chart-finance'] = new Chart(
+    document.getElementById('chart-finance').getContext('2d'), {
+      type:'bar',
+      data:{
+        labels: entities.map(e => e.name.length>18?e.name.slice(0,17)+'…':e.name),
+        datasets:[
+          { label:'Receipts', data: entities.map(e=>((e.summary.finance||{}).totalReceipts||0)), backgroundColor:'rgba(30,126,86,.7)', borderRadius:3 },
+          { label:'Payments', data: entities.map(e=>((e.summary.finance||{}).totalPayments||0)), backgroundColor:'rgba(192,57,43,.6)', borderRadius:3 },
+        ]
+      },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}}},
+        scales:{ x:{ticks:{font:{size:9}}}, y:{ticks:{callback:v=>'GH₵'+v.toLocaleString(),font:{size:9}}}}
+      }
+    }
+  );
+
+  // Breakdown table
+  document.getElementById('breakdown-title').textContent = childLabel + ' Breakdown';
+  const thead = document.getElementById('breakdown-thead');
+  const tbody = document.getElementById('breakdown-tbody');
+  const tfoot = document.getElementById('breakdown-tfoot');
+
+  thead.innerHTML = `<th>${childLabel}</th>
+    <th class="num">Members (Q${CURRENT_Q})</th><th class="num">Attendance (Q${CURRENT_Q})</th>
+    <th class="num">Souls Won</th><th class="num">ME Activities</th>
+    <th class="num">New Converts</th><th class="num">Welfare Cases</th>
+    <th class="num">Lands (LTC)</th><th class="num">CDO Year</th>`;
+
+  let tMem=0,tAtt=0,tSw=0,tMe=0,tNc=0,tWf=0,tLtc=0;
+  tbody.innerHTML = entities.map(e => {
+    const s  = e.summary;
+    const m  = s.membership || {};
+    const a  = s.attendance || {};
+    const mem = m['totalQ'+CURRENT_Q] || m.totalPrev || m.total2024 || 0;
+    const att = a['totalQ'+CURRENT_Q] || a.totalPrev || a.total2024 || 0;
+    const sw  = s.soulsWon || 0;
+    const me  = s.meActivities || 0;
+    const nc  = s.newConverts  || 0;
+    const wf  = s.welfareCount || 0;
+    const ltc = s.landsLTC     || 0;
+    const yr  = s.year || '—';
+    tMem+=mem;tAtt+=att;tSw+=sw;tMe+=me;tNc+=nc;tWf+=wf;tLtc+=ltc;
+    const hasData = mem || att || sw || me;
+    return `<tr>
+      <td><div class="cong-name">${escH(e.name)}</div><div class="sub-text">${escH(e.id)}</div></td>
+      <td class="num">${hasData?fmtN(mem):'<span style="color:var(--ink3);font-size:10px">No CDO</span>'}</td>
+      <td class="num">${hasData?fmtN(att):'—'}</td>
+      <td class="num">${sw?'<strong>'+fmtN(sw)+'</strong>':'—'}</td>
+      <td class="num">${me||'—'}</td><td class="num">${nc||'—'}</td>
+      <td class="num">${wf||'—'}</td><td class="num">${ltc||'—'}</td>
+      <td class="num" style="font-size:10px;color:var(--ink3)">${yr}</td>
+    </tr>`;
+  }).join('');
+
+  tfoot.innerHTML = `<td><strong>TOTAL</strong></td>
+    <td class="num"><strong>${fmtN(tMem)}</strong></td><td class="num"><strong>${fmtN(tAtt)}</strong></td>
+    <td class="num"><strong>${fmtN(tSw)}</strong></td><td class="num"><strong>${fmtN(tMe)}</strong></td>
+    <td class="num"><strong>${fmtN(tNc)}</strong></td><td class="num"><strong>${fmtN(tWf)}</strong></td>
+    <td class="num"><strong>${fmtN(tLtc)}</strong></td><td></td>`;
+}
+
+// ─────────────────────────────────────────────
+// MEMBERSHIP
+// ─────────────────────────────────────────────
+function renderMembership(entities, totals, childLabel) {
+  document.getElementById('mem-subtitle').textContent = `Aggregated from ${entities.length} ${childLabel.toLowerCase()}s`;
+
+  const growthQ = pct(totals['memQ'+CURRENT_Q], totals.memPrev);
+  document.getElementById('mem-stats').innerHTML = [
+    { l:BASELINE_YEAR+' Baseline Members', v:fmtN(totals.memPrev), cls:'sc-gold' },
+    { l:'Q'+CURRENT_Q+' Members',         v:fmtN(totals['memQ'+CURRENT_Q]),   cls:'sc-navy' },
+    { l:('Growth ('+BASELINE_YEAR+'→'+CURRENT_YEAR+' Q'+CURRENT_Q+')'),   v:growthQ!==null?(growthQ>=0?'+':'')+growthQ+'%':'—', cls:growthQ>=0?'sc-green':'sc-red' },
+    { l:'Group Types',        v:Object.keys(totals.byGroup).length, cls:'sc-teal' },
+  ].map(k=>`<div class="stat-card ${k.cls}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div></div>`).join('');
+
+  // Chart: by group donut
+  destroyChart('chart-mem-group');
+  const bgArr = Object.values(totals.byGroup).sort((a,b)=>b.q4-a.q4);
+  if (bgArr.length) {
+    _charts['chart-mem-group'] = new Chart(document.getElementById('chart-mem-group').getContext('2d'),{
+      type:'bar',
+      data:{ labels:bgArr.map(g=>g.label),
+        datasets:[
+          {label:PREV_YEAR + " Actual",data:bgArr.map(g=>g.prev),backgroundColor:'rgba(184,150,74,.5)',borderRadius:3},
+          {label:'Q4 Actual', data:bgArr.map(g=>g.q4),backgroundColor:'rgba(15,35,64,.7)',borderRadius:3},
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}}},
+        scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}}
+    });
+  }
+
+  // Chart: Q1-Q4 trend line
+  destroyChart('chart-mem-trend');
+  _charts['chart-mem-trend'] = new Chart(document.getElementById('chart-mem-trend').getContext('2d'),{
+    type:'line',
+    data:{ labels:[BASELINE_YEAR+' Baseline','Q1 '+CURRENT_YEAR,'Q2 '+CURRENT_YEAR,'Q3 '+CURRENT_YEAR,'Q4 '+CURRENT_YEAR],
+      datasets:[{
+        label:'Total Members',
+        data:[totals.memPrev,totals.memQ1,totals.memQ2,totals.memQ3,totals.memQ4],
+        borderColor:'#B8964A',backgroundColor:'rgba(184,150,74,.1)',pointBackgroundColor:'#B8964A',
+        tension:.4,fill:true,
+      }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{font:{size:9},callback:v=>v.toLocaleString()}},x:{ticks:{font:{size:9}}}}}
+  });
+
+  // Detail table by group
+  const groups = Object.values(totals.byGroup).sort((a,b)=>b.prev-a.prev);
+  let tA24=0,tQ1=0,tQ2=0,tQ3=0,tQ4=0;
+  document.getElementById('mem-detail-body').innerHTML = groups.map(g=>{
+    tA24+=g.prev; tQ1+=g.q1||0; tQ2+=g.q2||0; tQ3+=g.q3||0; tQ4+=g.q4||0;
+    const ch = pct(g.q4,g.prev);
+    return `<tr><td>${escH(g.label)}</td><td class="num">${fmtN(g.prev)}</td><td class="num">${fmtN(g.q1)||'—'}</td><td class="num">${fmtN(g.q2)||'—'}</td><td class="num">${fmtN(g.q3)||'—'}</td><td class="num">${fmtN(g.q4)}</td><td class="num">${pctStr(ch)}</td></tr>`;
+  }).join('');
+  const chTot = pct(tQ4,tA24);
+  document.getElementById('mem-detail-foot').innerHTML = `<td>TOTAL</td><td class="num">${fmtN(tA24)}</td><td class="num">${fmtN(tQ1)}</td><td class="num">${fmtN(tQ2)}</td><td class="num">${fmtN(tQ3)}</td><td class="num">${fmtN(tQ4)}</td><td class="num">${pctStr(chTot)}</td>`;
+
+  // Per-entity table
+  document.getElementById('mem-entity-title').textContent = `Per-${childLabel} Membership`;
+  document.getElementById('mem-entity-thead').innerHTML = `<th>${childLabel}</th><th class="num">${PREV_YEAR}</th><th class="num">Q1</th><th class="num">Q2</th><th class="num">Q3</th><th class="num">Q4</th><th class="num">Change</th>`;
+  let etA24=0,etQ1=0,etQ2=0,etQ3=0,etQ4=0;
+  document.getElementById('mem-entity-body').innerHTML = entities.map(e=>{
+    const m = e.summary.membership||{};
+    const ma=m.totalPrev||m.total2024||0,q1=m.totalQ1||0,q2=m.totalQ2||0,q3=m.totalQ3||0,q4=m.totalQ4||0;
+    etA24+=ma;etQ1+=q1;etQ2+=q2;etQ3+=q3;etQ4+=q4;
+    return `<tr><td><strong>${escH(e.name)}</strong></td><td class="num">${fmtN(ma)}</td><td class="num">${fmtN(q1)||'—'}</td><td class="num">${fmtN(q2)||'—'}</td><td class="num">${fmtN(q3)||'—'}</td><td class="num">${fmtN(q4)||'—'}</td><td class="num">${pctStr(pct(q4,ma))}</td></tr>`;
+  }).join('');
+  document.getElementById('mem-entity-foot').innerHTML = `<td>TOTAL</td><td class="num">${fmtN(etA24)}</td><td class="num">${fmtN(etQ1)}</td><td class="num">${fmtN(etQ2)}</td><td class="num">${fmtN(etQ3)}</td><td class="num">${fmtN(etQ4)}</td><td class="num">${pctStr(pct(etQ4,etA24))}</td>`;
+}
+
+// ─────────────────────────────────────────────
+// ATTENDANCE
+// ─────────────────────────────────────────────
+function renderAttendance(entities, totals, childLabel) {
+  const growthQ = pct(totals.attQ4, totals.attPrev);
+  document.getElementById('att-stats').innerHTML = [
+    {l:BASELINE_YEAR+' Baseline Attendance',v:fmtN(totals.attPrev),cls:'sc-gold'},
+    {l:'Q4 Attendance',      v:fmtN(totals.attQ4),  cls:'sc-navy'},
+    {l:('Growth ('+BASELINE_YEAR+'→'+CURRENT_YEAR+' Q4)'),   v:growthQ!==null?(growthQ>=0?'+':'')+growthQ+'%':'—',cls:growthQ>=0?'sc-green':'sc-red'},
+    {l:'Recent Records',     v:fmtN(totals.attRecords.length),cls:'sc-teal'},
+  ].map(k=>`<div class="stat-card ${k.cls}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div></div>`).join('');
+
+  // Trend chart
+  destroyChart('chart-att-trend');
+  _charts['chart-att-trend'] = new Chart(document.getElementById('chart-att-trend').getContext('2d'),{
+    type:'line',
+    data:{labels:[BASELINE_YEAR+' Baseline','Q1 '+CURRENT_YEAR,'Q2 '+CURRENT_YEAR,'Q3 '+CURRENT_YEAR,'Q4 '+CURRENT_YEAR],
+      datasets:[{
+        label:'Avg Attendance',
+        data:[totals.attPrev,totals.attQ1,totals.attQ2,totals.attQ3,totals.attQ4],
+        borderColor:'#0F2340',backgroundColor:'rgba(15,35,64,.08)',tension:.4,fill:true,pointBackgroundColor:'#0F2340',
+      }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{ticks:{font:{size:9},callback:v=>v.toLocaleString()}},x:{ticks:{font:{size:9}}}}}
+  });
+
+  // Service type chart
+  destroyChart('chart-att-service');
+  const svcs = Object.values(totals.attByService);
+  if (svcs.length) {
+    _charts['chart-att-service'] = new Chart(document.getElementById('chart-att-service').getContext('2d'),{
+      type:'bar',
+      data:{labels:svcs.map(s=>s.label),
+        datasets:[
+          {label:String(PREV_YEAR),data:svcs.map(s=>s.prev),backgroundColor:'rgba(184,150,74,.4)',borderRadius:3},
+          {label:'Q4', data:svcs.map(s=>s.q4),backgroundColor:'rgba(15,35,64,.7)',borderRadius:3},
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}}},
+        scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}}
+    });
+  }
+
+  // Detail by service
+  let da24=0,dq1=0,dq2=0,dq3=0,dq4=0;
+  document.getElementById('att-detail-body').innerHTML = svcs.map(sv=>{
+    da24+=sv.prev;dq1+=sv.q1;dq2+=sv.q2;dq3+=sv.q3;dq4+=sv.q4;
+    return `<tr><td>${escH(sv.label)}</td><td class="num">${fmtN(sv.prev)}</td><td class="num">${fmtN(sv.q1)||'—'}</td><td class="num">${fmtN(sv.q2)||'—'}</td><td class="num">${fmtN(sv.q3)||'—'}</td><td class="num">${fmtN(sv.q4)||'—'}</td><td class="num">${pctStr(pct(sv.q4,sv.prev))}</td></tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:20px">No attendance breakdown data yet</td></tr>';
+  document.getElementById('att-detail-foot').innerHTML = `<td>TOTAL</td><td class="num">${fmtN(totals.attPrev)}</td><td class="num">${fmtN(totals.attQ1)}</td><td class="num">${fmtN(totals.attQ2)}</td><td class="num">${fmtN(totals.attQ3)}</td><td class="num">${fmtN(totals.attQ4)}</td><td class="num">${pctStr(pct(totals.attQ4,totals.attPrev))}</td>`;
+
+  // Recent attendance records
+  const recs = totals.attRecords.sort((a,b) => (b.date||'').localeCompare(a.date||'')).slice(0,50);
+  document.getElementById('att-records-body').innerHTML = recs.map(r=>
+    `<tr><td><strong>${escH(r._entity||'—')}</strong></td><td>${fmtDate(r.date)}</td><td>${escH(r.service||'—')}</td><td class="num">${fmtN(r.svc1)||'—'}</td><td class="num">${fmtN(r.svc2)||'—'}</td><td class="num">${fmtN(r.jyouths)||'—'}</td><td class="num">${fmtN(r.children)||'—'}</td><td class="num"><strong>${fmtN(r.total)}</strong></td></tr>`
+  ).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--ink3);padding:20px">No attendance records yet</td></tr>';
+}
+
+// ─────────────────────────────────────────────
+// SOULS WON
+// ─────────────────────────────────────────────
+function renderSouls(entities, totals) {
+  const meEvents = totals.events.filter(ev => ev.type === 'Mission & Evangelism' || ev.coord === 'M&E' || (ev.souls && parseInt(ev.souls)>0));
+
+  document.getElementById('souls-stats').innerHTML = [
+    {l:'Total Souls Won',  v:fmtN(totals.soulsWon), cls:'sc-green'},
+    {l:'M&E Events',       v:fmtN(meEvents.length),  cls:'sc-navy'},
+    {l:'Avg Souls/Event',  v: meEvents.length ? Math.round(totals.soulsWon/meEvents.length) : '—', cls:'sc-gold'},
+  ].map(k=>`<div class="stat-card ${k.cls}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div></div>`).join('');
+
+  document.getElementById('souls-event-count').textContent = meEvents.length + ' events';
+  document.getElementById('souls-body').innerHTML = meEvents.sort((a,b)=>((b.souls||0)-(a.souls||0))).map(ev=>
+    `<tr><td><strong>${escH(ev._entity||'—')}</strong></td><td>${escH(ev.n||ev.name||'—')}</td><td>${fmtDate(ev.rawDate||ev.d||'')}</td><td>${escH(ev.type||'M&E')}</td><td class="num">${escH(ev.participants||'—')}</td><td class="num"><strong>${escH(ev.souls||'0')}</strong></td></tr>`
+  ).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:20px">No M&E event records found. Events must be tagged as "Mission &amp; Evangelism" type in the congregation app.</td></tr>';
+
+  // Chart: souls per entity
+  destroyChart('chart-souls');
+  const eSouls = entities.map(e=>({name:e.name, souls:e.summary.soulsWon||0})).sort((a,b)=>b.souls-a.souls);
+  _charts['chart-souls'] = new Chart(document.getElementById('chart-souls').getContext('2d'),{
+    type:'bar',
+    data:{labels:eSouls.map(e=>e.name.length>20?e.name.slice(0,19)+'…':e.name),
+      datasets:[{label:'Souls Won',data:eSouls.map(e=>e.souls),backgroundColor:'rgba(30,126,86,.7)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}}
+  });
+}
+
+// ─────────────────────────────────────────────
+// GROUP MEETINGS
+// ─────────────────────────────────────────────
+function renderGroups(entities, totals) {
+  const GRP_LABELS = {
+    childrens:"Children's Church", jy:'Junior Youth', adult:'Adult Fellowship',
+    ypg:'YPG', yaf:'YAF', mens:"Men's Fellowship", womens:"Women's Fellowship",
+    bibleclub:'Bible Club', newcomers:'Newcomers', discipleship:'Discipleship',
+  };
+
+  let totalMeetings = 0;
+  Object.values(totals.grpRecords).forEach(recs => totalMeetings += recs.length);
+
+  document.getElementById('grp-stats').innerHTML = [
+    {l:'Group Types Tracked', v:Object.keys(totals.grpRecords).filter(k=>totals.grpRecords[k].length>0).length, cls:'sc-navy'},
+    {l:'Total Meeting Records', v:fmtN(totalMeetings), cls:'sc-gold'},
+    {l:'Congregations Reporting', v:fmtN(entities.length), cls:'sc-green'},
+  ].map(k=>`<div class="stat-card ${k.cls}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div></div>`).join('');
+
+  // Build summary per group
+  const GRP_QTR_MONTHS = {q1:[0,1,2],q2:[3,4,5],q3:[6,7,8],q4:[9,10,11]};
+  function grpQtrAvg(recs, q) {
+    const months = GRP_QTR_MONTHS[q];
+    const qRecs = recs.filter(r => {
+      if (!r.date) return false;
+      const mo = new Date(r.date+'T00:00:00').getMonth();
+      return months.includes(mo);
+    });
+    return qRecs.length ? Math.round(qRecs.reduce((a,r)=>a+grpAtt(r),0)/qRecs.length) : null;
+  }
+
+  let tMtgs = 0;
+  const grpRows = Object.entries(totals.grpRecords).map(([gk, recs]) => {
+    const label = GRP_LABELS[gk] || gk;
+    const q1 = grpQtrAvg(recs,'q1'), q2 = grpQtrAvg(recs,'q2');
+    const q3 = grpQtrAvg(recs,'q3'), q4 = grpQtrAvg(recs,'q4');
+    const total = recs.length;
+    tMtgs += total;
+    return `<tr><td>${escH(label)}</td><td class="num">—</td><td class="num">${q1!==null?fmtN(q1):'—'}</td><td class="num">${q2!==null?fmtN(q2):'—'}</td><td class="num">${q3!==null?fmtN(q3):'—'}</td><td class="num">${q4!==null?fmtN(q4):'—'}</td><td class="num">${fmtN(total)}</td></tr>`;
+  });
+  let grpBodyHtml = grpRows.join('');
+  if (!grpBodyHtml && entities.length) {
+    // Fallback: quarterly meeting counts from published summary when raw records unavailable
+    const GRP_LABELS_REV = Object.fromEntries(Object.entries(GRP_LABELS).map(([k,v]) => [v,k]));
+    const sumByKey = {};
+    entities.forEach(e => {
+      const g = (e.summary.groups || {});
+      const byGroup = g.byGroup ? (Array.isArray(g.byGroup) ? g.byGroup : Object.values(g.byGroup)) : [];
+      byGroup.forEach(bg => {
+        const key = GRP_LABELS_REV[bg.label] || (bg.label || '').toLowerCase().replace(/\s+/g,'');
+        if (!key) return;
+        if (!sumByKey[key]) sumByKey[key] = { label: bg.label || key, meetings: 0 };
+        sumByKey[key].meetings += (bg.meetings || 0);
+      });
+      ['q1','q2','q3','q4'].forEach((q, qi) => {
+        const qd = g[q] || {};
+        if (!qd.meetings) return;
+        const keys = Object.keys(sumByKey);
+        if (keys.length === 1) sumByKey[keys[0]]['q'+(qi+1)] = (sumByKey[keys[0]]['q'+(qi+1)]||0) + qd.meetings;
+      });
+    });
+    grpBodyHtml = Object.entries(sumByKey).map(([gk, row]) =>
+      `<tr><td>${escH(GRP_LABELS[gk] || row.label || gk)}</td><td class="num">—</td>
+        <td class="num">${row.q1!=null?fmtN(row.q1):'—'}</td><td class="num">${row.q2!=null?fmtN(row.q2):'—'}</td>
+        <td class="num">${row.q3!=null?fmtN(row.q3):'—'}</td><td class="num">${row.q4!=null?fmtN(row.q4):'—'}</td>
+        <td class="num">${fmtN(row.meetings)}</td></tr>`
+    ).join('');
+  }
+  document.getElementById('grp-summary-body').innerHTML = grpBodyHtml
+    || '<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:20px">No group meeting records found yet. Congregations must save Group Meetings in ChurchOS.</td></tr>';
+  document.getElementById('grp-summary-foot').innerHTML = `<td>TOTAL</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">${fmtN(tMtgs)}</td>`;
+
+  // Chart
+  destroyChart('chart-groups');
+  const grpNames = Object.keys(totals.grpRecords).map(k=>GRP_LABELS[k]||k);
+  const grpMtgs  = Object.values(totals.grpRecords).map(r=>r.length);
+  if (grpNames.length) {
+    _charts['chart-groups'] = new Chart(document.getElementById('chart-groups').getContext('2d'),{
+      type:'bar',
+      data:{labels:grpNames,datasets:[{label:'Meeting Records',data:grpMtgs,backgroundColor:'rgba(42,82,133,.7)',borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{y:{ticks:{font:{size:9}}},x:{ticks:{font:{size:9}}}}}
+    });
+  }
+}
+
+// ─────────────────────────────────────────────
+// FINANCE
+// ─────────────────────────────────────────────
+function renderFinance(entities, totals, childLabel) {
+  const net = totals.receipts - totals.payments;
+  const kutunse = entities.reduce((a,e) => {
+    const s = e.summary;
+    return a + ((s.kutunseTotal)||0);
+  },0);
+
+  document.getElementById('fin-stats').innerHTML = [
+    {l:'Total Receipts', v:fmtGH(totals.receipts), cls:'sc-green'},
+    {l:'Total Payments', v:fmtGH(totals.payments), cls:'sc-red'},
+    {l:'Net Surplus/Deficit', v:fmtGH(net), cls:net>=0?'sc-green':'sc-red'},
+    {l:'Entities Reporting', v:entities.length, cls:'sc-gold'},
+  ].map(k=>`<div class="stat-card ${k.cls}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div></div>`).join('');
+
+  // Bar chart per entity
+  destroyChart('chart-fin-bar');
+  _charts['chart-fin-bar'] = new Chart(document.getElementById('chart-fin-bar').getContext('2d'),{
+    type:'bar',
+    data:{labels:entities.map(e=>e.name.length>16?e.name.slice(0,15)+'…':e.name),
+      datasets:[
+        {label:'Receipts',data:entities.map(e=>((e.summary.finance||{}).totalReceipts||0)),backgroundColor:'rgba(30,126,86,.7)',borderRadius:3},
+        {label:'Payments',data:entities.map(e=>((e.summary.finance||{}).totalPayments||0)),backgroundColor:'rgba(192,57,43,.6)',borderRadius:3},
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}}},
+      scales:{x:{ticks:{font:{size:9}}},y:{ticks:{callback:v=>'GH₵'+v.toLocaleString(),font:{size:9}}}}}
+  });
+
+  // Receipt categories (aggregated across entities)
+  const catTotals = {};
+  entities.forEach(e => {
+    const cats = e.summary.receiptCategories || {};
+    Object.entries(cats).forEach(([cat, amt]) => {
+      catTotals[cat] = (catTotals[cat]||0) + amt;
+    });
+  });
+  const topCats = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  destroyChart('chart-fin-cat');
+  if (topCats.length) {
+    _charts['chart-fin-cat'] = new Chart(document.getElementById('chart-fin-cat').getContext('2d'),{
+      type:'bar',
+      data:{labels:topCats.map(([c])=>c.length>22?c.slice(0,21)+'…':c),
+        datasets:[{label:'Amount',data:topCats.map(([,a])=>a),backgroundColor:'rgba(184,150,74,.7)',borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+        scales:{x:{ticks:{callback:v=>'GH₵'+v.toLocaleString(),font:{size:9}}},y:{ticks:{font:{size:9}}}}}
+    });
+  }
+
+  // Expenditure table
+  const expArr = Object.values(totals.expenditure).sort((a,b)=>b.prev-a.prev);
+  let ea24=0,etgt=0,eq1=0,eq2=0,eq3=0,eq4=0,etot=0;
+  document.getElementById('fin-exp-body').innerHTML = expArr.map(ex=>{
+    const rowTotal = (ex.q1||0)+(ex.q2||0)+(ex.q3||0)+(ex.q4||0);
+    ea24+=ex.prev;etgt+=ex.target;eq1+=ex.q1;eq2+=ex.q2;eq3+=ex.q3;eq4+=ex.q4;etot+=rowTotal;
+    return `<tr><td>${escH(ex.label)}</td><td class="num">${fmtGH(ex.a2024)}</td><td class="num">${fmtGH(ex.target)}</td><td class="num">${fmtGH(ex.q1)}</td><td class="num">${fmtGH(ex.q2)}</td><td class="num">${fmtGH(ex.q3)}</td><td class="num">${fmtGH(ex.q4)}</td><td class="num"><strong>${fmtGH(rowTotal)}</strong></td></tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--ink3);padding:20px">No expenditure data submitted yet</td></tr>';
+  document.getElementById('fin-exp-foot').innerHTML = `<td>TOTAL</td><td class="num">${fmtGH(ea24)}</td><td class="num">${fmtGH(etgt)}</td><td class="num">${fmtGH(eq1)}</td><td class="num">${fmtGH(eq2)}</td><td class="num">${fmtGH(eq3)}</td><td class="num">${fmtGH(eq4)}</td><td class="num">${fmtGH(etot)}</td>`;
+
+  // Per-entity finance
+  document.getElementById('fin-entity-title').textContent = 'Per-' + childLabel + ' Finance';
+  let feRec=0,fePay=0,feKut=0;
+  document.getElementById('fin-entity-body').innerHTML = entities.map(e=>{
+    const f = e.summary.finance||{};
+    const rec=f.totalReceipts||0, pay=f.totalPayments||0, kut=e.summary.kutunseTotal||0;
+    feRec+=rec;fePay+=pay;feKut+=kut;
+    const net=rec-pay;
+    return `<tr><td><strong>${escH(e.name)}</strong></td><td class="num">${fmtGH(rec)}</td><td class="num">${fmtGH(pay)}</td><td class="num" style="color:${net>=0?'var(--green)':'var(--red)'}"><strong>${fmtGH(net)}</strong></td><td class="num">${kut?fmtGH(kut):'—'}</td></tr>`;
+  }).join('');
+  document.getElementById('fin-entity-foot').innerHTML = `<td>TOTAL</td><td class="num">${fmtGH(feRec)}</td><td class="num">${fmtGH(fePay)}</td><td class="num">${fmtGH(feRec-fePay)}</td><td class="num">${feKut?fmtGH(feKut):'—'}</td>`;
+}
+
+// ─────────────────────────────────────────────
+// WELFARE & SCHOLARSHIP
+// ─────────────────────────────────────────────
+function renderWelfare(entities, totals, childLabel) {
+  document.getElementById('wel-stats').innerHTML = [
+    {l:'Welfare Cases',      v:fmtN(totals.welCount), cls:'sc-navy'},
+    {l:'Welfare Disbursed',  v:fmtGH(totals.welTotal), cls:'sc-gold'},
+    {l:'Scholarship Recipients', v:fmtN(totals.schCount), cls:'sc-blue'},
+    {l:'Scholarship Disbursed',  v:fmtGH(totals.schTotal), cls:'sc-green'},
+  ].map(k=>`<div class="stat-card ${k.cls}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div></div>`).join('');
+
+  destroyChart('chart-welfare');
+  const welData = entities.map(e=>({name:e.name, v:(e.summary.welfare||{}).total||0})).sort((a,b)=>b.v-a.v);
+  _charts['chart-welfare'] = new Chart(document.getElementById('chart-welfare').getContext('2d'),{
+    type:'bar',
+    data:{labels:welData.map(d=>d.name.length>18?d.name.slice(0,17)+'…':d.name),
+      datasets:[{label:'Welfare (GH₵)',data:welData.map(d=>d.v),backgroundColor:'rgba(26,58,92,.7)',borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{ticks:{callback:v=>'GH₵'+v.toLocaleString(),font:{size:9}}},y:{ticks:{font:{size:9}}}}}
+  });
+
+  destroyChart('chart-scholarship');
+  const schData = entities.map(e=>({name:e.name, v:(e.summary.scholarship||{}).total||0})).sort((a,b)=>b.v-a.v);
+  _charts['chart-scholarship'] = new Chart(document.getElementById('chart-scholarship').getContext('2d'),{
+    type:'bar',
+    data:{labels:schData.map(d=>d.name.length>18?d.name.slice(0,17)+'…':d.name),
+      datasets:[{label:'Scholarship (GH₵)',data:schData.map(d=>d.v),backgroundColor:'rgba(30,126,86,.7)',borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{ticks:{callback:v=>'GH₵'+v.toLocaleString(),font:{size:9}}},y:{ticks:{font:{size:9}}}}}
+  });
+
+  let wtWelCount=0,wtWelTotal=0,wtSchCount=0,wtSchTotal=0;
+  document.getElementById('wel-body').innerHTML = entities.map(e=>{
+    const w=e.summary.welfare||{}, sc=e.summary.scholarship||{};
+    const wc=w.count||0, wt=w.total||0, scc=sc.count||0, sct=sc.total||0;
+    wtWelCount+=wc;wtWelTotal+=wt;wtSchCount+=scc;wtSchTotal+=sct;
+    return `<tr><td><strong>${escH(e.name)}</strong></td><td class="num">${fmtN(wc)}</td><td class="num">${fmtGH(wt)}</td><td class="num">${fmtN(scc)}</td><td class="num">${fmtGH(sct)}</td><td class="num"><strong>${fmtGH(wt+sct)}</strong></td></tr>`;
+  }).join('');
+  document.getElementById('wel-foot').innerHTML = `<td>TOTAL</td><td class="num">${fmtN(wtWelCount)}</td><td class="num">${fmtGH(wtWelTotal)}</td><td class="num">${fmtN(wtSchCount)}</td><td class="num">${fmtGH(wtSchTotal)}</td><td class="num">${fmtGH(wtWelTotal+wtSchTotal)}</td>`;
+}
+
+// ─────────────────────────────────────────────
+// LAND & PROPERTY
+// ─────────────────────────────────────────────
+function renderLand(entities, childLabel) {
+  let allParcels = [];
+  entities.forEach(e => {
+    const l = e.summary.land || {};
+    const parcels = l.parcels ? (Array.isArray(l.parcels)?l.parcels:Object.values(l.parcels)) : [];
+    parcels.forEach(p => allParcels.push({...p, _entity: e.name}));
+  });
+
+  const litigCount  = allParcels.filter(p => p.litigation === 'Yes').length;
+  const totalHa     = allParcels.reduce((a,p) => a + parseLandHa(p.size, p.sizeStr), 0);
+  const titledCount = allParcels.filter(p => p.title && p.title !== 'None').length;
+
+  document.getElementById('land-stats').innerHTML = [
+    {l:'Total Land Parcels',  v:fmtN(allParcels.length), cls:'sc-gold'},
+    {l:'Total Area',          v:fmtHa(totalHa), cls:'sc-navy'},
+    {l:'In Litigation',       v:fmtN(litigCount), cls:litigCount>0?'sc-red':'sc-green'},
+    {l:'With Title Deed',     v:fmtN(titledCount), cls:'sc-teal'},
+  ].map(k=>`<div class="stat-card ${k.cls}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div></div>`).join('');
+
+  document.getElementById('land-body').innerHTML = allParcels.map(p => {
+    const litigCls = p.litigation==='Yes'?'sb-err':'sb-ok';
+    const titleCls = (p.title==='Land Title Certificate'||p.title==='Registered Deed'||p.title==='Missionary Deed')?'sb-ok':p.title==='None'?'sb-err':'sb-warn';
+    return `<tr>
+      <td><strong>${escH(p._entity||'—')}</strong></td>
+      <td>${escH(p.name||'—')}</td>
+      <td>${escH(p.location||'—')}</td>
+      <td class="num">${fmtHa(parseLandHa(p.size, p.sizeStr))}</td>
+      <td><span class="status-badge ${titleCls}">${escH(p.title||'None')}</span></td>
+      <td><span class="status-badge ${litigCls}">${escH(p.litigation||'No')}</span></td>
+      <td style="font-size:11px;color:var(--ink3)">${escH(p.notes||p.status||'—')}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:24px">No land records found</td></tr>';
+
+  // Entity summary
+  let etParcels=0, etHa=0, etLitig=0;
+  document.getElementById('land-entity-body').innerHTML = entities.map(e => {
+    const l = e.summary.land||{};
+    const parcels = l.parcels ? (Array.isArray(l.parcels)?l.parcels:Object.values(l.parcels)) : [];
+    const cnt   = parcels.length || l.count || 0;
+    const ha    = parcels.reduce((a,p)=>a+parseLandHa(p.size,p.sizeStr),0);
+    const litig = parcels.filter(p=>p.litigation==='Yes').length;
+    etParcels+=cnt;etHa+=ha;etLitig+=litig;
+    return `<tr><td><strong>${escH(e.name)}</strong></td><td class="num">${cnt||'—'}</td><td class="num">${ha?fmtHa(ha):'—'}</td><td class="num">${litig?`<span class="status-badge sb-err">${litig}</span>`:'—'}</td><td>${cnt>0?'<span class="status-badge sb-ok">Active</span>':'<span class="status-badge sb-na">None</span>'}</td></tr>`;
+  }).join('');
+  document.getElementById('land-entity-foot').innerHTML = `<td>TOTAL</td><td class="num">${fmtN(etParcels)}</td><td class="num">${fmtHa(etHa)}</td><td class="num">${etLitig?`<span class="status-badge sb-err">${etLitig}</span>`:'0'}</td><td>—</td>`;
+}
+
+// ─────────────────────────────────────────────
+// ENTITY CARDS
+// ─────────────────────────────────────────────
+window.renderEntityCards = function renderEntityCards(entities) {
+  entities = entities || window._entities || [];
+  const sortVal = (document.getElementById('entity-sort')||{}).value || 'name';
+
+  const sorted = [...entities].sort((a,b) => {
+    if (sortVal==='name') return a.name.localeCompare(b.name);
+    if (sortVal==='members') return ((b.summary.membership||{})['totalQ'+CURRENT_Q]||0)-((a.summary.membership||{})['totalQ'+CURRENT_Q]||0);
+    if (sortVal==='attendance') return ((b.summary.attendance||{})['totalQ'+CURRENT_Q]||0)-((a.summary.attendance||{})['totalQ'+CURRENT_Q]||0);
+    if (sortVal==='receipts') return ((b.summary.finance||{}).totalReceipts||0)-((a.summary.finance||{}).totalReceipts||0);
+    return 0;
+  });
+
+  document.getElementById('entity-grid').innerHTML = sorted.map(e => {
+    const s=e.summary, m=s.membership||{}, a=s.attendance||{}, f=s.finance||{};
+    const net = (f.totalReceipts||0)-(f.totalPayments||0);
+    const netStr = net>=0?'<span style="color:var(--green)">+'+fmtGH(net)+'</span>':'<span style="color:var(--red)">'+fmtGH(net)+'</span>';
+    const updAt = s.updatedAt ? new Date(s.updatedAt).toLocaleDateString('en-GH',{day:'numeric',month:'short',year:'numeric'}) : '—';
+    return `<div class="entity-card">
+      <div class="ec-name">${escH(e.name)}</div>
+      <div class="ec-sub">${escH(e.id)} · Updated ${updAt}</div>
+      <div class="ec-stats">
+        <div class="ec-stat"><div class="ec-stat-v">${fmtN(m['totalQ'+CURRENT_Q]||m.total2024||0)}</div><div class="ec-stat-l">Members</div></div>
+        <div class="ec-stat"><div class="ec-stat-v">${fmtN(a['totalQ'+CURRENT_Q]||a.total2024||0)}</div><div class="ec-stat-l">Attendance</div></div>
+        <div class="ec-stat"><div class="ec-stat-v">${s.soulsWon||0}</div><div class="ec-stat-l">Souls Won</div></div>
+      </div>
+      <div class="ec-footer">
+        <div style="font-size:11px;color:var(--ink3)">Souls Won: ${s.soulsWon||0} · ME Acts: ${s.meActivities||0}</div>
+        <div style="font-size:10.5px;color:var(--ink3)">Land (LTC): ${s.landsLTC||0} · Welfare: ${s.welfareCount||0}</div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink3)">No entities loaded yet. Data is pulled from Firebase when congregations submit their records.</div>';
+}
+// renderEntityCards is defined above as a local function; no global wrapper needed.
+
+// ═══════════════════════════════════════════════════════════════
+// CDO SUMMARY PAGE — aggregate saved Cong. Summary (erp_cdo_summary_v1)
+// ═══════════════════════════════════════════════════════════════
+function cdoSumNum(v) {
+  if (v === '' || v == null || v === undefined) return 0;
+  const s = String(v).replace(/,/g, '').replace(/%$/, '').trim();
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+function cdoSumFmt(v, isPct) {
+  if (v === '' || v == null || v === undefined) return '—';
+  if (isPct) return String(v);
+  const n = cdoSumNum(v);
+  return n ? n.toLocaleString() : String(v);
+}
+function aggregateCdoSection(entities, section) {
+  const merged = [];
+  entities.forEach(e => {
+    const rows = Array.isArray((e.raw || {})[section]) ? e.raw[section] : [];
+    rows.forEach((r, i) => {
+      const k = (r.code || '') + '|' + (r.label || '') + '|' + (r.section || '') + '|' + i;
+      let slot = merged.find(m => m._key === k);
+      if (!slot) {
+        slot = { ...r, _key: k, prev: 0, target: 0, q1: 0, q2: 0, q3: 0, q4: 0, _hasPct: false };
+        merged.push(slot);
+      }
+      ['prev','target','q1','q2','q3','q4'].forEach(f => {
+        if (String(r[f] || '').includes('%')) {
+          slot._hasPct = true;
+          if (r[f]) slot[f] = r[f];
+        } else {
+          slot[f] = cdoSumNum(slot[f]) + cdoSumNum(r[f]);
+        }
+      });
+    });
+  });
+  return merged;
+}
+function renderCdoSumTable(section, rows, PY) {
+  const el = id => document.getElementById(id);
+  const tb = el('cdo-sum-' + section + '-body');
+  const tf = el('cdo-sum-' + section + '-foot');
+  if (!tb) return;
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="8" style="padding:16px;color:var(--ink3);font-size:12px">No saved CDO data for this section yet.</td></tr>';
+    if (tf) tf.innerHTML = '';
+    return;
+  }
+  const thPrev = el('cdo-sum-th-prev');
+  if (thPrev) thPrev.textContent = PY + ' Actual';
+  let lastSection = null;
+  let html = '';
+  const totals = { prev:0, q1:0, q2:0, q3:0, q4:0 };
+  rows.forEach(r => {
+    if (r.section && r.section !== lastSection) {
+      lastSection = r.section;
+      html += '<tr class="cdo-section-hdr"><td colspan="8">' + escH(r.section) + '</td></tr>';
+    }
+    const isPct = r._hasPct || r.unit === '%';
+    const auto = r.auto ? ' auto' : '';
+    html += '<tr><td class="code' + auto + '">' + escH(r.code||'') + '</td><td' + (auto?' class="auto"':'') + '>'
+      + escH(r.label||'') + '</td><td>' + escH(r.unit||'') + '</td>'
+      + '<td class="num' + auto + '">' + cdoSumFmt(r.prev,isPct) + '</td>'
+      + '<td class="num' + auto + '">' + cdoSumFmt(r.target,isPct) + '</td>'
+      + '<td class="num' + auto + '">' + cdoSumFmt(r.q1,isPct) + '</td>'
+      + '<td class="num' + auto + '">' + cdoSumFmt(r.q2,isPct) + '</td>'
+      + '<td class="num' + auto + '">' + cdoSumFmt(r.q3,isPct) + '</td>'
+      + '<td class="num' + auto + '">' + cdoSumFmt(r.q4,isPct) + '</td></tr>';
+    if (!isPct && section !== 'kpi') {
+      totals.prev += cdoSumNum(r.prev); totals.q1 += cdoSumNum(r.q1);
+      totals.q2 += cdoSumNum(r.q2); totals.q3 += cdoSumNum(r.q3); totals.q4 += cdoSumNum(r.q4);
+    }
+  });
+  tb.innerHTML = html;
+  if (tf && section !== 'kpi') {
+    tf.innerHTML = '<td colspan="3"><strong>TOTAL</strong></td><td class="num"><strong>' + fmtN(totals.prev)
+      + '</strong></td><td class="num">—</td><td class="num"><strong>' + fmtN(totals.q1) + '</strong></td>'
+      + '<td class="num"><strong>' + fmtN(totals.q2) + '</strong></td><td class="num"><strong>' + fmtN(totals.q3)
+      + '</strong></td><td class="num"><strong>' + fmtN(totals.q4) + '</strong></td>';
+  } else if (tf) tf.innerHTML = '';
+}
+function renderCDOSummary(entities, session) {
+  entities = entities || window._entities || [];
+  session  = session  || window._session  || {};
+
+  const el = id => document.getElementById(id);
+
+  const scopeLabel = session.role === 'district_admin'
+    ? (session.districtId || 'District')
+    : session.role === 'presbytery_admin'
+      ? (session.presbyteryId || 'Presbytery')
+      : 'National';
+
+  const titleEl = el('cdo-summary-title');
+  if (titleEl) titleEl.textContent = 'Cong. Summary — ' + scopeLabel;
+  const withCdo = entities.filter(e => {
+    const raw = e.raw || {};
+    return (raw.kpi && raw.kpi.length) || (raw.mem && raw.mem.length)
+      || (raw.att && raw.att.length) || (raw.land && raw.land.length);
+  });
+
+  const subEl = el('cdo-summary-subtitle');
+  if (subEl) {
+    subEl.textContent = withCdo.length
+      ? ('Aggregated CDO from ' + withCdo.length + ' of ' + entities.length + ' congregation(s) with saved Cong. Summary')
+      : ('Dashboard summary for ' + entities.length + ' congregation(s) — awaiting saved Cong. Summary in ChurchOS');
+  }
+
+  const bc = el('cdo-breadcrumb');
+  if (bc) bc.innerHTML = 'PCG <span>›</span> ' + escH(scopeLabel) + ' <span>›</span> Cong. Summary';
+
+  const sampleYear = (withCdo[0] && withCdo[0].raw && withCdo[0].raw.year) || CURRENT_YEAR;
+  const PY = (withCdo[0] && withCdo[0].raw && withCdo[0].raw.prevYear) || (sampleYear - 1);
+  const badge = el('cdo-sum-year-badge');
+  if (badge) badge.textContent = 'Year: ' + sampleYear + ' · Q' + CURRENT_Q + ' active';
+
+  const countBadge = el('cdo-sum-cong-count');
+  if (countBadge) countBadge.textContent = withCdo.length + ' of ' + entities.length + ' with saved CDO';
+
+  const lastUpd = Math.max(...entities.map(e => e.summary.updatedAt || 0));
+  const updEl = el('cdo-sum-updated');
+  if (updEl && lastUpd > 0)
+    updEl.textContent = 'Last sync: ' + new Date(lastUpd).toLocaleDateString('en-GH',
+      { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  if (withCdo.length) {
+    renderCdoSumTable('kpi',  aggregateCdoSection(withCdo, 'kpi'),  PY);
+    renderCdoSumTable('mem',  aggregateCdoSection(withCdo, 'mem'),  PY);
+    renderCdoSumTable('att',  aggregateCdoSection(withCdo, 'att'),  PY);
+    renderCdoSumTable('land', aggregateCdoSection(withCdo, 'land'), PY);
+    return;
+  }
+
+  ['mem','att','land'].forEach(sec => {
+    const tb = el('cdo-sum-' + sec + '-body');
+    if (tb) tb.innerHTML = '<tr><td colspan="8" style="padding:14px;color:var(--ink3);font-size:12px">Awaiting saved Cong. Summary from congregations.</td></tr>';
+    const tf = el('cdo-sum-' + sec + '-foot');
+    if (tf) tf.innerHTML = '';
+  });
+
+  const kpiTb = el('cdo-sum-kpi-body');
+  if (kpiTb && entities.length) {
+    const qf = 'totalQ' + CURRENT_Q;
+    let html = `<tr class="cdo-section-hdr"><td colspan="8">Per-Congregation Summary — Q${CURRENT_Q} ${CURRENT_YEAR}</td></tr>`;
+    html += `<tr style="background:var(--cream);font-size:11px;font-weight:700">
+      <td colspan="2">Congregation</td><td>Updated</td>
+      <td class="num">Members (Q${CURRENT_Q})</td>
+      <td class="num">Attendance (Q${CURRENT_Q})</td>
+      <td class="num">Souls Won</td>
+      <td class="num">Welfare Cases</td>
+      <td class="num">Finance Receipts</td>
+    </tr>`;
+    let tMem=0, tAtt=0, tSouls=0, tWel=0, tRec=0;
+    entities.forEach(e => {
+      const s = e.summary;
+      const mem  = (s.membership||{})[qf] || (s.membership||{}).totalPrev || (s.membership||{}).total2024 || 0;
+      const att  = (s.attendance||{})[qf] || (s.attendance||{}).totalPrev || (s.attendance||{}).total2024 || 0;
+      const souls = s.soulsWon || 0;
+      const wel  = (s.welfare||{}).count || 0;
+      const rec  = (s.finance||{}).totalReceipts || 0;
+      const upd  = s.updatedAt ? new Date(s.updatedAt).toLocaleDateString('en-GH',{day:'numeric',month:'short'}) : '—';
+      tMem+=mem; tAtt+=att; tSouls+=souls; tWel+=wel; tRec+=rec;
+      html += `<tr>
+        <td colspan="2"><strong>${escH(e.name)}</strong><div style="font-size:10px;color:var(--ink3)">${escH(e.id)}</div></td>
+        <td style="font-size:11px;color:var(--ink3)">${upd}</td>
+        <td class="num"><span class="cdo-ro-val highlight">${mem ? fmtN(mem) : '—'}</span></td>
+        <td class="num"><span class="cdo-ro-val highlight">${att ? fmtN(att) : '—'}</span></td>
+        <td class="num"><span class="cdo-ro-val">${souls ? fmtN(souls) : '—'}</span></td>
+        <td class="num"><span class="cdo-ro-val">${wel ? fmtN(wel) : '—'}</span></td>
+        <td class="num"><span class="cdo-ro-val">${rec ? fmtGH(rec) : '—'}</span></td>
+      </tr>`;
+    });
+    // Totals row
+    html += `<tr class="total-row">
+      <td colspan="2"><strong>TOTAL</strong></td><td></td>
+      <td class="num"><strong>${fmtN(tMem)}</strong></td>
+      <td class="num"><strong>${fmtN(tAtt)}</strong></td>
+      <td class="num"><strong>${fmtN(tSouls)}</strong></td>
+      <td class="num"><strong>${fmtN(tWel)}</strong></td>
+      <td class="num"><strong>${fmtGH(tRec)}</strong></td>
+    </tr>`;
+    kpiTb.innerHTML = html;
+  }
+}
+window.renderCDOSummary = renderCDOSummary;
+
+</script>
+</body>
+</html>

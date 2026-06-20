@@ -1,0 +1,50 @@
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/app"
+  to   = "/app.html"
+  status = 200
+
+[[redirects]]
+  from = "/login"
+  to   = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to   = "/admin.html"
+  status = 200
+
+[[redirects]]
+  from = "/qr/register"
+  to   = "/qr/register/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/qr/scan"
+  to   = "/qr/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
