@@ -133,6 +133,9 @@
   .log-time { font-family:var(--mono); font-size:10.5px; color:var(--muted); flex-shrink:0; letter-spacing:0.04em; }
   .log-empty { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:0.06em; text-align:center; padding:24px 0; }
   .hint { font-family:var(--mono); font-size:10.5px; color:var(--muted); letter-spacing:0.04em; margin-top:6px; }
+  .manual-row { display:flex; gap:8px; margin-bottom:14px; }
+  .manual-row input { flex:1; font-family:var(--mono); font-size:14px; letter-spacing:0.06em; height:var(--tap); }
+  .manual-row .btn { flex-shrink:0; height:var(--tap); }
 </style>
 </head>
 <body>
@@ -187,6 +190,10 @@
           <span class="scan-line"></span>
         </div>
       </div>
+    </div>
+    <div class="manual-row">
+      <input type="text" id="manual-code" placeholder="Enter code e.g. P1A2B3C4" autocomplete="off" autocapitalize="characters" spellcheck="false"/>
+      <button class="btn sm" id="manual-btn">Check in</button>
     </div>
     <div class="result-card" id="result-card">
       <div class="result-name" id="result-name">—</div>
@@ -266,6 +273,18 @@ document.getElementById('stop-btn').addEventListener('click', () => {
   document.getElementById('setup-screen').style.display   = '';
   document.getElementById('scanner-screen').style.display = 'none';
 });
+
+// Manual fallback — type the code when the camera can't read it
+function submitManual() {
+  const inp = document.getElementById('manual-code');
+  const code = inp.value.trim().toUpperCase();
+  if (!code) return;
+  if (!org) { alert('Start the scanner first.'); return; }
+  inp.value = '';
+  handleScan(code);
+}
+document.getElementById('manual-btn').addEventListener('click', submitManual);
+document.getElementById('manual-code').addEventListener('keydown', e => { if (e.key === 'Enter') submitManual(); });
 
 async function startCamera() {
   const video = document.getElementById('scanner-video');

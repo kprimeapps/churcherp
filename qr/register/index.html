@@ -211,8 +211,9 @@ function renderQR(containerId, person) {
   el.innerHTML = '';
   new QRCode(el, {
     text: person.id,
-    width: 180, height: 180,
-    colorDark: '#0F2340', colorLight: '#F5E9CC',
+    width: 200, height: 200,
+    // High-contrast black-on-white scans far more reliably than navy-on-cream.
+    colorDark: '#000000', colorLight: '#FFFFFF',
     correctLevel: QRCode.CorrectLevel.H,
   });
 }
@@ -271,24 +272,35 @@ function downloadQR(suffix) {
   const canvas = document.querySelector('#qr-display' + suffix + ' canvas');
   if (!canvas) return;
   const out = document.createElement('canvas');
-  const pad = 32, textH = 80;
-  out.width  = canvas.width  + pad * 2;
-  out.height = canvas.height + pad * 2 + textH;
+  const pad = 32;        // navy margin around the white panel
+  const quiet = 22;      // white quiet zone around the QR (required for scanning)
+  const textH = 88;
+  const qrW = canvas.width, qrH = canvas.height;
+  const panelW = qrW + quiet * 2, panelH = qrH + quiet * 2;
+  out.width  = panelW + pad * 2;
+  out.height = panelH + pad * 2 + textH;
   const ctx = out.getContext('2d');
+  // Navy card + gold top bar
   ctx.fillStyle = '#0F2340';
   ctx.fillRect(0, 0, out.width, out.height);
   ctx.fillStyle = '#B8964A';
   ctx.fillRect(0, 0, out.width, 8);
-  ctx.drawImage(canvas, pad, pad + 8);
+  // White panel (quiet zone) so the black-on-white QR has a clean light border
+  const px = pad, py = pad + 8;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(px, py, panelW, panelH);
+  ctx.drawImage(canvas, px + quiet, py + quiet, qrW, qrH);
+  // Text on the navy below the panel
   const name = `${personData?.first_name || ''} ${personData?.last_name || ''}`.trim();
+  const baseY = py + panelH;
+  ctx.textAlign = 'center';
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 18px serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(name, out.width / 2, canvas.height + pad + 36);
-  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.fillText(name, out.width / 2, baseY + 36);
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
   ctx.font = '13px sans-serif';
-  ctx.fillText(personData?.role || '', out.width / 2, canvas.height + pad + 56);
-  ctx.fillText(personData?.id || '', out.width / 2, canvas.height + pad + 74);
+  ctx.fillText(personData?.role || '', out.width / 2, baseY + 56);
+  ctx.fillText(personData?.id || '', out.width / 2, baseY + 74);
   const link = document.createElement('a');
   link.download = `qr-${name.replace(/\s+/g,'-')}.png`;
   link.href = out.toDataURL('image/png');
