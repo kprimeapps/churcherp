@@ -303,16 +303,22 @@ document.getElementById('ob-next-1').addEventListener('click', async () => {
     const denom    = document.getElementById('ob-denom').value.trim();
     const currency = document.getElementById('ob-currency').value;
 
+    // Generate org ID client-side so we don't need a SELECT after INSERT
+    // (SELECT would fail because profile.org_id isn't set yet)
+    const orgId = crypto.randomUUID();
+
     // Create org
-    const { data: org, error: orgErr } = await sb.from('organizations').insert({
-      name, slug, sub_name: sub || null, denomination: denom || null,
+    const { error: orgErr } = await sb.from('organizations').insert({
+      id: orgId, name, slug, sub_name: sub || null, denomination: denom || null,
       currency, plan: selectedPlan, org_type: 'congregation',
-    }).select().single();
+    });
     if (orgErr) throw orgErr;
 
     // Attach org to profile
-    const { error: profErr } = await sb.from('profiles').update({ org_id: org.id }).eq('id', newUserId);
+    const { error: profErr } = await sb.from('profiles').update({ org_id: orgId }).eq('id', newUserId);
     if (profErr) throw profErr;
+
+    const org = { id: orgId, slug };
 
     const origin = window.location.origin;
     document.getElementById('qr-link-display').textContent = `${origin}/qr/register/?org=${slug}`;
