@@ -1350,7 +1350,7 @@
   <div class="modal" style="max-width:420px;">
     <div class="modal-header"><h3 class="modal-title" id="ftBudItemTitle">Add Category</h3><button class="modal-close" onclick="document.getElementById('modal-buditem').classList.add('hidden')">✕</button></div>
     <input type="hidden" id="ftBudItemType"/>
-    <div class="form-group"><label class="form-label">Category Name *</label><input type="text" id="ftBudItemCat" class="form-control"/></div>
+    <div class="form-group"><label class="form-label">Category Name *</label><input type="text" id="ftBudItemCat" class="form-control" list="ftBudCatList" autocomplete="off"/><datalist id="ftBudCatList"></datalist></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label" id="ftBudItemPrevLbl">Prev Budget</label><input type="number" id="ftBudItemBPrev" class="form-control" value="0" step="50"/></div>
       <div class="form-group"><label class="form-label" id="ftBudItemAPrevLbl">Prev Actual</label><input type="number" id="ftBudItemAPrev" class="form-control" value="0" step="50"/></div>

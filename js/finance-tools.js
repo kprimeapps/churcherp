@@ -446,7 +446,20 @@ window.ftUpdBud=(type,i,key,val)=>{ const arr=type==='receipt'?ftBudget.receipts
 window.ftRenameBud=(type,i,name)=>{ name=(name||'').trim(); if(!name)return; const arr=type==='receipt'?ftBudget.receipts:ftBudget.payments; arr[i].cat=name; ftSaveDebounced(); };
 window.ftSaveBudget=async ()=>{ const { error }=await db.budgetPlan.upsert(ORG(),ftBudget); toast(error?error.message:'Budget saved','success'); };
 window.ftResetBudget=async ()=>{ if(!confirm('Reset to default budget?'))return; ftBudget=ftDefaultBudget(); await db.budgetPlan.upsert(ORG(),ftBudget); ftBuildYearSelect(); ftRenderBudget(); toast('Reset','success'); };
-window.ftAddBudItem=type=>{ document.getElementById('ftBudItemType').value=type; document.getElementById('ftBudItemCat').value=''; document.getElementById('ftBudItemBPrev').value='0'; document.getElementById('ftBudItemAPrev').value='0'; document.getElementById('ftBudItemBCur').value='0'; document.getElementById('ftBudItemTitle').textContent='Add '+(type==='receipt'?'Income':'Expense')+' Category'; document.getElementById('ftBudItemPrevLbl').textContent=(new Date().getFullYear()-1)+' Budget'; document.getElementById('ftBudItemAPrevLbl').textContent=(new Date().getFullYear()-1)+' Actual'; document.getElementById('ftBudItemCurLbl').textContent=ftBudYear()+' Budget'; document.getElementById('modal-buditem').classList.remove('hidden'); };
+window.ftAddBudItem=async type=>{ document.getElementById('ftBudItemType').value=type; document.getElementById('ftBudItemCat').value=''; document.getElementById('ftBudItemBPrev').value='0'; document.getElementById('ftBudItemAPrev').value='0'; document.getElementById('ftBudItemBCur').value='0'; document.getElementById('ftBudItemTitle').textContent='Add '+(type==='receipt'?'Income':'Expense')+' Category'; document.getElementById('ftBudItemPrevLbl').textContent=(new Date().getFullYear()-1)+' Budget'; document.getElementById('ftBudItemAPrevLbl').textContent=(new Date().getFullYear()-1)+' Actual'; document.getElementById('ftBudItemCurLbl').textContent=ftBudYear()+' Budget'; ftPopulateCatSuggestions(type); document.getElementById('modal-buditem').classList.remove('hidden'); };
+
+// Suggest category names from existing giving (receipts) / expenses (payments),
+// excluding ones already in the budget.
+async function ftPopulateCatSuggestions(type){
+  const dl=document.getElementById('ftBudCatList'); if(dl) dl.innerHTML='';
+  const used=new Set((type==='receipt'?ftBudget.receipts:ftBudget.payments).map(r=>r.cat.toLowerCase()));
+  const col = type==='receipt' ? 'category' : 'category';
+  const tbl = type==='receipt' ? 'giving' : 'expenses';
+  const { data } = await supabase.from(tbl).select(col).eq('org_id',ORG());
+  const cats=[...new Set((data||[]).map(r=>r.category).filter(Boolean))]
+    .filter(c=>!used.has(c.toLowerCase())).sort();
+  if(dl) dl.innerHTML=cats.map(c=>`<option value="${esc(c)}"></option>`).join('');
+}
 window.ftSaveBudItem=()=>{
   const type=document.getElementById('ftBudItemType').value, cat=document.getElementById('ftBudItemCat').value.trim();
   if(!cat){ toast('Enter category name','error'); return; }
