@@ -1,0 +1,5 @@
+/app            /app.html              200
+/login          /index.html            200
+/admin          /admin.html            200
+/qr/scan        /qr/index.html         200
+/qr/register    /qr/register/index.html 200
