@@ -4,6 +4,8 @@
 -- The old structure used one table per church (columns: id, "firstName",
 -- "lastName", email, phone, role, "createdAt" [epoch ms], "checkedIn").
 -- The new qr_registrations table is shared and scoped by org_id.
+-- NOTE: the legacy "email" column actually holds the MEMBERSHIP NUMBER, so it
+-- maps to membership_no (not email — qr_registrations has no email column).
 --
 -- This file is a TEMPLATE — you must fill in two things per church:
 --   <OLD_TABLE_NAME>  the legacy table name (e.g. immanuel_madina)
@@ -27,13 +29,14 @@
 
 -- ── STEP 3: migrate one legacy table (repeat per church) ─────────────────────
 -- insert into qr_registrations
---   (id, org_id, first_name, last_name, phone, role, imported, created_at)
+--   (id, org_id, first_name, last_name, phone, membership_no, role, imported, created_at)
 -- select
 --   id,
 --   '<ORG_UUID>'::uuid,
 --   "firstName",
 --   nullif(trim("lastName"), ''),
 --   nullif(trim(phone), ''),
+--   nullif(trim(email), ''),                 -- legacy "email" = membership number
 --   coalesce(nullif(trim(role), ''), 'General'),
 --   false,
 --   case when "createdAt" is not null and "createdAt" > 0
