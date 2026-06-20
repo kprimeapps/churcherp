@@ -249,6 +249,12 @@ document.getElementById('signup-form').addEventListener('submit', async e => {
     });
     if (error) throw error;
     newUserId = data.user?.id;
+    // If this email was invited, the signup trigger already attached them to an
+    // org with a role — skip onboarding and go straight into the app.
+    if (newUserId) {
+      const { data: prof } = await sb.from('profiles').select('org_id').eq('id', newUserId).maybeSingle();
+      if (prof?.org_id) { window.location.href = '/app.html'; return; }
+    }
     document.getElementById('auth-section').style.display = 'none';
     document.getElementById('onboard-section').style.display = 'block';
   } catch (err) {
