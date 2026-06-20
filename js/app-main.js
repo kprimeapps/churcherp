@@ -1,4 +1,5 @@
 // ChurchOS v2 — Main App Controller
+const APP_BUILD = 'b12 · invites';
 import { supabase, db, syncQueue } from './db.js';
 import { requireAuth, currentProfile, currentOrg, signOut } from './auth.js';
 import {
@@ -1406,6 +1407,8 @@ function loadSettings() {
   document.getElementById('qr-reset-code').textContent = org.qr_reset_code || '—';
   const link = `${window.location.origin}/qr/register/?org=${org.slug}`;
   document.getElementById('qr-link-display2').textContent = link;
+  const buildEl = document.getElementById('set-build');
+  if (buildEl) buildEl.textContent = APP_BUILD;
 
   // Org settings are editable by full-access roles only
   const canEditOrg = isOrgAdmin() || pageAccess('page-settings') === 'write';
