@@ -134,6 +134,7 @@
       <div class="page-actions">
         <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="members-search" placeholder="Search name, phone, #…"/></div>
         <select class="form-control" id="members-group-filter" style="width:auto;min-height:40px;font-size:.82rem;"></select>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer;">⬆ Import CSV<input type="file" id="member-csv-input" accept=".csv" style="display:none"/></label>
         <button class="btn btn-primary btn-sm" id="member-add-btn">+ Add Member</button>
       </div>
     </div>
@@ -380,6 +381,7 @@
       <div class="finance-tab-btn" data-ftab="budgets">Budgets</div>
       <div class="finance-tab-btn" data-ftab="payroll">Payroll</div>
       <div class="finance-tab-btn" data-ftab="accounts">Accounts</div>
+      <div class="finance-tab-btn" data-ftab="reconciliation">Reconciliation</div>
     </div>
 
     <!-- Ledger -->
@@ -416,9 +418,57 @@
       </div>
       <div class="tbl-wrap">
         <table class="dtable">
-          <thead><tr><th>Name</th><th>Role</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Period</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Role</th><th>Basic</th><th>Gross</th><th>Deductions</th><th>Net Pay</th><th>Status</th><th></th></tr></thead>
           <tbody id="payroll-tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Reconciliation -->
+    <div id="ftab-reconciliation" style="display:none;">
+      <div class="page-header" style="margin-bottom:.75rem;">
+        <div></div>
+        <div class="page-actions"><button class="btn btn-primary btn-sm" id="recon-add-btn">+ New Reconciliation</button></div>
+      </div>
+      <div id="recon-list-view">
+        <div class="tbl-wrap">
+          <table class="dtable">
+            <thead><tr><th>Period</th><th>Account</th><th>Statement Balance</th><th>Book Balance</th><th>Difference</th><th>Status</th><th></th></tr></thead>
+            <tbody id="recon-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="recon-detail-view" style="display:none;">
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+          <button class="btn btn-outline btn-sm" id="recon-back-btn">← Back</button>
+          <h3 id="recon-detail-title" style="margin:0;"></h3>
+          <span id="recon-detail-diff" style="font-weight:700;margin-left:auto;"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+              <strong>Book Items</strong>
+              <button class="btn btn-outline btn-sm" onclick="addReconItem('book')">+ Add</button>
+            </div>
+            <div class="tbl-wrap"><table class="dtable" id="recon-book-table">
+              <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>✓</th><th></th></tr></thead>
+              <tbody id="recon-book-tbody"></tbody>
+            </table></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+              <strong>Statement Items</strong>
+              <button class="btn btn-outline btn-sm" onclick="addReconItem('statement')">+ Add</button>
+            </div>
+            <div class="tbl-wrap"><table class="dtable" id="recon-stmt-table">
+              <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>✓</th><th></th></tr></thead>
+              <tbody id="recon-stmt-tbody"></tbody>
+            </table></div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <button class="btn btn-primary btn-sm" id="recon-mark-done-btn">Mark as Reconciled</button>
+        </div>
       </div>
     </div>
 
@@ -561,6 +611,35 @@
         <div class="form-group"><label class="form-label">Date Joined</label><input type="date" id="mf-joined" class="form-control"/></div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><textarea id="mf-notes" class="form-control" rows="2"></textarea></div>
+      <!-- Employment -->
+      <hr style="margin:1rem 0;border-color:var(--border);"/>
+      <p style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:.75rem;">Employment</p>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Occupation</label><input type="text" id="mf-occupation" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Employer</label><input type="text" id="mf-employer" class="form-control"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Employment Type</label>
+        <select id="mf-emp-type" class="form-control">
+          <option value="">—</option><option>Employed</option><option>Self-Employed</option><option>Student</option><option>Retired</option><option>Unemployed</option>
+        </select>
+      </div>
+      <!-- Sacraments -->
+      <hr style="margin:1rem 0;border-color:var(--border);"/>
+      <p style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:.75rem;">Sacraments</p>
+      <div class="form-row">
+        <div class="form-group" style="flex:0 0 auto;">
+          <label class="form-label"><input type="checkbox" id="mf-baptised" style="margin-right:.4rem;"/>Baptised</label>
+        </div>
+        <div class="form-group"><label class="form-label">Baptism Date</label><input type="date" id="mf-baptism-date" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Baptism Place</label><input type="text" id="mf-baptism-place" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0 0 auto;">
+          <label class="form-label"><input type="checkbox" id="mf-confirmed" style="margin-right:.4rem;"/>Confirmed</label>
+        </div>
+        <div class="form-group"><label class="form-label">Confirmation Date</label><input type="date" id="mf-confirm-date" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Confirmation Place</label><input type="text" id="mf-confirm-place" class="form-control"/></div>
+      </div>
       <input type="hidden" id="mf-id"/>
       <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-member')">Cancel</button><button type="submit" class="btn btn-primary" id="mf-submit">Save Member</button></div>
     </form>
@@ -667,7 +746,11 @@
       <div class="form-group"><label class="form-label">Member</label><input type="text" id="wff-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="wff-member-id"/></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Type *</label>
-          <select id="wff-type" class="form-control"><option>Bereavement</option><option>Hospital</option><option>Financial Assistance</option><option>Food</option><option>Other</option></select>
+          <select id="wff-type" class="form-control">
+            <option>Bereavement</option><option>Hospital</option><option>Financial Assistance</option>
+            <option>Food</option><option>Invalid/Homebound</option><option>Marriage</option>
+            <option>Child Naming</option><option>Accident</option><option>Other</option>
+          </select>
         </div>
         <div class="form-group"><label class="form-label">Amount</label><input type="number" id="wff-amount" class="form-control" step="0.01"/></div>
       </div>
@@ -864,22 +947,150 @@
 </div>
 
 <div class="modal-overlay hidden" id="modal-payroll">
-  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Staff Pay</h3><button class="modal-close" onclick="closeModal('modal-payroll')">✕</button></div>
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header"><h3 class="modal-title" id="prf-modal-title">Staff Payroll</h3><button class="modal-close" onclick="closeModal('modal-payroll')">✕</button></div>
     <form id="payroll-form">
-      <div class="form-group"><label class="form-label">Member</label><input type="text" id="prf-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="prf-member-id"/></div>
-      <div class="form-group"><label class="form-label">Name (if not a member) *</label><input type="text" id="prf-name" class="form-control"/></div>
+      <!-- Identity -->
+      <div class="form-group"><label class="form-label">Member (search)</label><input type="text" id="prf-member-name" class="form-control" autocomplete="off" placeholder="Type to search…"/><input type="hidden" id="prf-member-id"/></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Role</label><input type="text" id="prf-role" class="form-control" placeholder="Pastor, Admin…"/></div>
-        <div class="form-group"><label class="form-label">Pay Period *</label><input type="month" id="prf-period" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">Staff Name *</label><input type="text" id="prf-name" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">Role</label><input type="text" id="prf-role" class="form-control" placeholder="Pastor, Accountant…"/></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Gross Amount *</label><input type="number" id="prf-gross" class="form-control" step="0.01" required/></div>
-        <div class="form-group"><label class="form-label">Deductions</label><input type="number" id="prf-deduct" class="form-control" step="0.01" value="0"/></div>
+        <div class="form-group"><label class="form-label">Pay Period *</label><input type="month" id="prf-period" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">Payment Date</label><input type="date" id="prf-payment-date" class="form-control"/></div>
+      </div>
+      <hr style="margin:1rem 0;border-color:var(--border);"/>
+      <!-- Salary components -->
+      <p style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:.75rem;">Salary Components</p>
+      <div class="form-group"><label class="form-label">Basic Salary *</label><input type="number" id="prf-basic" class="form-control" step="0.01" min="0" required oninput="calcPayroll()"/></div>
+      <div id="prf-allowances-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+          <label class="form-label" style="margin:0;">Allowances</label>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addAllowanceRow()">+ Add</button>
+        </div>
+        <div id="prf-allowances-list"></div>
+      </div>
+      <hr style="margin:1rem 0;border-color:var(--border);"/>
+      <!-- Auto-calculated deductions -->
+      <p style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:.75rem;">Statutory Deductions (Ghana)</p>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">SSNIT (Employee 5.5%)</label><input type="number" id="prf-ssnit-emp" class="form-control" step="0.01" readonly style="background:var(--surface2);"/></div>
+        <div class="form-group"><label class="form-label">SSNIT (Employer 13%)</label><input type="number" id="prf-ssnit-er" class="form-control" step="0.01" readonly style="background:var(--surface2);"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Tier 2 (Employer 5%)</label><input type="number" id="prf-tier2" class="form-control" step="0.01" readonly style="background:var(--surface2);"/></div>
+        <div class="form-group"><label class="form-label">PAYE (Income Tax)</label><input type="number" id="prf-paye" class="form-control" step="0.01" readonly style="background:var(--surface2);"/></div>
+      </div>
+      <div id="prf-other-deduct-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+          <label class="form-label" style="margin:0;">Other Deductions</label>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addDeductionRow()">+ Add</button>
+        </div>
+        <div id="prf-other-deductions-list"></div>
+      </div>
+      <!-- Summary -->
+      <div style="background:var(--surface2);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;text-align:center;">
+        <div><div style="font-size:.72rem;color:var(--ink3);">Gross</div><div id="prf-disp-gross" style="font-weight:700;color:var(--navy);">0.00</div></div>
+        <div><div style="font-size:.72rem;color:var(--ink3);">Total Deductions</div><div id="prf-disp-deduct" style="font-weight:700;color:var(--error);">0.00</div></div>
+        <div><div style="font-size:.72rem;color:var(--ink3);">Net Pay</div><div id="prf-disp-net" style="font-weight:700;color:var(--gold);">0.00</div></div>
+      </div>
+      <hr style="margin:1rem 0;border-color:var(--border);"/>
+      <!-- Bank details -->
+      <p style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:.75rem;">Bank Details</p>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Bank Name</label><input type="text" id="prf-bank-name" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Branch</label><input type="text" id="prf-bank-branch" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Account Number</label><input type="text" id="prf-bank-acct" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Account Name</label><input type="text" id="prf-bank-acct-name" class="form-control"/></div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><input type="text" id="prf-notes" class="form-control"/></div>
       <input type="hidden" id="prf-id"/>
-      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-payroll')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-payroll')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Payroll</button>
+      </div>
     </form>
+  </div>
+</div>
+
+<!-- Giving Receipt -->
+<div class="modal-overlay hidden" id="modal-receipt">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header"><h3 class="modal-title">Giving Receipt</h3><button class="modal-close" onclick="closeModal('modal-receipt')">✕</button></div>
+    <div id="receipt-content" style="padding:1.25rem;font-family:'DM Sans',sans-serif;">
+      <div style="text-align:center;margin-bottom:1rem;">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--navy);" id="rc-org"></div>
+        <div style="font-size:.8rem;color:var(--ink3);">Official Giving Receipt</div>
+      </div>
+      <hr style="border-color:var(--border);margin:.75rem 0;"/>
+      <table style="width:100%;font-size:.88rem;border-collapse:collapse;">
+        <tr><td style="color:var(--ink3);padding:.3rem 0;">Receipt No.</td><td style="text-align:right;font-weight:600;" id="rc-no"></td></tr>
+        <tr><td style="color:var(--ink3);padding:.3rem 0;">Name</td><td style="text-align:right;font-weight:600;" id="rc-name"></td></tr>
+        <tr><td style="color:var(--ink3);padding:.3rem 0;">Date</td><td style="text-align:right;" id="rc-date"></td></tr>
+        <tr><td style="color:var(--ink3);padding:.3rem 0;">Category</td><td style="text-align:right;" id="rc-cat"></td></tr>
+        <tr><td style="color:var(--ink3);padding:.3rem 0;">Method</td><td style="text-align:right;" id="rc-method"></td></tr>
+        <tr><td colspan="2"><hr style="border-color:var(--border);margin:.5rem 0;"/></td></tr>
+        <tr><td style="font-weight:700;font-size:1rem;">Amount</td><td style="text-align:right;font-weight:700;font-size:1.1rem;color:var(--gold);" id="rc-amount"></td></tr>
+      </table>
+      <div style="margin-top:1rem;font-size:.72rem;color:var(--ink3);text-align:center;" id="rc-notes"></div>
+      <div style="text-align:center;margin-top:1.25rem;font-size:.7rem;color:var(--ink3);">Thank you for your generosity</div>
+    </div>
+    <div class="form-actions" style="border-top:1px solid var(--border);padding-top:1rem;">
+      <button type="button" class="btn btn-outline" onclick="printReceipt()">🖨 Print</button>
+      <button type="button" class="btn btn-primary" onclick="saveReceiptImage()">⬇ Save as Image</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reconciliation New modal -->
+<div class="modal-overlay hidden" id="modal-recon">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title">New Reconciliation</h3><button class="modal-close" onclick="closeModal('modal-recon')">✕</button></div>
+    <form id="recon-form">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Period *</label><input type="month" id="reconf-period" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">Account *</label><select id="reconf-account" class="form-control"><option value="">Select…</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Statement Balance *</label><input type="number" id="reconf-stmt-bal" class="form-control" step="0.01" required/></div>
+        <div class="form-group"><label class="form-label">Book Balance *</label><input type="number" id="reconf-book-bal" class="form-control" step="0.01" required/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea id="reconf-notes" class="form-control" rows="2"></textarea></div>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-recon')">Cancel</button><button type="submit" class="btn btn-primary">Create</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Reconciliation Item modal -->
+<div class="modal-overlay hidden" id="modal-recon-item">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title" id="recon-item-title">Add Item</h3><button class="modal-close" onclick="closeModal('modal-recon-item')">✕</button></div>
+    <form id="recon-item-form">
+      <div class="form-group"><label class="form-label">Description *</label><input type="text" id="reconif-desc" class="form-control" required/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input type="number" id="reconif-amount" class="form-control" step="0.01" required/></div>
+        <div class="form-group"><label class="form-label">Date</label><input type="date" id="reconif-date" class="form-control"/></div>
+      </div>
+      <input type="hidden" id="reconif-type"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-recon-item')">Cancel</button><button type="submit" class="btn btn-primary">Add</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- CSV Import Preview modal -->
+<div class="modal-overlay hidden" id="modal-csv-preview">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-header"><h3 class="modal-title">Import Members from CSV</h3><button class="modal-close" onclick="closeModal('modal-csv-preview')">✕</button></div>
+    <p style="font-size:.82rem;color:var(--ink3);margin-bottom:.75rem;">Expected columns: <code>first_name, last_name, phone, email, membership_no, gender, date_of_birth, date_joined, role, group_name, notes</code></p>
+    <div id="csv-preview-wrap" style="max-height:320px;overflow-y:auto;">
+      <table class="dtable" id="csv-preview-table"><thead id="csv-preview-head"></thead><tbody id="csv-preview-tbody"></tbody></table>
+    </div>
+    <p id="csv-row-count" style="font-size:.8rem;color:var(--ink3);margin-top:.5rem;"></p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-outline" onclick="closeModal('modal-csv-preview')">Cancel</button>
+      <button type="button" class="btn btn-primary" id="csv-import-confirm-btn">Import All</button>
+    </div>
   </div>
 </div>
 

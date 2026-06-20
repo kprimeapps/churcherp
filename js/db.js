@@ -187,6 +187,7 @@ export const db = {
     },
     summary: (orgId) => supabase.rpc('get_giving_by_category', { p_org_id: orgId }),
     insert: (data) => dbInsert('giving', data),
+    update: (id, data) => dbUpdate('giving', data, { id }),
     delete: (id) => dbDelete('giving', { id }),
   },
 
@@ -316,16 +317,29 @@ export const db = {
     deleteLine: (id) => dbDelete('budget_lines', { id }),
   },
 
-  // Finance — Payroll
+  // Finance — Payroll (Ghana model)
   payroll: {
-    list:   (orgId, period = null) => {
+    list: (orgId, period = null) => {
       let q = supabase.from('payroll').select('*').eq('org_id', orgId);
       if (period) q = q.eq('pay_period', period);
-      return q.order('created_at', { ascending: false });
+      return q.order('member_name');
     },
+    get:    (id) => supabase.from('payroll').select('*').eq('id', id).single(),
     insert: (data) => dbInsert('payroll', data),
     update: (id, data) => dbUpdate('payroll', data, { id }),
     delete: (id) => dbDelete('payroll', { id }),
+  },
+
+  // Reconciliation
+  reconciliations: {
+    list:   (orgId) => supabase.from('reconciliations').select('*, accounts(name)').eq('org_id', orgId).order('period', { ascending: false }),
+    get:    (id) => supabase.from('reconciliations').select('*, reconciliation_items(*), accounts(name)').eq('id', id).single(),
+    insert: (data) => dbInsert('reconciliations', data),
+    update: (id, data) => dbUpdate('reconciliations', data, { id }),
+    delete: (id) => dbDelete('reconciliations', { id }),
+    addItem:    (data) => dbInsert('reconciliation_items', data),
+    updateItem: (id, data) => dbUpdate('reconciliation_items', data, { id }),
+    deleteItem: (id) => dbDelete('reconciliation_items', { id }),
   },
 
   // Expenses

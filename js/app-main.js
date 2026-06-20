@@ -69,7 +69,7 @@ async function boot() {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.finance-tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      ['ledger','budgets','payroll','accounts'].forEach(t => {
+      ['ledger','budgets','payroll','accounts','reconciliation'].forEach(t => {
         document.getElementById(`ftab-${t}`).style.display = t === btn.dataset.ftab ? '' : 'none';
       });
       loadFinanceTab(btn.dataset.ftab);
@@ -277,6 +277,17 @@ function openMemberModal(m = null) {
   document.getElementById('mf-dob').value      = m?.date_of_birth || '';
   document.getElementById('mf-joined').value   = m?.date_joined || '';
   document.getElementById('mf-notes').value    = m?.notes || '';
+  // Employment
+  document.getElementById('mf-occupation').value  = m?.occupation || '';
+  document.getElementById('mf-employer').value    = m?.employer || '';
+  document.getElementById('mf-emp-type').value    = m?.employment_type || '';
+  // Sacraments
+  document.getElementById('mf-baptised').checked       = !!m?.baptised;
+  document.getElementById('mf-baptism-date').value     = m?.baptism_date || '';
+  document.getElementById('mf-baptism-place').value    = m?.baptism_place || '';
+  document.getElementById('mf-confirmed').checked      = !!m?.confirmed;
+  document.getElementById('mf-confirm-date').value     = m?.confirmation_date || '';
+  document.getElementById('mf-confirm-place').value    = m?.confirmation_place || '';
   openModal('modal-member');
 }
 
@@ -488,9 +499,71 @@ function renderGiving() {
       <td>${r.payment_method}</td>
       <td>${fmtDate(r.given_date)}</td>
       <td class="text-sm text-muted">${r.notes || '—'}</td>
-      <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteGiving('${r.id}')">Delete</button></td>`;
+      <td class="td-actions">
+        <button class="btn btn-ghost btn-sm" onclick="showGivingReceipt('${r.id}')">Receipt</button>
+        <button class="btn btn-ghost btn-sm" onclick="editGiving('${r.id}')">Edit</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteGiving('${r.id}')">Delete</button>
+      </td>`;
   });
 }
+
+window.editGiving = (id) => {
+  const r = givingData.find(x => x.id === id);
+  if (!r) return;
+  const name = r.members ? `${r.members.first_name} ${r.members.last_name}` : r.member_name || '';
+  document.getElementById('gf-member-name').value = name;
+  document.getElementById('gf-member-id').value   = r.member_id || '';
+  document.getElementById('gf-amount').value       = r.amount;
+  document.getElementById('gf-cat').value          = r.category;
+  document.getElementById('gf-method').value       = r.payment_method;
+  document.getElementById('gf-date').value         = r.given_date;
+  document.getElementById('gf-notes').value        = r.notes || '';
+  // stash id for update
+  document.getElementById('gf-member-id').dataset.editId = id;
+  openModal('modal-giving');
+};
+
+window.showGivingReceipt = (id) => {
+  const r = givingData.find(x => x.id === id);
+  if (!r) return;
+  const name = r.members ? `${r.members.first_name} ${r.members.last_name}` : r.member_name || 'Anonymous';
+  document.getElementById('rc-org').textContent    = currentOrg?.name || 'Church';
+  document.getElementById('rc-no').textContent     = r.id.slice(0,8).toUpperCase();
+  document.getElementById('rc-name').textContent   = name;
+  document.getElementById('rc-date').textContent   = fmtDate(r.given_date);
+  document.getElementById('rc-cat').textContent    = r.category;
+  document.getElementById('rc-method').textContent = r.payment_method;
+  document.getElementById('rc-amount').textContent = fmtMoney(r.amount, CURRENCY);
+  document.getElementById('rc-notes').textContent  = r.notes ? `Note: ${r.notes}` : '';
+  openModal('modal-receipt');
+};
+
+window.printReceipt = () => {
+  const content = document.getElementById('receipt-content').innerHTML;
+  const w = window.open('', '_blank');
+  w.document.write(`<html><head><title>Receipt</title><style>
+    body{font-family:sans-serif;padding:2rem;max-width:400px;margin:auto;}
+    table{width:100%;border-collapse:collapse;}
+    td{padding:.3rem 0;}
+    hr{border:none;border-top:1px solid #ddd;margin:.5rem 0;}
+  </style></head><body>${content}<script>window.print();window.close();<\/script></body></html>`);
+  w.document.close();
+};
+
+window.saveReceiptImage = async () => {
+  const el = document.getElementById('receipt-content');
+  // Use html2canvas if available, otherwise fall back to print
+  if (window.html2canvas) {
+    const canvas = await html2canvas(el, { backgroundColor: '#ffffff' });
+    const a = document.createElement('a');
+    a.download = `receipt-${Date.now()}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  } else {
+    toast('Tip: Use Print → Save as PDF for PDF format', 'default');
+    window.printReceipt();
+  }
+};
 
 window.deleteGiving = async (id) => {
   if (!confirm('Delete this giving record?')) return;
@@ -857,9 +930,10 @@ let accountsCache = [];
 async function loadFinanceTab(tab) {
   switch (tab) {
     case 'ledger':   await loadLedger();   break;
-    case 'budgets':  await loadBudgets();  break;
-    case 'payroll':  await loadPayroll();  break;
-    case 'accounts': await loadAccounts(); break;
+    case 'budgets':        await loadBudgets();        break;
+    case 'payroll':        await loadPayroll();        break;
+    case 'accounts':       await loadAccounts();       break;
+    case 'reconciliation': await loadReconciliation(); break;
   }
 }
 
@@ -921,6 +995,7 @@ async function loadBudgets() {
   const { data, error } = await db.budgets.list(ORG_ID);
   if (error) { toast(error.message, 'error'); return; }
   const list = document.getElementById('budgets-list');
+  budgetsCache = data || [];
   if (!data?.length) { list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><h3>No budgets yet</h3></div>'; return; }
   list.innerHTML = data.map(b => {
     const lines = b.budget_lines || [];
@@ -937,7 +1012,8 @@ async function loadBudgets() {
         <div class="budget-bar"><div class="budget-bar-fill${pct>=100?' over':''}" style="width:${pct}%"></div></div>
       </div>
       <div style="margin-top:.85rem;display:flex;gap:.5rem;">
-        <button class="btn btn-outline btn-sm" onclick="viewBudgetLines('${b.id}')">View Lines</button>
+        <button class="btn btn-outline btn-sm" onclick="viewBudgetLines('${b.id}')">Manage Lines</button>
+        <button class="btn btn-ghost btn-sm" onclick="editBudget('${b.id}')">Edit</button>
         <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteBudget('${b.id}')">Delete</button>
       </div>
     </div>`;
@@ -963,27 +1039,168 @@ window.deleteBudget = async (id) => {
   await loadBudgets();
 };
 
-window.viewBudgetLines = async (id) => {
-  toast('Budget line editing: select the budget and manage lines here.', 'default');
+let budgetsCache = [];
+window.editBudget = (id) => {
+  const b = budgetsCache.find(x => x.id === id);
+  if (!b) return;
+  const name = prompt('Budget name:', b.name);
+  if (!name) return;
+  const year = prompt('Fiscal year:', b.fiscal_year);
+  if (!year) return;
+  const statusOpts = ['draft','approved','active','closed'];
+  const status = prompt(`Status (${statusOpts.join('/')}):`, b.status);
+  if (!status || !statusOpts.includes(status)) { toast('Invalid status', 'error'); return; }
+  db.budgets.update(id, { name, fiscal_year: year, status }).then(({ error }) => {
+    if (error) { toast(error.message, 'error'); return; }
+    toast('Budget updated', 'success');
+    loaded.delete('page-budget');
+    loadBudgets();
+  });
 };
+
+window.viewBudgetLines = async (id) => {
+  const b = budgetsCache.find(x => x.id === id);
+  if (!b) return;
+  const lines = b.budget_lines || [];
+  const lineList = lines.map(l => `${l.category}: ${fmtMoney(l.amount, CURRENCY)} (spent: ${fmtMoney(l.spent, CURRENCY)})`).join('\n') || '(no lines yet)';
+  const action = prompt(`Budget: ${b.name}\n\nLines:\n${lineList}\n\nEnter "add [category] [amount]" or "delete [category]" or cancel:`);
+  if (!action) return;
+  const addMatch = action.match(/^add\s+(.+?)\s+([\d.]+)$/i);
+  const delMatch = action.match(/^delete\s+(.+)$/i);
+  if (addMatch) {
+    const { error } = await db.budgets.addLine({ budget_id: id, org_id: ORG_ID, category: addMatch[1].trim(), amount: parseFloat(addMatch[2]) });
+    if (error) { toast(error.message, 'error'); return; }
+    toast('Line added', 'success');
+  } else if (delMatch) {
+    const line = lines.find(l => l.category.toLowerCase() === delMatch[1].trim().toLowerCase());
+    if (!line) { toast('Line not found', 'error'); return; }
+    await db.budgets.deleteLine(line.id);
+    toast('Line deleted', 'success');
+  } else {
+    toast('Unrecognised command', 'error'); return;
+  }
+  loaded.delete('page-budget');
+  loadBudgets();
+};
+
+// ─── GHANA PAYROLL CALCULATIONS ──────────────────────────────────────────────
+function calcGhanaPAYE(monthlyTaxable) {
+  const bands = [
+    { limit: 490,   rate: 0 },
+    { limit: 110,   rate: 0.05 },
+    { limit: 130,   rate: 0.10 },
+    { limit: 3000,  rate: 0.175 },
+    { limit: 16395, rate: 0.25 },
+    { limit: Infinity, rate: 0.30 },
+  ];
+  let tax = 0, rem = Math.max(0, monthlyTaxable);
+  for (const b of bands) {
+    if (rem <= 0) break;
+    const taxable = isFinite(b.limit) ? Math.min(rem, b.limit) : rem;
+    tax += taxable * b.rate;
+    rem -= taxable;
+  }
+  return +tax.toFixed(2);
+}
+
+window.calcPayroll = () => {
+  const basic = parseFloat(document.getElementById('prf-basic').value) || 0;
+  const allowRows = document.querySelectorAll('#prf-allowances-list .allowance-row');
+  let allowTotal = 0;
+  allowRows.forEach(row => { allowTotal += parseFloat(row.querySelector('.allow-amount').value) || 0; });
+  const gross = basic + allowTotal;
+  const ssnitEmp = +(basic * 0.055).toFixed(2);
+  const ssnitEr  = +(basic * 0.13).toFixed(2);
+  const tier2    = +(basic * 0.05).toFixed(2);
+  const taxable  = gross - ssnitEmp;
+  const paye     = calcGhanaPAYE(taxable);
+  const deductRows = document.querySelectorAll('#prf-other-deductions-list .deduction-row');
+  let otherDeduct = 0;
+  deductRows.forEach(row => { otherDeduct += parseFloat(row.querySelector('.deduct-amount').value) || 0; });
+  const totalDeduct = ssnitEmp + paye + otherDeduct;
+  const net = gross - totalDeduct;
+  document.getElementById('prf-ssnit-emp').value = ssnitEmp.toFixed(2);
+  document.getElementById('prf-ssnit-er').value  = ssnitEr.toFixed(2);
+  document.getElementById('prf-tier2').value      = tier2.toFixed(2);
+  document.getElementById('prf-paye').value       = paye.toFixed(2);
+  document.getElementById('prf-disp-gross').textContent  = fmtMoney(gross, CURRENCY);
+  document.getElementById('prf-disp-deduct').textContent = fmtMoney(totalDeduct, CURRENCY);
+  document.getElementById('prf-disp-net').textContent    = fmtMoney(net, CURRENCY);
+};
+
+window.addAllowanceRow = () => {
+  const div = document.createElement('div');
+  div.className = 'allowance-row form-row';
+  div.innerHTML = `<div class="form-group"><input type="text" class="form-control allow-name" placeholder="Name (e.g. Housing)"/></div>
+    <div class="form-group"><input type="number" class="form-control allow-amount" placeholder="Amount" step="0.01" oninput="calcPayroll()"/></div>
+    <button type="button" onclick="this.parentElement.remove();calcPayroll()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:1.1rem;padding:.5rem;">✕</button>`;
+  document.getElementById('prf-allowances-list').appendChild(div);
+};
+
+window.addDeductionRow = () => {
+  const div = document.createElement('div');
+  div.className = 'deduction-row form-row';
+  div.innerHTML = `<div class="form-group"><input type="text" class="form-control deduct-name" placeholder="Name (e.g. Loan)"/></div>
+    <div class="form-group"><input type="number" class="form-control deduct-amount" placeholder="Amount" step="0.01" oninput="calcPayroll()"/></div>
+    <button type="button" onclick="this.parentElement.remove();calcPayroll()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:1.1rem;padding:.5rem;">✕</button>`;
+  document.getElementById('prf-other-deductions-list').appendChild(div);
+};
+
+let payrollCache = [];
+
+function openPayrollModal(p = null) {
+  document.getElementById('prf-modal-title').textContent = p ? 'Edit Payroll' : 'Staff Payroll';
+  document.getElementById('prf-id').value = p?.id || '';
+  document.getElementById('prf-member-id').value = p?.member_id || '';
+  document.getElementById('prf-member-name').value = '';
+  document.getElementById('prf-name').value = p?.member_name || '';
+  document.getElementById('prf-role').value = p?.staff_role || '';
+  document.getElementById('prf-period').value = p?.pay_period || document.getElementById('payroll-period').value;
+  document.getElementById('prf-payment-date').value = p?.payment_date || '';
+  document.getElementById('prf-basic').value = p?.basic_salary || '';
+  document.getElementById('prf-bank-name').value = p?.bank_name || '';
+  document.getElementById('prf-bank-branch').value = p?.bank_branch || '';
+  document.getElementById('prf-bank-acct').value = p?.bank_account_no || '';
+  document.getElementById('prf-bank-acct-name').value = p?.bank_account_name || '';
+  document.getElementById('prf-notes').value = p?.notes || '';
+  // Rebuild allowances
+  const alList = document.getElementById('prf-allowances-list');
+  alList.innerHTML = '';
+  (p?.allowances || []).forEach(a => {
+    window.addAllowanceRow();
+    const last = alList.lastElementChild;
+    last.querySelector('.allow-name').value = a.name;
+    last.querySelector('.allow-amount').value = a.amount;
+  });
+  // Rebuild other deductions
+  const odList = document.getElementById('prf-other-deductions-list');
+  odList.innerHTML = '';
+  (p?.other_deductions || []).forEach(d => {
+    window.addDeductionRow();
+    const last = odList.lastElementChild;
+    last.querySelector('.deduct-name').value = d.name;
+    last.querySelector('.deduct-amount').value = d.amount;
+  });
+  calcPayroll();
+  openModal('modal-payroll');
+}
 
 async function loadPayroll() {
   const pe = document.getElementById('payroll-period');
   if (!pe.options.length) {
     const now = new Date();
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
       pe.innerHTML += `<option value="${val}">${val}</option>`;
     }
   }
-  document.getElementById('payroll-add-btn').onclick = () => {
-    document.getElementById('payroll-form').reset();
-    document.getElementById('prf-id').value = '';
-    document.getElementById('prf-period').value = pe.value;
-    openModal('modal-payroll');
-  };
+  document.getElementById('payroll-add-btn').onclick = () => openPayrollModal();
   pe.addEventListener('change', fetchPayroll);
+  memberSelect(document.getElementById('prf-member-name'), allMembers, m => {
+    document.getElementById('prf-member-id').value = m.id;
+    document.getElementById('prf-name').value = `${m.first_name} ${m.last_name}`;
+  });
   await fetchPayroll();
 }
 
@@ -991,19 +1208,27 @@ async function fetchPayroll() {
   const period = document.getElementById('payroll-period').value;
   const { data, error } = await db.payroll.list(ORG_ID, period);
   if (error) { toast(error.message, 'error'); return; }
-  buildTable(document.getElementById('payroll-tbody'), data || [], p => `
+  payrollCache = data || [];
+  const totalNet = payrollCache.reduce((s,p) => s+Number(p.net_salary),0);
+  buildTable(document.getElementById('payroll-tbody'), payrollCache, p => `
     <td class="td-name">${p.member_name}</td>
     <td>${p.staff_role || '—'}</td>
-    <td>${fmtMoney(p.gross_amount, CURRENCY)}</td>
-    <td style="color:var(--red);">${fmtMoney(p.deductions, CURRENCY)}</td>
-    <td style="color:var(--green);font-weight:600;">${fmtMoney(p.net_amount, CURRENCY)}</td>
-    <td>${p.pay_period}</td>
+    <td>${fmtMoney(p.basic_salary, CURRENCY)}</td>
+    <td>${fmtMoney(p.gross_salary, CURRENCY)}</td>
+    <td style="color:var(--red);">${fmtMoney(p.total_deductions, CURRENCY)}</td>
+    <td style="color:var(--green);font-weight:600;">${fmtMoney(p.net_salary, CURRENCY)}</td>
     <td><span class="badge badge-${p.status==='paid'?'green':'gold'}">${p.status}</span></td>
     <td class="td-actions">
+      <button class="btn btn-ghost btn-sm" onclick="editPayroll('${p.id}')">Edit</button>
       ${p.status!=='paid'?`<button class="btn btn-ghost btn-sm" onclick="markPayrollPaid('${p.id}')">Mark Paid</button>`:''}
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletePayroll('${p.id}')">Delete</button>
     </td>`);
 }
+
+window.editPayroll = (id) => {
+  const p = payrollCache.find(x => x.id === id);
+  if (p) openPayrollModal(p);
+};
 
 window.markPayrollPaid = async (id) => {
   await db.payroll.update(id, { status: 'paid', payment_date: today() });
@@ -1134,9 +1359,18 @@ function initFormHandlers() {
       gender:        document.getElementById('mf-gender').value || null,
       role:          document.getElementById('mf-role').value.trim() || 'General',
       group_name:    document.getElementById('mf-group').value.trim() || null,
-      date_of_birth: document.getElementById('mf-dob').value || null,
-      date_joined:   document.getElementById('mf-joined').value || null,
-      notes:         document.getElementById('mf-notes').value.trim() || null,
+      date_of_birth:      document.getElementById('mf-dob').value || null,
+      date_joined:        document.getElementById('mf-joined').value || null,
+      notes:              document.getElementById('mf-notes').value.trim() || null,
+      occupation:         document.getElementById('mf-occupation').value.trim() || null,
+      employer:           document.getElementById('mf-employer').value.trim() || null,
+      employment_type:    document.getElementById('mf-emp-type').value || null,
+      baptised:           document.getElementById('mf-baptised').checked,
+      baptism_date:       document.getElementById('mf-baptism-date').value || null,
+      baptism_place:      document.getElementById('mf-baptism-place').value.trim() || null,
+      confirmed:          document.getElementById('mf-confirmed').checked,
+      confirmation_date:  document.getElementById('mf-confirm-date').value || null,
+      confirmation_place: document.getElementById('mf-confirm-place').value.trim() || null,
     };
     const btn = document.getElementById('mf-submit');
     btn.disabled = true;
@@ -1184,6 +1418,7 @@ function initFormHandlers() {
     e.preventDefault();
     const memberId   = document.getElementById('gf-member-id').value;
     const memberName = document.getElementById('gf-member-name').value;
+    const editId     = document.getElementById('gf-member-id').dataset.editId || '';
     const data = {
       org_id:         ORG_ID,
       member_id:      memberId || null,
@@ -1195,9 +1430,10 @@ function initFormHandlers() {
       given_date:     document.getElementById('gf-date').value,
       notes:          document.getElementById('gf-notes').value || null,
     };
-    const { error } = await db.giving.insert(data);
+    const { error } = editId ? await db.giving.update(editId, data) : await db.giving.insert(data);
     if (error) { toast(error.message, 'error'); return; }
-    toast('Gift recorded', 'success');
+    delete document.getElementById('gf-member-id').dataset.editId;
+    toast(editId ? 'Gift updated' : 'Gift recorded', 'success');
     closeModal('modal-giving');
     givingData = [];
     loaded.delete('page-giving');
@@ -1462,28 +1698,259 @@ function initFormHandlers() {
     await loadAccounts();
   });
 
-  // Payroll form
+  // Payroll form (Ghana model)
   document.getElementById('payroll-form').addEventListener('submit', async e => {
     e.preventDefault();
+    const id         = document.getElementById('prf-id').value;
     const memberName = document.getElementById('prf-name').value.trim() || document.getElementById('prf-member-name').value.trim();
+    const basic      = parseFloat(document.getElementById('prf-basic').value) || 0;
+    // Collect allowances
+    const allowances = [...document.querySelectorAll('#prf-allowances-list .allowance-row')].map(row => ({
+      name:   row.querySelector('.allow-name').value.trim() || 'Allowance',
+      amount: parseFloat(row.querySelector('.allow-amount').value) || 0,
+    }));
+    const allowTotal = allowances.reduce((s,a) => s + a.amount, 0);
+    const gross = basic + allowTotal;
+    const ssnitEmp = +(basic * 0.055).toFixed(2);
+    const ssnitEr  = +(basic * 0.13).toFixed(2);
+    const tier2    = +(basic * 0.05).toFixed(2);
+    const paye     = calcGhanaPAYE(gross - ssnitEmp);
+    // Collect other deductions
+    const otherDeductions = [...document.querySelectorAll('#prf-other-deductions-list .deduction-row')].map(row => ({
+      name:   row.querySelector('.deduct-name').value.trim() || 'Deduction',
+      amount: parseFloat(row.querySelector('.deduct-amount').value) || 0,
+    }));
+    const otherTotal   = otherDeductions.reduce((s,d) => s + d.amount, 0);
+    const totalDeduct  = ssnitEmp + paye + otherTotal;
+    const netSalary    = gross - totalDeduct;
     const data = {
-      org_id:      ORG_ID,
-      member_id:   document.getElementById('prf-member-id').value || null,
-      member_name: memberName,
-      staff_role:  document.getElementById('prf-role').value.trim() || null,
-      gross_amount:parseFloat(document.getElementById('prf-gross').value),
-      deductions:  parseFloat(document.getElementById('prf-deduct').value) || 0,
-      currency:    CURRENCY,
-      pay_period:  document.getElementById('prf-period').value,
-      notes:       document.getElementById('prf-notes').value || null,
+      org_id:           ORG_ID,
+      member_id:        document.getElementById('prf-member-id').value || null,
+      member_name:      memberName,
+      staff_role:       document.getElementById('prf-role').value.trim() || null,
+      basic_salary:     basic,
+      allowances,
+      gross_salary:     +gross.toFixed(2),
+      ssnit_employee:   ssnitEmp,
+      ssnit_employer:   ssnitEr,
+      tier2,
+      paye,
+      other_deductions: otherDeductions,
+      total_deductions: +totalDeduct.toFixed(2),
+      net_salary:       +netSalary.toFixed(2),
+      bank_name:        document.getElementById('prf-bank-name').value.trim() || null,
+      bank_branch:      document.getElementById('prf-bank-branch').value.trim() || null,
+      bank_account_no:  document.getElementById('prf-bank-acct').value.trim() || null,
+      bank_account_name:document.getElementById('prf-bank-acct-name').value.trim() || null,
+      currency:         CURRENCY,
+      pay_period:       document.getElementById('prf-period').value,
+      payment_date:     document.getElementById('prf-payment-date').value || null,
+      notes:            document.getElementById('prf-notes').value || null,
     };
-    const { error } = await db.payroll.insert(data);
+    const { error } = id ? await db.payroll.update(id, data) : await db.payroll.insert(data);
     if (error) { toast(error.message, 'error'); return; }
-    toast('Payroll entry added', 'success');
+    toast(id ? 'Payroll updated' : 'Payroll entry added', 'success');
     closeModal('modal-payroll');
     await fetchPayroll();
   });
 }
 
+// ─── RECONCILIATION ──────────────────────────────────────────────────────────
+let reconData = [], activeReconId = null;
+
+async function loadReconciliation() {
+  document.getElementById('recon-add-btn').onclick = async () => {
+    // Populate account select
+    if (!accountsCache.length) await loadAccounts();
+    const sel = document.getElementById('reconf-account');
+    sel.innerHTML = '<option value="">Select account…</option>' +
+      accountsCache.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+    document.getElementById('recon-form').reset();
+    openModal('modal-recon');
+  };
+  document.getElementById('recon-back-btn').onclick = () => {
+    document.getElementById('recon-list-view').style.display = '';
+    document.getElementById('recon-detail-view').style.display = 'none';
+    activeReconId = null;
+    fetchReconciliations();
+  };
+  document.getElementById('recon-mark-done-btn').onclick = async () => {
+    if (!activeReconId || !confirm('Mark reconciliation as complete?')) return;
+    await db.reconciliations.update(activeReconId, { status: 'reconciled' });
+    toast('Marked as reconciled', 'success');
+    document.getElementById('recon-back-btn').click();
+  };
+  document.getElementById('recon-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+      org_id:            ORG_ID,
+      period:            document.getElementById('reconf-period').value,
+      account_id:        document.getElementById('reconf-account').value || null,
+      statement_balance: parseFloat(document.getElementById('reconf-stmt-bal').value),
+      book_balance:      parseFloat(document.getElementById('reconf-book-bal').value),
+      notes:             document.getElementById('reconf-notes').value || null,
+    };
+    const { error } = await db.reconciliations.insert(data);
+    if (error) { toast(error.message, 'error'); return; }
+    toast('Reconciliation created', 'success');
+    closeModal('modal-recon');
+    await fetchReconciliations();
+  });
+  document.getElementById('recon-item-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+      reconciliation_id: activeReconId,
+      org_id:            ORG_ID,
+      description:       document.getElementById('reconif-desc').value.trim(),
+      amount:            parseFloat(document.getElementById('reconif-amount').value),
+      item_date:         document.getElementById('reconif-date').value || null,
+      item_type:         document.getElementById('reconif-type').value,
+    };
+    const { error } = await db.reconciliations.addItem(data);
+    if (error) { toast(error.message, 'error'); return; }
+    closeModal('modal-recon-item');
+    await openReconDetail(activeReconId);
+  });
+  await fetchReconciliations();
+}
+
+async function fetchReconciliations() {
+  const { data, error } = await db.reconciliations.list(ORG_ID);
+  if (error) { toast(error.message, 'error'); return; }
+  reconData = data || [];
+  buildTable(document.getElementById('recon-tbody'), reconData, r => `
+    <td>${r.period}</td>
+    <td>${r.accounts?.name || '—'}</td>
+    <td>${fmtMoney(r.statement_balance, CURRENCY)}</td>
+    <td>${fmtMoney(r.book_balance, CURRENCY)}</td>
+    <td style="color:${Math.abs(r.difference)<0.01?'var(--green)':'var(--red)'};">${fmtMoney(r.difference, CURRENCY)}</td>
+    <td><span class="badge badge-${r.status==='reconciled'?'green':'gold'}">${r.status}</span></td>
+    <td class="td-actions">
+      <button class="btn btn-ghost btn-sm" onclick="openReconDetail('${r.id}')">Open</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteRecon('${r.id}')">Delete</button>
+    </td>`);
+}
+
+window.openReconDetail = async (id) => {
+  activeReconId = id;
+  const { data, error } = await db.reconciliations.get(id);
+  if (error) { toast(error.message, 'error'); return; }
+  document.getElementById('recon-list-view').style.display = 'none';
+  document.getElementById('recon-detail-view').style.display = '';
+  document.getElementById('recon-detail-title').textContent = `${data.period} — ${data.accounts?.name || 'Account'}`;
+  const diff = data.difference ?? (data.statement_balance - data.book_balance);
+  const diffEl = document.getElementById('recon-detail-diff');
+  diffEl.textContent = `Difference: ${fmtMoney(diff, CURRENCY)}`;
+  diffEl.style.color = Math.abs(diff) < 0.01 ? 'var(--green)' : 'var(--red)';
+  const items = data.reconciliation_items || [];
+  const bookItems = items.filter(i => i.item_type === 'book');
+  const stmtItems = items.filter(i => i.item_type === 'statement');
+  const renderItems = (tbody, rows) => buildTable(document.getElementById(tbody), rows, i => `
+    <td>${fmtDate(i.item_date)}</td>
+    <td>${i.description}</td>
+    <td>${fmtMoney(i.amount, CURRENCY)}</td>
+    <td><input type="checkbox" ${i.cleared?'checked':''} onchange="toggleReconItem('${i.id}',this.checked)"/></td>
+    <td><button class="btn btn-ghost btn-sm" style="color:var(--red);padding:.1rem .4rem;" onclick="deleteReconItem('${i.id}')">✕</button></td>`);
+  renderItems('recon-book-tbody', bookItems);
+  renderItems('recon-stmt-tbody', stmtItems);
+};
+
+window.addReconItem = (type) => {
+  document.getElementById('recon-item-title').textContent = type === 'book' ? 'Add Book Item' : 'Add Statement Item';
+  document.getElementById('reconif-type').value = type;
+  document.getElementById('recon-item-form').reset();
+  document.getElementById('reconif-type').value = type;
+  openModal('modal-recon-item');
+};
+
+window.toggleReconItem = async (id, cleared) => {
+  await db.reconciliations.updateItem(id, { cleared });
+};
+
+window.deleteReconItem = async (id) => {
+  await db.reconciliations.deleteItem(id);
+  await openReconDetail(activeReconId);
+};
+
+window.deleteRecon = async (id) => {
+  if (!confirm('Delete this reconciliation?')) return;
+  await db.reconciliations.delete(id);
+  await fetchReconciliations();
+};
+
+// ─── CSV IMPORT ──────────────────────────────────────────────────────────────
+let csvRows = [];
+
+function initCSVImport() {
+  const input = document.getElementById('member-csv-input');
+  if (!input) return;
+  input.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target.result;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { toast('CSV must have a header row and at least one data row', 'error'); return; }
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+      csvRows = lines.slice(1).map(line => {
+        const vals = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g) || line.split(',');
+        const row = {};
+        headers.forEach((h, i) => { row[h] = (vals[i] || '').trim().replace(/^"|"$/g,''); });
+        return row;
+      }).filter(r => r.first_name);
+      // Preview
+      const head = document.getElementById('csv-preview-head');
+      const tbody = document.getElementById('csv-preview-tbody');
+      const displayCols = ['first_name','last_name','phone','email','membership_no','gender','role','group_name'];
+      head.innerHTML = `<tr>${displayCols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+      tbody.innerHTML = csvRows.slice(0,20).map(r =>
+        `<tr>${displayCols.map(c=>`<td>${r[c]||'—'}</td>`).join('')}</tr>`
+      ).join('');
+      document.getElementById('csv-row-count').textContent =
+        `${csvRows.length} rows found${csvRows.length>20?' (showing first 20)':''}`;
+      openModal('modal-csv-preview');
+    };
+    reader.readAsText(file);
+    input.value = '';
+  });
+
+  document.getElementById('csv-import-confirm-btn').addEventListener('click', async () => {
+    if (!csvRows.length) return;
+    const btn = document.getElementById('csv-import-confirm-btn');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    let ok = 0, fail = 0;
+    for (const row of csvRows) {
+      const data = {
+        org_id:       ORG_ID,
+        first_name:   row.first_name,
+        last_name:    row.last_name || '',
+        phone:        row.phone || null,
+        email:        row.email || null,
+        membership_no:row.membership_no || null,
+        gender:       ['Male','Female','Other'].includes(row.gender) ? row.gender : null,
+        date_of_birth:row.date_of_birth || null,
+        date_joined:  row.date_joined || null,
+        role:         row.role || 'General',
+        group_name:   row.group_name || null,
+        notes:        row.notes || null,
+      };
+      const { error } = await db.members.insert(data);
+      error ? fail++ : ok++;
+    }
+    btn.disabled = false; btn.textContent = 'Import All';
+    toast(`Imported ${ok} members${fail?`, ${fail} failed`:''}`, ok>0?'success':'error');
+    closeModal('modal-csv-preview');
+    csvRows = [];
+    await prefetchMembers();
+    loaded.delete('page-members');
+    if (document.getElementById('page-members').classList.contains('active')) loadMembers();
+  });
+}
+
 // ─── START ────────────────────────────────────────────────────────────────────
-boot().catch(console.error);
+async function bootExtras() {
+  initCSVImport();
+}
+
+boot().then(bootExtras).catch(console.error);
