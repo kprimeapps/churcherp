@@ -1,0 +1,46 @@
+-- ChurchOS v2 — Migration 008 (TEMPLATE): migrate legacy per-church QR tables
+-- into the unified qr_registrations table.
+--
+-- The old structure used one table per church (columns: id, "firstName",
+-- "lastName", email, phone, role, "createdAt" [epoch ms], "checkedIn").
+-- The new qr_registrations table is shared and scoped by org_id.
+--
+-- This file is a TEMPLATE — you must fill in two things per church:
+--   <OLD_TABLE_NAME>  the legacy table name (e.g. immanuel_madina)
+--   <ORG_UUID>        that church's id from the organizations table
+-- Run the discovery queries first to find both, then run the INSERT.
+
+-- ── STEP 1: find the org id for the church ───────────────────────────────────
+--   select id, slug, name from organizations order by name;
+
+-- ── STEP 2: list candidate legacy tables (everything that isn't a core table) ─
+--   select tablename from pg_tables
+--   where schemaname = 'public'
+--     and tablename not in (
+--       'organizations','profiles','members','attendance','qr_registrations',
+--       'giving','groups','events','volunteers','visitors','welfare','education',
+--       'missions','scholarships','communications','family_life','accounts',
+--       'transactions','budgets','budget_lines','payroll','expenses',
+--       'reconciliations','reconciliation_items','recon_snapshots','budget_plans'
+--     )
+--   order by tablename;
+
+-- ── STEP 3: migrate one legacy table (repeat per church) ─────────────────────
+-- insert into qr_registrations
+--   (id, org_id, first_name, last_name, phone, role, imported, created_at)
+-- select
+--   id,
+--   '<ORG_UUID>'::uuid,
+--   "firstName",
+--   nullif(trim("lastName"), ''),
+--   nullif(trim(phone), ''),
+--   coalesce(nullif(trim(role), ''), 'General'),
+--   false,
+--   case when "createdAt" is not null and "createdAt" > 0
+--        then to_timestamp("createdAt" / 1000.0)
+--        else now() end
+-- from "<OLD_TABLE_NAME>"
+-- on conflict do nothing;   -- skips dupes by id OR by (org_id, name, phone)
+
+-- ── STEP 4: verify ───────────────────────────────────────────────────────────
+--   select count(*) from qr_registrations where org_id = '<ORG_UUID>'::uuid;
