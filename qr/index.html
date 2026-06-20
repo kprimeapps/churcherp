@@ -2,77 +2,198 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 <title>QR Check-In Scanner</title>
-<link rel="stylesheet" href="/css/theme.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <style>
-  body { background: var(--navy); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
-  .scanner-card { background: #fff; border-radius: var(--rxl); padding: 2rem; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
-  #video-wrap { position: relative; border-radius: var(--rl); overflow: hidden; background: #000; aspect-ratio: 1; margin: 1rem 0; }
-  #video-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-  .scan-frame   { width: 60%; aspect-ratio: 1; border: 3px solid var(--gold); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,.4); }
-  .result-card  { display: none; border-radius: var(--rl); padding: 1.25rem; text-align: center; margin-top: 1rem; background: var(--green-light); border: 1.5px solid var(--green); }
-  .result-card.show  { display: block; }
-  .result-card.error { background: var(--red-light); border-color: var(--red); }
-  .result-card.warn  { background: #FFF7E6; border-color: var(--gold); }
-  #queue-badge { display:none; background:#FFF7E6; border:1px solid var(--gold); color:var(--ink2); border-radius:999px; padding:.2rem .65rem; font-size:.72rem; }
-  .result-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; }
-  .result-meta { font-size: .82rem; color: var(--ink3); margin-top: .25rem; }
-  .checkin-log { margin-top: 1.25rem; max-height: 220px; overflow-y: auto; }
-  .log-row { display: flex; align-items: center; gap: .65rem; padding: .5rem 0; border-bottom: 1px solid var(--cream2); font-size: .82rem; }
-  .log-row:last-child { border-bottom: none; }
-  .log-time { color: var(--ink3); flex-shrink: 0; font-size: .72rem; }
+  :root {
+    --navy:#0A1628; --navy-2:#0F1E38; --navy-3:#162240; --navy-4:#1C2A4E;
+    --gold:#C9A84C; --gold-2:#E2C06A; --gold-dim:rgba(201,168,76,0.18); --gold-glow:rgba(201,168,76,0.08);
+    --white:#F8F5EE; --white-dim:rgba(248,245,238,0.72); --muted:rgba(248,245,238,0.45);
+    --border:rgba(201,168,76,0.15); --border-2:rgba(201,168,76,0.28);
+    --success:#2ECC71; --success-bg:rgba(46,204,113,0.12);
+    --danger:#E74C3C;  --danger-bg:rgba(231,76,60,0.12);
+    --warn:#F39C12;    --warn-bg:rgba(243,156,18,0.12);
+    --display:'Playfair Display',Georgia,serif; --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+    --r:8px; --rl:14px; --rxl:20px; --tap:48px;
+  }
+  *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+  html { -webkit-text-size-adjust:100%; height:100%; }
+  body {
+    font-family:var(--sans); color:var(--white); background:var(--navy); font-size:15px;
+    -webkit-tap-highlight-color:transparent; min-height:100vh; position:relative;
+    display:flex; align-items:flex-start; justify-content:center; padding:1.5rem 1rem;
+  }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201,168,76,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 90% 90%, rgba(201,168,76,0.04) 0%, transparent 50%);
+  }
+  .shell { width:100%; max-width:480px; position:relative; z-index:1; }
+
+  /* Header */
+  .app-head { display:flex; align-items:center; gap:.7rem; margin-bottom:22px; padding-top:4px; }
+  .app-logo {
+    width:38px; height:38px; border-radius:10px; flex-shrink:0;
+    background:var(--gold-dim); border:0.5px solid var(--border-2);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .app-logo svg { width:20px; height:20px; }
+  .app-eyebrow { font-family:var(--mono); font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); }
+  .app-title { font-family:var(--display); font-size:20px; font-weight:600; color:var(--white); line-height:1.1; }
+  .app-date { margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--muted); letter-spacing:0.04em; text-align:right; }
+
+  /* Card */
+  .card {
+    background:var(--navy-2); border:0.5px solid var(--border-2); border-radius:var(--rl);
+    padding:18px; margin-bottom:14px; position:relative; overflow:hidden;
+  }
+  .card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
+  }
+
+  /* Fields */
+  .field { margin-bottom:14px; }
+  .field-label { font-family:var(--mono); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; display:block; }
+  input[type=text], select {
+    width:100%; font-family:var(--sans); font-size:15px; padding:11px 14px;
+    border:0.5px solid var(--border-2); border-radius:var(--r); background:var(--navy-3);
+    color:var(--white); outline:none; -webkit-appearance:none; transition:border-color .15s, box-shadow .15s;
+  }
+  input::placeholder { color:var(--muted); }
+  input:focus, select:focus { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-glow); }
+
+  /* Buttons */
+  .btn {
+    font-family:var(--sans); font-size:13.5px; font-weight:500; padding:0 20px; height:var(--tap);
+    border:0.5px solid var(--border-2); background:var(--navy-3); color:var(--white-dim); border-radius:var(--r);
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; white-space:nowrap;
+    transition:background .14s, border-color .14s, color .14s, transform .1s, box-shadow .14s; letter-spacing:0.02em;
+  }
+  .btn:active { transform:scale(0.97); }
+  .btn:hover { background:var(--navy-4); color:var(--white); }
+  .btn.primary { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:600; letter-spacing:0.04em; box-shadow:0 2px 18px rgba(201,168,76,0.22); }
+  .btn.primary:hover { background:var(--gold-2); border-color:var(--gold-2); }
+  .btn.full { width:100%; }
+  .btn.sm { height:34px; padding:0 14px; font-size:12px; }
+  .btn.stop { background:var(--danger-bg); color:var(--danger); border-color:rgba(231,76,60,0.3); }
+
+  /* Scanner status row */
+  .scan-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:.5rem; }
+  .badge { display:inline-flex; align-items:center; font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:99px; }
+  .badge.service { background:var(--gold-dim); color:var(--gold); border:0.5px solid var(--border-2); }
+  .count-label { font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:.5rem; letter-spacing:0.04em; }
+
+  /* Camera */
+  #video-wrap {
+    position:relative; background:#000; border-radius:var(--rl); overflow:hidden;
+    aspect-ratio:1/1; max-height:340px; margin-bottom:14px;
+    border:0.5px solid var(--border-2); box-shadow:0 0 40px rgba(201,168,76,0.08);
+  }
+  #video-wrap video { width:100%; height:100%; object-fit:cover; display:block; }
+  .cam-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .cam-frame { width:58%; aspect-ratio:1/1; position:relative; }
+  .corner { position:absolute; width:22px; height:22px; border-color:var(--gold); border-style:solid; }
+  .corner.tl { top:0; left:0;  border-width:2.5px 0 0 2.5px; border-radius:4px 0 0 0; }
+  .corner.tr { top:0; right:0; border-width:2.5px 2.5px 0 0; border-radius:0 4px 0 0; }
+  .corner.bl { bottom:0; left:0;  border-width:0 0 2.5px 2.5px; border-radius:0 0 0 4px; }
+  .corner.br { bottom:0; right:0; border-width:0 2.5px 2.5px 0; border-radius:0 0 4px 0; }
+  .scan-line { position:absolute; left:0; right:0; height:1.5px; background:linear-gradient(90deg, transparent, var(--gold), transparent); box-shadow:0 0 8px var(--gold); animation:scanline 2.2s ease-in-out infinite; top:10%; }
+  @keyframes scanline { 0%,100% { top:5%; opacity:.5; } 50% { top:90%; opacity:1; } }
+
+  /* Result banner */
+  .result-card { display:none; border-radius:var(--rl); padding:18px 16px; text-align:center; margin-bottom:14px; border:0.5px solid transparent; background:var(--navy-3); animation:bannerIn .25s ease; }
+  .result-card.show { display:block; }
+  .result-card.show:not(.error):not(.warn) { background:var(--success-bg); border-color:rgba(46,204,113,0.25); }
+  .result-card.error { background:var(--danger-bg); border-color:rgba(231,76,60,0.25); }
+  .result-card.warn  { background:var(--warn-bg);   border-color:rgba(243,156,18,0.25); }
+  @keyframes bannerIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+  .result-name { font-family:var(--display); font-size:18px; font-weight:600; color:var(--white); }
+  .result-meta { font-family:var(--mono); font-size:11.5px; margin-top:5px; color:var(--muted); letter-spacing:0.05em; }
+
+  /* Sync bar */
+  #queue-badge {
+    display:none; align-items:center; gap:6px;
+    background:var(--warn-bg); border:0.5px solid rgba(243,156,18,0.25); color:var(--warn);
+    border-radius:99px; padding:.25rem .7rem; font-family:var(--mono); font-size:10px; letter-spacing:0.06em;
+  }
+
+  /* Log */
+  .slabel { font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); margin:18px 0 10px; display:block; }
+  .checkin-log { max-height:260px; overflow-y:auto; }
+  .log-row { display:flex; align-items:center; gap:13px; padding:11px 0; border-bottom:0.5px solid var(--border); }
+  .log-row:last-child { border-bottom:none; }
+  .avatar { width:38px; height:38px; border-radius:50%; background:var(--navy-4); border:0.5px solid var(--border-2); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; font-weight:500; color:var(--gold); flex-shrink:0; letter-spacing:0.06em; }
+  .log-name { font-weight:500; font-size:14px; color:var(--white); }
+  .log-meta { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:2px; }
+  .log-time { font-family:var(--mono); font-size:10.5px; color:var(--muted); flex-shrink:0; letter-spacing:0.04em; }
+  .log-empty { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:0.06em; text-align:center; padding:24px 0; }
+  .hint { font-family:var(--mono); font-size:10.5px; color:var(--muted); letter-spacing:0.04em; margin-top:6px; }
 </style>
 </head>
 <body>
-<div class="scanner-card">
-  <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:1.25rem;">
-    <div style="width:36px;height:36px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">⛪</div>
-    <div>
-      <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;" id="church-name">ChurchOS</div>
-      <div style="font-size:.72rem;color:var(--ink3);">QR Check-In</div>
+<div class="shell">
+  <div class="app-head">
+    <div class="app-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
     </div>
-    <div style="margin-left:auto;font-size:.75rem;color:var(--ink3);" id="today-label"></div>
+    <div>
+      <div class="app-eyebrow">Live scan</div>
+      <div class="app-title" id="church-name">Check-In</div>
+    </div>
+    <div class="app-date" id="today-label"></div>
   </div>
 
   <!-- Setup -->
   <div id="setup-screen">
-    <p class="text-sm text-muted" style="margin-bottom:1rem;">Configure before scanning.</p>
-    <div class="form-group">
-      <label class="form-label">Organization Slug</label>
-      <input type="text" id="org-slug-input" class="form-control" placeholder="your-church"/>
+    <div class="card">
+      <div class="field">
+        <label class="field-label">Congregation Slug</label>
+        <input type="text" id="org-slug-input" placeholder="your-church" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+      </div>
+      <div class="field">
+        <label class="field-label">Service Type</label>
+        <select id="service-type-input">
+          <option>Sunday Service</option><option>Prayer Meeting</option><option>Group Meeting</option><option>Special Service</option>
+        </select>
+      </div>
+      <button class="btn primary full" id="start-btn">Start Scanner →</button>
+      <div class="hint">Point the camera at a member's check-in QR code.</div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Service Type</label>
-      <select id="service-type-input" class="form-control">
-        <option>Sunday Service</option><option>Prayer Meeting</option><option>Group Meeting</option><option>Special Service</option>
-      </select>
-    </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;" id="start-btn">Start Scanner →</button>
   </div>
 
   <!-- Scanner -->
   <div id="scanner-screen" style="display:none;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+    <div class="scan-top">
       <div>
-        <span class="badge badge-green" id="service-badge">Sunday Service</span>
-        <span class="text-sm text-muted" style="margin-left:.5rem;" id="checkin-count-label">0 checked in</span>
+        <span class="badge service" id="service-badge">Sunday Service</span>
+        <span class="count-label" id="checkin-count-label">0 checked in</span>
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;">
         <span id="queue-badge"></span>
-        <button class="btn btn-outline btn-sm" id="stop-btn">Stop</button>
+        <button class="btn stop sm" id="stop-btn">Stop</button>
       </div>
     </div>
     <div id="video-wrap">
       <video id="scanner-video" autoplay playsinline muted></video>
-      <div class="scan-overlay"><div class="scan-frame"></div></div>
+      <div class="cam-overlay">
+        <div class="cam-frame">
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+          <span class="scan-line"></span>
+        </div>
+      </div>
     </div>
     <div class="result-card" id="result-card">
       <div class="result-name" id="result-name">—</div>
       <div class="result-meta" id="result-meta">—</div>
     </div>
-    <div class="checkin-log" id="checkin-log"></div>
+    <span class="slabel">Recent check-ins</span>
+    <div class="card"><div class="checkin-log" id="checkin-log"><div class="log-empty">No check-ins yet</div></div></div>
   </div>
 </div>
 
@@ -95,7 +216,7 @@ function enqueueScan(item) { const q = getQueue(); q.push(item); setQueue(q); up
 function updateQueueBadge() {
   const n = getQueue().length;
   const el = document.getElementById('queue-badge');
-  if (el) { el.style.display = n > 0 ? '' : 'none'; el.textContent = `${n} queued offline`; }
+  if (el) { el.style.display = n > 0 ? 'inline-flex' : 'none'; el.textContent = `⟳ ${n} queued offline`; }
 }
 async function syncQueue() {
   if (!navigator.onLine) return;
@@ -185,12 +306,14 @@ function showResult(state, name, meta) {
 }
 function logCheckin(name, role, suffix = '') {
   const log = document.getElementById('checkin-log');
+  const empty = log.querySelector('.log-empty');
+  if (empty) empty.remove();
   const parts = name.split(' ');
   const row = document.createElement('div');
   row.className = 'log-row';
   row.innerHTML = `
-    <div class="avatar avatar-gold" style="width:28px;height:28px;font-size:.72rem;">${(parts[0]?.[0]||'')}${(parts[1]?.[0]||'')}</div>
-    <div style="flex:1"><div style="font-weight:500;">${name}${suffix}</div><div class="text-xs text-muted">${role||''}</div></div>
+    <div class="avatar">${(parts[0]?.[0]||'')}${(parts[1]?.[0]||'')}</div>
+    <div style="flex:1;min-width:0;"><div class="log-name">${name}${suffix}</div><div class="log-meta">${role||''}</div></div>
     <div class="log-time">${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div>`;
   log.prepend(row);
 }
