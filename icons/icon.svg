@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#0F2340"/>
+  <g fill="#B8964A">
+    <!-- Cross -->
+    <rect x="236" y="120" width="40" height="200" rx="6"/>
+    <rect x="186" y="170" width="140" height="40" rx="6"/>
+    <!-- Roof / building base -->
+    <path d="M256 96 L392 200 L120 200 Z" opacity="0.0"/>
+    <path d="M140 320 h232 v72 H140 z" rx="8"/>
+    <rect x="140" y="312" width="232" height="16" rx="8"/>
+  </g>
+  <g fill="#FAF7F2">
+    <rect x="240" y="350" width="32" height="42" rx="4"/>
+  </g>
+</svg>

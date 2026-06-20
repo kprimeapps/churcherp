@@ -1,5 +1,5 @@
 // ChurchOS v2 — Service Worker
-const CACHE = 'churchos-v3';
+const CACHE = 'churchos-v4';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -43,9 +43,33 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // For everything else: cache-first for GET, network-only for mutations
   if (e.request.method !== 'GET') return;
 
+  const isSameOrigin = url.origin === self.location.origin;
+  const isAppShell = isSameOrigin && (
+    e.request.mode === 'navigate' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js')   ||
+    url.pathname.endsWith('.css')  ||
+    url.pathname.endsWith('.json')
+  );
+
+  // App shell (our own HTML/JS/CSS): NETWORK-FIRST so deploys take effect
+  // immediately. Fall back to cache only when offline.
+  if (isAppShell) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Everything else (CDN libs, images, fonts): cache-first, refresh in background.
   e.respondWith(
     caches.match(e.request).then(cached => {
       const network = fetch(e.request).then(res => {
