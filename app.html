@@ -18,6 +18,15 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="stylesheet" href="/css/theme.css"/>
 <style>
+  /* RBAC gating */
+  .nav-item.rbac-hidden { display: none !important; }
+  .erp-page.readonly .page-actions .btn-primary,
+  .erp-page.readonly .page-actions label.btn,
+  .erp-page.readonly [id$="-add-btn"],
+  .erp-page.readonly .td-actions { display: none !important; }
+  .role-pill { font-size:.72rem; padding:.15rem .5rem; border-radius:999px; background:var(--cream2); color:var(--ink2); }
+</style>
+<style>
   /* page-specific overrides */
   .member-photo { width:40px;height:40px;border-radius:50%;background:var(--cream2);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:600;color:var(--ink3);flex-shrink:0; }
   .attendance-live-badge { display:inline-flex;align-items:center;gap:.35rem;background:var(--green-light);color:var(--green);font-size:.72rem;font-weight:600;padding:.15rem .55rem;border-radius:999px; }
@@ -181,6 +190,23 @@
       </table>
     </div>
     <div style="margin-top:.75rem;font-size:.76rem;color:var(--ink3);" id="att-count"></div>
+
+    <!-- Online attendance (per-channel manual counts) -->
+    <div class="card" style="margin-top:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;">
+        <div><h3 style="margin:0;">Online Attendance</h3><p class="text-sm text-muted" style="margin:.15rem 0 0;">Live-stream viewers by channel for this service</p></div>
+        <div style="display:flex;align-items:center;gap:.65rem;">
+          <span class="badge badge-gold">Online total: <strong id="online-total" style="margin-left:.25rem;">0</strong></span>
+          <button class="btn btn-primary btn-sm" id="online-add-btn">+ Add Channel</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dtable">
+          <thead><tr><th>Channel</th><th>Viewers</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="online-tbody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- ══ GROUPS ═════════════════════════════════════════════════════════════ -->
@@ -291,7 +317,7 @@
     </div>
     <div class="tbl-wrap">
       <table class="dtable">
-        <thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Location</th><th></th></tr></thead>
+        <thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Location</th><th>Participants</th><th></th></tr></thead>
         <tbody id="evt-tbody"></tbody>
       </table>
     </div>
@@ -824,6 +850,18 @@
         </div>
       </div>
 
+      <div class="settings-section card" id="team-section" style="margin-bottom:1.25rem;display:none;">
+        <h3 style="margin-bottom:.25rem;">Team &amp; Roles</h3>
+        <p class="text-sm text-muted" style="margin:0 0 1rem;">Assign each member of your team a role to control what they can access.</p>
+        <div class="tbl-wrap">
+          <table class="dtable">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+            <tbody id="team-tbody"></tbody>
+          </table>
+        </div>
+        <p class="text-xs text-muted" style="margin-top:.6rem;">Tip: people join your organization by signing up and being added. Roles take effect on their next page load.</p>
+      </div>
+
       <div class="settings-section card">
         <h3 style="margin-bottom:.75rem;">Account</h3>
         <div class="settings-row">
@@ -1117,7 +1155,7 @@
       <div class="form-group"><label class="form-label">Title *</label><input type="text" id="evtf-title" class="form-control" required/></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Type</label>
-          <select id="evtf-type" class="form-control"><option>Service</option><option>Meeting</option><option>Outreach</option><option>Concert</option><option>Conference</option><option>Other</option></select>
+          <select id="evtf-type" class="form-control"><option>Service</option><option>Meeting</option><option>Outreach</option><option>Concert</option><option>Conference</option><option>ESR</option><option>DSS</option><option>Other</option></select>
         </div>
         <div class="form-group"><label class="form-label">Location</label><input type="text" id="evtf-loc" class="form-control"/></div>
       </div>
@@ -1125,6 +1163,7 @@
         <div class="form-group"><label class="form-label">Start *</label><input type="datetime-local" id="evtf-start" class="form-control" required/></div>
         <div class="form-group"><label class="form-label">End</label><input type="datetime-local" id="evtf-end" class="form-control"/></div>
       </div>
+      <div class="form-group"><label class="form-label">Number of Participants</label><input type="number" id="evtf-participants" class="form-control" min="0" step="1"/></div>
       <div class="form-group"><label class="form-label">Description</label><textarea id="evtf-desc" class="form-control" rows="2"></textarea></div>
       <input type="hidden" id="evtf-id"/>
       <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-event')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
@@ -1353,6 +1392,26 @@
       <button type="button" class="btn btn-outline" onclick="closeModal('modal-csv-preview')">Cancel</button>
       <button type="button" class="btn btn-primary" id="csv-import-confirm-btn">Import All</button>
     </div>
+  </div>
+</div>
+
+<!-- Online attendance modal -->
+<div class="modal-overlay hidden" id="modal-online">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header"><h3 class="modal-title">Online Attendance</h3><button class="modal-close" onclick="closeModal('modal-online')">✕</button></div>
+    <form id="online-form">
+      <div class="form-group"><label class="form-label">Channel *</label>
+        <input type="text" id="onf-channel" class="form-control" list="online-channels" placeholder="Facebook, YouTube, TikTok…" required/>
+        <datalist id="online-channels">
+          <option>Facebook</option><option>YouTube</option><option>TikTok</option>
+          <option>Instagram</option><option>Zoom</option><option>X (Twitter)</option><option>Website</option>
+        </datalist>
+      </div>
+      <div class="form-group"><label class="form-label">Viewers / Count *</label><input type="number" id="onf-count" class="form-control" min="0" step="1" required/></div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" id="onf-notes" class="form-control"/></div>
+      <input type="hidden" id="onf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-online')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
   </div>
 </div>
 

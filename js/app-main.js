@@ -7,6 +7,10 @@ import {
   memberSelect, initOfflineBanner, navigate
 } from './ui.js';
 import { reconBoot, budgetBoot } from './finance-tools.js';
+import {
+  canSee, canWritePage, isOrgAdmin, pageAccess,
+  ROLE_LABELS, ASSIGNABLE_ROLES,
+} from './permissions.js';
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 let ORG_ID, CURRENCY;
@@ -34,11 +38,17 @@ async function boot() {
   document.getElementById('sb-role').textContent = currentProfile.role || 'staff';
   document.getElementById('sb-avatar').textContent = initials(currentProfile.first_name, currentProfile.last_name);
 
+  // RBAC: hide nav items this role can't access
+  document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+    if (!canSee(item.dataset.page)) item.classList.add('rbac-hidden');
+  });
+
   // Sidebar navigation
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {
     item.addEventListener('click', () => {
       const pageId = item.dataset.page;
       const title  = item.dataset.title || '';
+      if (!canSee(pageId)) { toast('You don’t have access to that area', 'error'); return; }
       navigate(pageId, title);
       activatePage(pageId);
     });
@@ -102,7 +112,8 @@ async function boot() {
   syncQueue();
 
   // Load the last active page or dashboard
-  const lastPage = sessionStorage.getItem('churchos_page') || 'page-dashboard';
+  let lastPage = sessionStorage.getItem('churchos_page') || 'page-dashboard';
+  if (!canSee(lastPage)) lastPage = 'page-dashboard';
   navigate(lastPage, document.querySelector(`.nav-item[data-page="${lastPage}"]`)?.dataset.title || 'Dashboard');
   activatePage(lastPage);
 }
@@ -110,6 +121,12 @@ async function boot() {
 // ─── PAGE ROUTER ──────────────────────────────────────────────────────────────
 const loaded = new Set();
 function activatePage(pageId) {
+  // RBAC: block direct access to pages this role can't see
+  if (!canSee(pageId)) { navigate('page-dashboard', 'Dashboard'); pageId = 'page-dashboard'; }
+  // Mark page read-only (CSS hides add/edit/delete affordances) when no write access
+  const pageEl = document.getElementById(pageId);
+  if (pageEl) pageEl.classList.toggle('readonly', pageAccess(pageId) === 'read');
+
   if (loaded.has(pageId)) return; // data already loaded; realtime handles updates
   loaded.add(pageId);
   switch (pageId) {
@@ -316,13 +333,55 @@ async function loadAttendance() {
   typeEl.value = 'Sunday Service';
 
   document.getElementById('att-add-btn').onclick = () => openModal('modal-att');
+  document.getElementById('online-add-btn').onclick = () => {
+    document.getElementById('online-form').reset();
+    document.getElementById('onf-id').value = '';
+    openModal('modal-online');
+  };
 
-  dateEl.addEventListener('change', () => { loaded.delete('page-attendance-data'); fetchAttendance(); });
-  typeEl.addEventListener('change', () => { loaded.delete('page-attendance-data'); fetchAttendance(); });
+  dateEl.addEventListener('change', () => { fetchAttendance(); fetchOnline(); });
+  typeEl.addEventListener('change', () => { fetchAttendance(); fetchOnline(); });
 
   await fetchAttendance();
+  await fetchOnline();
   subscribeAttendanceRealtime();
 }
+
+// ─── ONLINE ATTENDANCE ─────────────────────────────────────────────────────
+let onlineData = [];
+async function fetchOnline() {
+  const date = document.getElementById('att-date').value;
+  const type = document.getElementById('att-type').value;
+  const { data, error } = await db.online.forDate(ORG_ID, date, type);
+  if (error) { toast(error.message, 'error'); return; }
+  onlineData = data || [];
+  const total = onlineData.reduce((s, r) => s + Number(r.count), 0);
+  document.getElementById('online-total').textContent = fmtNum(total);
+  buildTable(document.getElementById('online-tbody'), onlineData, r => `
+    <td class="td-name">${r.channel}</td>
+    <td style="font-weight:600;">${fmtNum(r.count)}</td>
+    <td class="text-sm text-muted">${r.notes || '—'}</td>
+    <td class="td-actions">
+      <button class="btn btn-ghost btn-sm" onclick="editOnline('${r.id}')">Edit</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteOnline('${r.id}')">Delete</button>
+    </td>`);
+}
+
+window.editOnline = (id) => {
+  const r = onlineData.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('onf-id').value = r.id;
+  document.getElementById('onf-channel').value = r.channel;
+  document.getElementById('onf-count').value = r.count;
+  document.getElementById('onf-notes').value = r.notes || '';
+  openModal('modal-online');
+};
+
+window.deleteOnline = async (id) => {
+  if (!confirm('Remove this online channel entry?')) return;
+  await db.online.delete(id);
+  await fetchOnline();
+};
 
 async function fetchAttendance() {
   const date = document.getElementById('att-date').value;
@@ -729,6 +788,7 @@ window.deleteComm = async (id) => {
 };
 
 // ─── EVENTS ───────────────────────────────────────────────────────────────────
+let eventsCache = [];
 async function loadEvents() {
   document.getElementById('evt-add-btn').onclick = () => {
     document.getElementById('event-form').reset();
@@ -739,6 +799,20 @@ async function loadEvents() {
   await fetchEvents();
 }
 
+window.editEvt = (id) => {
+  const e = eventsCache.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('evtf-id').value = e.id;
+  document.getElementById('evtf-title').value = e.title;
+  document.getElementById('evtf-type').value = e.event_type;
+  document.getElementById('evtf-loc').value = e.location || '';
+  document.getElementById('evtf-start').value = e.start_date ? e.start_date.slice(0,16) : '';
+  document.getElementById('evtf-end').value = e.end_date ? e.end_date.slice(0,16) : '';
+  document.getElementById('evtf-participants').value = e.num_participants ?? '';
+  document.getElementById('evtf-desc').value = e.description || '';
+  openModal('modal-event');
+};
+
 async function fetchEvents() {
   const { data, error } = await db.events.list(ORG_ID);
   if (error) { toast(error.message, 'error'); return; }
@@ -747,7 +821,12 @@ async function fetchEvents() {
     <td><span class="badge badge-gold">${e.event_type}</span></td>
     <td>${fmtDate(e.start_date)}</td>
     <td>${e.location || '—'}</td>
-    <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteEvt('${e.id}')">Delete</button></td>`);
+    <td>${e.num_participants != null ? fmtNum(e.num_participants) : '—'}</td>
+    <td class="td-actions">
+      <button class="btn btn-ghost btn-sm" onclick="editEvt('${e.id}')">Edit</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteEvt('${e.id}')">Delete</button>
+    </td>`);
+  eventsCache = data || [];
 }
 
 window.deleteEvt = async (id) => {
@@ -1321,13 +1400,53 @@ function loadSettings() {
   document.getElementById('set-org-slug').value     = org.slug || '';
   document.getElementById('set-org-currency').value = org.currency || 'USD';
   document.getElementById('set-email').textContent  = currentProfile ? (currentProfile.id ? '(signed in)' : '—') : '—';
-  document.getElementById('set-role').textContent   = currentProfile?.role || '—';
+  document.getElementById('set-role').textContent   = ROLE_LABELS[currentProfile?.role] || currentProfile?.role || '—';
   document.getElementById('set-plan').textContent   = org.plan || 'free';
   document.getElementById('set-plan-badge').textContent = (org.plan || 'free').charAt(0).toUpperCase() + (org.plan || 'free').slice(1);
   document.getElementById('qr-reset-code').textContent = org.qr_reset_code || '—';
   const link = `${window.location.origin}/qr/register/?org=${org.slug}`;
   document.getElementById('qr-link-display2').textContent = link;
+
+  // Org settings are editable by full-access roles only
+  const canEditOrg = isOrgAdmin() || pageAccess('page-settings') === 'write';
+  document.getElementById('save-org-btn').style.display = canEditOrg ? '' : 'none';
+  ['set-org-name','set-org-sub','set-org-denom','set-org-currency'].forEach(id => {
+    document.getElementById(id).disabled = !canEditOrg;
+  });
+
+  // Team & roles — admins/owners only
+  if (isOrgAdmin()) {
+    document.getElementById('team-section').style.display = '';
+    loadTeam();
+  } else {
+    document.getElementById('team-section').style.display = 'none';
+  }
 }
+
+async function loadTeam() {
+  const { data, error } = await db.team.list(ORG_ID);
+  if (error) { toast(error.message, 'error'); return; }
+  const tbody = document.getElementById('team-tbody');
+  tbody.innerHTML = (data || []).map(u => {
+    const name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || '(no name)';
+    const isSelf = u.id === currentProfile.id;
+    const isOwner = u.role === 'owner';
+    // Owners can't be re-roled here; you can't change your own role
+    const locked = isOwner || isSelf;
+    const opts = ASSIGNABLE_ROLES.map(r =>
+      `<option value="${r}"${u.role === r ? ' selected' : ''}>${ROLE_LABELS[r]}</option>`).join('');
+    const cell = locked
+      ? `<span class="role-pill">${ROLE_LABELS[u.role] || u.role}${isSelf ? ' · you' : ''}</span>`
+      : `<select class="form-control" style="min-height:34px;font-size:.8rem;padding:.2rem .5rem;width:auto;" onchange="assignRole('${u.id}', this.value)">${opts}</select>`;
+    return `<tr><td class="td-name">${name}</td><td class="text-sm text-muted">${isSelf ? '(you)' : ''}</td><td>${cell}</td></tr>`;
+  }).join('');
+}
+
+window.assignRole = async (userId, role) => {
+  const { error } = await db.team.setRole(userId, role);
+  if (error) { toast(error.message, 'error'); loadTeam(); return; }
+  toast('Role updated', 'success');
+};
 
 async function saveOrgSettings() {
   const btn = document.getElementById('save-org-btn');
@@ -1412,6 +1531,28 @@ function initFormHandlers() {
     closeModal('modal-att');
     document.getElementById('att-form').reset();
     document.getElementById('af-member-id').value = '';
+  });
+
+  // Online attendance form
+  document.getElementById('online-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('onf-id').value;
+    const data = {
+      org_id:       ORG_ID,
+      service_date: document.getElementById('att-date').value,
+      service_type: document.getElementById('att-type').value,
+      channel:      document.getElementById('onf-channel').value.trim(),
+      count:        parseInt(document.getElementById('onf-count').value, 10) || 0,
+      notes:        document.getElementById('onf-notes').value.trim() || null,
+    };
+    const { error } = id ? await db.online.update(id, data) : await db.online.insert(data);
+    if (error) {
+      toast(error.code === '23505' ? 'That channel is already recorded for this service' : error.message, 'error');
+      return;
+    }
+    toast('Online attendance saved', 'success');
+    closeModal('modal-online');
+    await fetchOnline();
   });
 
   // Giving form
@@ -1623,6 +1764,8 @@ function initFormHandlers() {
       location:   document.getElementById('evtf-loc').value.trim() || null,
       start_date: document.getElementById('evtf-start').value,
       end_date:   document.getElementById('evtf-end').value || null,
+      num_participants: document.getElementById('evtf-participants').value !== ''
+        ? parseInt(document.getElementById('evtf-participants').value, 10) : null,
       description:document.getElementById('evtf-desc').value.trim() || null,
     };
     const { error } = id ? await db.events.update(id, data) : await db.events.insert(data);

@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sunday Online Attendance</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:   #0D1F35;
+    --navy2:  #162B47;
+    --gold:   #B8963E;
+    --gold-l: #D4AA5A;
+    --gold-xl:#F0C97A;
+    --cream:  #F9F5EE;
+    --cream2: #F0EBE0;
+    --ink:    #1A1A2E;
+    --ink3:   #6B7280;
+    --green:  #1E7E56;
+    --green-l:#22A86E;
+    --red:    #C0392B;
+    --white:  #FFFFFF;
+    --radius: 14px;
+    --shadow: 0 4px 24px rgba(13,31,53,.13);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--navy);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0 60px;
+  }
+
+  /* ── Header banner ── */
+  .banner {
+    width: 100%;
+    background: linear-gradient(135deg, var(--navy2) 0%, #1a3a5c 100%);
+    border-bottom: 2px solid rgba(184,150,62,.35);
+    padding: 22px 24px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .banner-cross {
+    width: 40px; height: 40px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .banner h1 {
+    color: var(--white);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -.3px;
+    line-height: 1.2;
+  }
+  .banner p {
+    color: rgba(255,255,255,.55);
+    font-size: 11.5px;
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  /* ── Login card ── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    width: min(420px, calc(100% - 32px));
+    margin-top: 32px;
+    overflow: hidden;
+  }
+  .card-head {
+    background: var(--cream);
+    border-bottom: 1.5px solid var(--cream2);
+    padding: 18px 22px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-head .icon { font-size: 18px; }
+  .card-head h2 { font-size: 14px; font-weight: 700; color: var(--navy); }
+  .card-body { padding: 22px; }
+
+  label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin-bottom: 6px;
+  }
+  input[type=email], input[type=password], input[type=number], input[type=date], select {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1.5px solid var(--cream2);
+    border-radius: 9px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--cream);
+    outline: none;
+    transition: border-color .18s, box-shadow .18s;
+  }
+  input:focus, select:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(184,150,62,.12);
+    background: #fff;
+  }
+  .field { margin-bottom: 16px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 11px 20px;
+    border: none; border-radius: 9px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    transition: all .18s;
+  }
+  .btn-primary { background: var(--navy); color: #fff; width: 100%; }
+  .btn-primary:hover { background: var(--navy2); }
+  .btn-primary:disabled { background: var(--ink3); cursor: not-allowed; }
+  .btn-save {
+    background: var(--green); color: #fff; width: 100%;
+    font-size: 14px; padding: 13px;
+  }
+  .btn-save:hover { background: var(--green-l); }
+  .btn-save:disabled { background: var(--ink3); cursor: not-allowed; }
+  .btn-sm {
+    padding: 5px 12px; font-size: 11.5px; border-radius: 7px;
+    background: var(--cream2); color: var(--navy); font-weight: 600;
+    border: 1.5px solid var(--cream2); cursor: pointer;
+  }
+  .btn-sm:hover { background: var(--cream); }
+
+  .err { color: var(--red); font-size: 12px; margin-top: 8px; font-weight: 500; }
+  .info { color: var(--ink3); font-size: 12px; margin-top: 8px; }
+
+  /* ── App card (post-login) ── */
+  .app-wrap {
+    width: min(640px, calc(100% - 32px));
+    margin-top: 28px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+
+  /* ── Date picker card ── */
+  .date-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .date-bar {
+    background: var(--navy);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .date-bar h3 { color: var(--white); font-size: 13px; font-weight: 600; }
+  .date-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .date-controls input[type=date] {
+    width: auto; padding: 7px 11px; font-size: 12.5px;
+    background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); color: #fff;
+  }
+  .date-controls input[type=date]:focus { background: rgba(255,255,255,.18); border-color: var(--gold-xl); box-shadow: none; }
+  .sunday-chips {
+    padding: 14px 18px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+    background: var(--cream);
+    border-top: 1px solid var(--cream2);
+  }
+  .chip {
+    padding: 5px 13px;
+    border-radius: 20px;
+    font-size: 11.5px; font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all .15s;
+    font-family: 'Sora', sans-serif;
+  }
+  .chip-sun { background: var(--cream2); color: var(--navy); border-color: var(--cream2); }
+  .chip-sun:hover { border-color: var(--gold); }
+  .chip-sun.active { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+
+  /* ── Attendance service cards ── */
+  .services-grid { display: flex; flex-direction: column; gap: 14px; }
+
+  .svc-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: border-color .2s;
+  }
+  .svc-card.dirty { border-color: var(--gold); }
+
+  .svc-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1.5px solid var(--cream2);
+  }
+  .svc-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .svc-icon.childrens { background: rgba(34,168,110,.12); }
+  .svc-icon.jy        { background: rgba(59,130,246,.12); }
+  .svc-icon.adult     { background: rgba(184,150,62,.12); }
+  .svc-info h4 { font-size: 13.5px; font-weight: 700; color: var(--navy); }
+  .svc-info p  { font-size: 11px; color: var(--ink3); margin-top: 1px; }
+
+  .svc-body { padding: 16px 18px; }
+  .svc-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .svc-row:last-child { margin-bottom: 0; }
+  .svc-row label { flex: 1; min-width: 0; font-size: 12.5px; color: var(--ink); font-weight: 600; margin: 0; text-transform: none; letter-spacing: 0; }
+  .svc-row label span { display: block; font-size: 10.5px; color: var(--ink3); font-weight: 400; margin-top: 1px; }
+
+  .num-input {
+    display: flex; align-items: center; gap: 0;
+    border: 1.5px solid var(--cream2); border-radius: 9px; overflow: hidden;
+    background: var(--cream);
+  }
+  .num-input button {
+    width: 34px; height: 38px; border: none; background: var(--cream2);
+    font-size: 16px; cursor: pointer; color: var(--navy); font-weight: 700;
+    transition: background .15s; flex-shrink: 0;
+  }
+  .num-input button:hover { background: var(--cream); }
+  .num-input input {
+    width: 70px; height: 38px;
+    border: none; border-radius: 0;
+    background: var(--white);
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px; font-weight: 500;
+    color: var(--navy);
+    padding: 0;
+  }
+  .num-input input:focus { box-shadow: none; }
+
+  .online-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(34,168,110,.1); color: var(--green);
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .3px;
+  }
+  .online-badge::before { content: '●'; font-size: 8px; }
+
+  .divider { height: 1px; background: var(--cream2); margin: 10px 0; }
+
+  /* ── Status bar ── */
+  .status-bar {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .status-bar .total-label { font-size: 12px; color: var(--ink3); font-weight: 500; }
+  .status-bar .total-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px; font-weight: 700; color: var(--navy);
+  }
+  .status-bar .total-val span { font-size: 11px; color: var(--gold); font-weight: 600; margin-left: 4px; }
+
+  /* ── Save section ── */
+  .save-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+  }
+  .save-note { font-size: 11.5px; color: var(--ink3); margin-bottom: 14px; line-height: 1.5; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--navy); color: #fff;
+    padding: 11px 22px; border-radius: 30px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 6px 24px rgba(0,0,0,.28);
+    opacity: 0; transition: all .28s;
+    pointer-events: none; white-space: nowrap; z-index: 999;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.success { background: var(--green); }
+  #toast.error   { background: var(--red); }
+
+  /* ── Session bar ── */
+  .session-bar {
+    width: 100%; background: rgba(255,255,255,.06);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    padding: 8px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11.5px; color: rgba(255,255,255,.5);
+  }
+  .session-bar strong { color: rgba(255,255,255,.8); }
+  .session-bar button {
+    background: none; border: none; color: rgba(255,255,255,.45);
+    cursor: pointer; font-size: 11.5px; font-family: 'Sora', sans-serif;
+  }
+  .session-bar button:hover { color: #fff; }
+
+  .hidden { display: none !important; }
+
+  /* ── No-Sunday notice ── */
+  .no-sun {
+    background: var(--white); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 26px 22px; text-align: center;
+  }
+  .no-sun .big { font-size: 32px; margin-bottom: 10px; }
+  .no-sun p { color: var(--ink3); font-size: 13px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .app-wrap { margin-top: 20px; }
+    .svc-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .num-input input { width: 55px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Banner ── -->
+<div class="banner">
+  <div class="banner-cross">✝</div>
+  <div>
+    <h1>Sunday Online Attendance</h1>
+    <p>PCG ChurchOS — Online Service Register</p>
+  </div>
+</div>
+
+<!-- ── Session bar (shown when logged in) ── -->
+<div class="session-bar hidden" id="session-bar">
+  <span>Signed in as <strong id="sb-email">—</strong> · <strong id="sb-cong">—</strong></span>
+  <button onclick="doLogout()">Sign out</button>
+</div>
+
+<!-- ── Login card ── -->
+<div class="card" id="login-card">
+  <div class="card-head">
+    <span class="icon">🔐</span>
+    <h2>Sign in to continue</h2>
+  </div>
+  <div class="card-body">
+    <div class="field">
+      <label>Email address</label>
+      <input type="email" id="email" placeholder="you@congregation.org" autocomplete="username"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="pass" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div id="login-err" class="err hidden"></div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="info" style="margin-top:12px;text-align:center">Use the same credentials as ChurchOS</div>
+  </div>
+</div>
+
+<!-- ── Main app (post-login) ── -->
+<div class="app-wrap hidden" id="app">
+
+  <!-- Date picker -->
+  <div class="date-card">
+    <div class="date-bar">
+      <h3>📅 Select Sunday</h3>
+      <div class="date-controls">
+        <input type="date" id="date-picker" onchange="onDatePick(this.value)">
+        <button class="btn-sm" onclick="pickToday()">Today</button>
+      </div>
+    </div>
+    <div class="sunday-chips" id="sunday-chips">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- No-sunday notice (shown when non-Sunday date picked) -->
+  <div class="no-sun hidden" id="no-sun">
+    <div class="big">📵</div>
+    <p>The selected date is not a Sunday.<br>Please choose a Sunday from the list above.</p>
+  </div>
+
+  <!-- Services -->
+  <div class="services-grid" id="services-grid">
+
+    <!-- Children's Church -->
+    <div class="svc-card" id="card-childrens">
+      <div class="svc-head">
+        <div class="svc-icon childrens">🧒</div>
+        <div class="svc-info">
+          <h4>Children's Church</h4>
+          <p>Under 12 years</p>
+        </div>
+        <div style="margin-left:auto"><span class="online-badge">Online</span></div>
+      </div>
+      <div class="svc-body">
+        <div class="svc-row">
+          <label>Online attendance<span>Number watching online this Sunday</span></label>
+          <div class="num-input">
+            <button onclick="adj('childrens', -1)">−</button>
+            <input type="number" id="inp-childrens" min="0" value="0" onchange="onManual('childrens', this.value)">
+            <button onclick="adj('childrens', 1)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Junior Youth -->
+    <div class="svc-card" id="card-jy">
+      <div class="svc-head">
+        <div class="svc-icon jy">👦</div>
+        <div class="svc-info">
+          <h4>Junior Youth (JY)</h4>
+          <p>Ages 12–18</p>
+        </div>
+        <div style="margin-left:auto"><span class="online-badge">Online</span></div>
+      </div>
+      <div class="svc-body">
+        <div class="svc-row">
+          <label>Online attendance<span>Number watching online this Sunday</span></label>
+          <div class="num-input">
+            <button onclick="adj('jy', -1)">−</button>
+            <input type="number" id="inp-jy" min="0" value="0" onchange="onManual('jy', this.value)">
+            <button onclick="adj('jy', 1)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adult / Main Service -->
+    <div class="svc-card" id="card-adult">
+      <div class="svc-head">
+        <div class="svc-icon adult">⛪</div>
+        <div class="svc-info">
+          <h4>Adult Church Service</h4>
+          <p>Main Sunday worship</p>
+        </div>
+        <div style="margin-left:auto"><span class="online-badge">Online</span></div>
+      </div>
+      <div class="svc-body">
+        <div class="svc-row">
+          <label>Online attendance<span>Number watching online this Sunday</span></label>
+          <div class="num-input">
+            <button onclick="adj('adult', -1)">−</button>
+            <input type="number" id="inp-adult" min="0" value="0" onchange="onManual('adult', this.value)">
+            <button onclick="adj('adult', 1)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /services-grid -->
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div>
+      <div class="total-label">Total online (all services)</div>
+      <div class="total-val" id="total-display">0 <span>viewers</span></div>
+    </div>
+    <div style="text-align:right">
+      <div class="total-label" id="selected-date-label" style="font-weight:600;color:var(--navy)">No date selected</div>
+      <div class="total-label" id="save-status" style="margin-top:2px">—</div>
+    </div>
+  </div>
+
+  <!-- Save -->
+  <div class="save-card">
+    <div class="save-note">
+      ✅ This updates the <strong>online attendance</strong> column for the selected Sunday in ChurchOS Groups data.
+      All other columns (in-person attendance, activities, comments) are left untouched.
+    </div>
+    <button class="btn btn-save" id="save-btn" onclick="saveAttendance()">💾 Save Online Attendance</button>
+    <div id="save-err" class="err hidden" style="margin-top:10px"></div>
+  </div>
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<!-- ── Firebase SDK (module) ── -->
+<script type="module">
+import { initializeApp }          from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
+import { getAuth,
+         signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }
+                                  from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
+import { getDatabase, ref,
+         get, set }               from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js';
+
+const FB_CONFIG = {
+  apiKey:            'AIzaSyA3vzjg1s6JwEjTzkLy9sptXoqrgfoAkQQ',
+  authDomain:        'pcg-erp-1e1d0.firebaseapp.com',
+  databaseURL:       'https://pcg-erp-1e1d0-default-rtdb.firebaseio.com',
+  projectId:         'pcg-erp-1e1d0',
+  storageBucket:     'pcg-erp-1e1d0.firebasestorage.app',
+  messagingSenderId: '97661604507',
+  appId:             '1:97661604507:web:646869f00c6b14aa07ac3e'
+};
+
+const app    = initializeApp(FB_CONFIG);
+const auth   = getAuth(app);
+const db     = getDatabase(app);
+
+// ── State ──────────────────────────────────────────────────────────────
+let _session = null;   // { uid, email, congregationId }
+let _grpRecs = null;   // full grpRecords object from Firebase
+let _selDate = '';     // currently selected YYYY-MM-DD (must be Sunday)
+let _dirty   = false;
+
+// ── Expose helpers to global scope ────────────────────────────────────
+window._fbDoLogin = async (email, pass) => {
+  return signInWithEmailAndPassword(auth, email, pass);
+};
+window._fbDoLogout = () => signOut(auth);
+
+window._fbLoad = async (congregationId) => {
+  const snap = await get(ref(db, `congregations/${congregationId}/erp_grp_recs_v5`));
+  if (!snap.exists()) return null;
+  const raw = snap.val();
+  // ChurchOS stores data as a raw JSON string — parse it
+  try { return typeof raw === 'string' ? JSON.parse(raw) : raw; }
+  catch(e) { return raw; }
+};
+
+window._fbSave = async (congregationId, data) => {
+  const path = `congregations/${congregationId}/erp_grp_recs_v5`;
+  // Must store as raw JSON string to match ChurchOS write convention
+  await set(ref(db, path), JSON.stringify(data));
+};
+
+// ── Auth state listener ───────────────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    // Read congregation ID from /users/{uid}
+    const { get: dbGet, ref: dbRef } = await import('https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js');
+    const snap = await dbGet(dbRef(db, `users/${user.uid}`));
+    const meta = snap.exists() ? snap.val() : {};
+    const cid  = meta.congregationId || '';
+    _session = { uid: user.uid, email: user.email, congregationId: cid };
+    window._onLoggedIn(_session);
+  } else {
+    _session = null;
+    window._onLoggedOut();
+  }
+});
+</script>
+
+<!-- ── App logic (non-module) ── -->
+<script>
+// ── Helpers ────────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function show(id) { $(id).classList.remove('hidden'); }
+function hide(id) { $(id).classList.add('hidden'); }
+function toast(msg, type='') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = '', 2800);
+}
+
+// ── Login / Logout ─────────────────────────────────────────────────────
+async function doLogin() {
+  const email = $('email').value.trim();
+  const pass  = $('pass').value;
+  const errEl = $('login-err');
+  const btn   = $('login-btn');
+  errEl.classList.add('hidden');
+  if (!email || !pass) { errEl.textContent = 'Please enter your email and password.'; errEl.classList.remove('hidden'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    await window._fbDoLogin(email, pass);
+    // onAuthStateChanged → _onLoggedIn handles the rest
+  } catch(e) {
+    let msg = 'Sign-in failed. Check your credentials.';
+    if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') msg = 'Incorrect email or password.';
+    else if (e.code === 'auth/too-many-requests') msg = 'Too many attempts. Please try later.';
+    errEl.textContent = msg; errEl.classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
+}
+window.doLogin = doLogin;
+
+async function doLogout() {
+  await window._fbDoLogout();
+}
+window.doLogout = doLogout;
+
+// ── Auth events ────────────────────────────────────────────────────────
+window._onLoggedIn = async (session) => {
+  hide('login-card');
+  show('session-bar');
+  $('sb-email').textContent = session.email;
+  $('sb-cong').textContent  = session.congregationId || 'Unknown congregation';
+
+  if (!session.congregationId) {
+    toast('No congregation ID found for this account. Contact admin.', 'error');
+    return;
+  }
+
+  // Load data
+  try {
+    _grpRecs = await window._fbLoad(session.congregationId);
+    if (!_grpRecs) {
+      _grpRecs = { childrens:[], jy:[], adult:[], ypg:[], yaf:[], mens:[], womens:[], bibleclub:[], newcomers:[], discipleship:[] };
+    }
+  } catch(e) {
+    toast('Failed to load attendance data.', 'error');
+    _grpRecs = { childrens:[], jy:[], adult:[], ypg:[], yaf:[], mens:[], womens:[], bibleclub:[], newcomers:[], discipleship:[] };
+  }
+
+  buildSundayChips();
+  show('app');
+  // Auto-select today if it's Sunday
+  const today = todayISO();
+  if (isSunday(today)) {
+    selectDate(today);
+  } else {
+    // Auto-select most recent past Sunday
+    const lastSun = lastSundayISO();
+    selectDate(lastSun);
+  }
+};
+
+window._onLoggedOut = () => {
+  show('login-card');
+  hide('session-bar');
+  hide('app');
+  _grpRecs = null;
+  _selDate = '';
+};
+
+// ── Date helpers ───────────────────────────────────────────────────────
+function todayISO() {
+  const now = new Date();
+  return toISO(now);
+}
+function toISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function isSunday(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.getDay() === 0;
+}
+function lastSundayISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay()); // rewind to Sunday
+  return toISO(d);
+}
+
+// Build this year's Sundays
+function getSundaysThisYear() {
+  const year = new Date().getFullYear();
+  const sundays = [];
+  const d = new Date(year, 0, 1);
+  while (d.getDay() !== 0) d.setDate(d.getDate() + 1); // advance to first Sunday
+  while (d.getFullYear() === year) {
+    sundays.push(toISO(new Date(d)));
+    d.setDate(d.getDate() + 7);
+  }
+  return sundays;
+}
+
+function fmtDisplay(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-GH', { day:'numeric', month:'short' });
+}
+
+// ── Sunday chips ───────────────────────────────────────────────────────
+function buildSundayChips() {
+  const sundays = getSundaysThisYear();
+  const today = todayISO();
+  // Show last 8 past/current and next 4 upcoming
+  const past     = sundays.filter(s => s <= today).slice(-8);
+  const upcoming = sundays.filter(s => s > today).slice(0, 4);
+  const shown    = [...past, ...upcoming];
+  const chips    = $('sunday-chips');
+  chips.innerHTML = shown.map(s => {
+    const label = fmtDisplay(s);
+    const isPast = s < today;
+    const isToday = s === today;
+    return `<button class="chip chip-sun" data-date="${s}" onclick="selectDate('${s}')">${isToday ? '📍 ' : ''}${label}</button>`;
+  }).join('');
+  // Also set date picker to today or last sunday
+  $('date-picker').value = isSunday(today) ? today : lastSundayISO();
+}
+
+function selectDate(iso) {
+  if (!isSunday(iso)) {
+    show('no-sun');
+    hide('services-grid');
+    $('selected-date-label').textContent = 'Not a Sunday';
+    return;
+  }
+  hide('no-sun');
+  show('services-grid');
+  _selDate = iso;
+  $('date-picker').value = iso;
+
+  // Highlight chip
+  document.querySelectorAll('.chip-sun').forEach(c => {
+    c.classList.toggle('active', c.dataset.date === iso);
+  });
+
+  loadDateValues();
+  const d = new Date(iso + 'T00:00:00');
+  $('selected-date-label').textContent = d.toLocaleDateString('en-GH', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  $('save-status').textContent = 'Loaded from ChurchOS';
+  _dirty = false;
+  updateDirtyState();
+}
+
+// ── Load values for selected date ──────────────────────────────────────
+function loadDateValues() {
+  ['childrens','jy','adult'].forEach(key => {
+    const arr = ensureArr(key);
+    const rec = arr.find(r => r.date === _selDate);
+    const val = rec ? (parseInt(rec.attOnline) || 0) : 0;
+    $('inp-' + key).value = val;
+  });
+  updateTotal();
+}
+
+function ensureArr(key) {
+  if (!_grpRecs) _grpRecs = {};
+  if (!Array.isArray(_grpRecs[key])) _grpRecs[key] = [];
+  return _grpRecs[key];
+}
+
+// ── Input handlers ─────────────────────────────────────────────────────
+function adj(key, delta) {
+  const inp = $('inp-' + key);
+  const cur = parseInt(inp.value) || 0;
+  inp.value = Math.max(0, cur + delta);
+  markDirty(key);
+  updateTotal();
+}
+window.adj = adj;
+
+function onManual(key, val) {
+  const v = Math.max(0, parseInt(val) || 0);
+  $('inp-' + key).value = v;
+  markDirty(key);
+  updateTotal();
+}
+window.onManual = onManual;
+
+function onDatePick(val) {
+  if (!val) return;
+  selectDate(val);
+}
+window.onDatePick = onDatePick;
+
+function pickToday() {
+  const today = todayISO();
+  if (!isSunday(today)) {
+    // jump to last Sunday
+    selectDate(lastSundayISO());
+  } else {
+    selectDate(today);
+  }
+}
+window.pickToday = pickToday;
+
+function markDirty(key) {
+  _dirty = true;
+  $('card-' + key).classList.add('dirty');
+  $('save-status').textContent = 'Unsaved changes';
+  updateDirtyState();
+}
+
+function updateDirtyState() {
+  $('save-btn').disabled = !_dirty || !_selDate;
+}
+
+function updateTotal() {
+  const t = ['childrens','jy','adult'].reduce((s,k) => s + (parseInt($('inp-' + k).value)||0), 0);
+  $('total-display').innerHTML = `${t} <span>viewers</span>`;
+}
+
+// ── Save ───────────────────────────────────────────────────────────────
+async function saveAttendance() {
+  if (!_selDate || !_grpRecs) return;
+  const errEl = $('save-err');
+  errEl.classList.add('hidden');
+
+  $('save-btn').disabled = true;
+  $('save-btn').textContent = '⏳ Saving…';
+
+  try {
+    ['childrens','jy','adult'].forEach(key => {
+      const arr = ensureArr(key);
+      const val = parseInt($('inp-' + key).value) || 0;
+      let rec = arr.find(r => r.date === _selDate);
+      if (rec) {
+        // Update only attOnline — preserve everything else
+        rec.attOnline = val;
+      } else {
+        // Create a minimal record for this date
+        arr.push({ date: _selDate, attOffline: '', attOnline: val, activity: '', comments: '' });
+        // Keep sorted by date
+        arr.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+      }
+    });
+
+    const session = { congregationId: document.getElementById('sb-cong').textContent };
+    await window._fbSave(session.congregationId, _grpRecs);
+
+    // Clear dirty state
+    _dirty = false;
+    ['childrens','jy','adult'].forEach(k => $('card-' + k).classList.remove('dirty'));
+    $('save-status').textContent = 'Saved ✓ ' + new Date().toLocaleTimeString('en-GH', {hour:'2-digit', minute:'2-digit'});
+    updateDirtyState();
+    toast('Online attendance saved ✓', 'success');
+
+  } catch(e) {
+    console.error(e);
+    errEl.textContent = 'Save failed: ' + (e.message || 'Unknown error');
+    errEl.classList.remove('hidden');
+    toast('Save failed', 'error');
+  } finally {
+    $('save-btn').disabled = false;
+    $('save-btn').textContent = '💾 Save Online Attendance';
+  }
+}
+window.saveAttendance = saveAttendance;
+
+// ── Init ───────────────────────────────────────────────────────────────
+$('save-btn').disabled = true;
+</script>
+</body>
+</html>

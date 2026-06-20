@@ -169,6 +169,24 @@ export const db = {
     delete: (id) => dbDelete('attendance', { id }),
   },
 
+  // Online attendance (per-channel manual counts)
+  online: {
+    forDate: (orgId, date, type) =>
+      supabase.from('online_attendance').select('*')
+        .eq('org_id', orgId).eq('service_date', date).eq('service_type', type)
+        .order('channel'),
+    insert: (data) => dbInsert('online_attendance', data),
+    update: (id, data) => dbUpdate('online_attendance', data, { id }),
+    delete: (id) => dbDelete('online_attendance', { id }),
+  },
+
+  // Team / roles
+  team: {
+    list: (orgId) => supabase.from('profiles')
+      .select('id,first_name,last_name,role').eq('org_id', orgId).order('first_name'),
+    setRole: (userId, role) => supabase.rpc('set_user_role', { p_user_id: userId, p_role: role }),
+  },
+
   // QR Registrations
   qrRegs: {
     list: (orgId, imported = false) =>
