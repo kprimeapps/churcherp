@@ -185,6 +185,11 @@ export const db = {
     list: (orgId) => supabase.from('profiles')
       .select('id,first_name,last_name,role').eq('org_id', orgId).order('first_name'),
     setRole: (userId, role) => supabase.rpc('set_user_role', { p_user_id: userId, p_role: role }),
+    invites: (orgId) => supabase.from('org_invites')
+      .select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+    invite: (orgId, email, role) => supabase.from('org_invites')
+      .insert({ org_id: orgId, email, role }),
+    revokeInvite: (id) => supabase.from('org_invites').delete().eq('id', id),
   },
 
   // QR Registrations

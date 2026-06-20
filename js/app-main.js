@@ -1423,7 +1423,30 @@ function loadSettings() {
   }
 }
 
+let teamInit = false;
 async function loadTeam() {
+  // One-time: populate invite role select + wire the invite form
+  if (!teamInit) {
+    teamInit = true;
+    document.getElementById('inv-role').innerHTML =
+      ASSIGNABLE_ROLES.map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('');
+    document.getElementById('invite-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const email = document.getElementById('inv-email').value.trim().toLowerCase();
+      const role  = document.getElementById('inv-role').value;
+      if (!email) return;
+      const { error } = await db.team.invite(ORG_ID, email, role);
+      if (error) {
+        toast(error.code === '23505' ? 'That email is already invited' : error.message, 'error');
+        return;
+      }
+      toast('Invite added', 'success');
+      document.getElementById('inv-email').value = '';
+      loadInvites();
+    });
+  }
+  loadInvites();
+
   const { data, error } = await db.team.list(ORG_ID);
   if (error) { toast(error.message, 'error'); return; }
   const tbody = document.getElementById('team-tbody');
@@ -1446,6 +1469,27 @@ window.assignRole = async (userId, role) => {
   const { error } = await db.team.setRole(userId, role);
   if (error) { toast(error.message, 'error'); loadTeam(); return; }
   toast('Role updated', 'success');
+};
+
+async function loadInvites() {
+  const { data, error } = await db.team.invites(ORG_ID);
+  const box = document.getElementById('invite-list');
+  if (error) { box.innerHTML = ''; return; }
+  if (!data?.length) { box.innerHTML = '<p class="text-xs text-muted" style="margin:0;">No pending invites.</p>'; return; }
+  box.innerHTML = '<div class="text-xs text-muted" style="margin-bottom:.35rem;">Pending invites</div>' +
+    data.map(i => `
+      <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem 0;border-bottom:1px solid var(--border);">
+        <span style="flex:1;font-size:.84rem;">${i.email}</span>
+        <span class="role-pill">${ROLE_LABELS[i.role] || i.role}</span>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="revokeInvite('${i.id}')">Revoke</button>
+      </div>`).join('');
+}
+
+window.revokeInvite = async (id) => {
+  const { error } = await db.team.revokeInvite(id);
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Invite revoked', 'success');
+  loadInvites();
 };
 
 async function saveOrgSettings() {

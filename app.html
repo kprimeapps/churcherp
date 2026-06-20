@@ -852,14 +852,33 @@
 
       <div class="settings-section card" id="team-section" style="margin-bottom:1.25rem;display:none;">
         <h3 style="margin-bottom:.25rem;">Team &amp; Roles</h3>
-        <p class="text-sm text-muted" style="margin:0 0 1rem;">Assign each member of your team a role to control what they can access.</p>
+        <p class="text-sm text-muted" style="margin:0 0 1rem;">Invite people to your organization and assign each a role to control their access.</p>
+
+        <!-- Invite -->
+        <div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1.25rem;">
+          <h4 style="margin:0 0 .6rem;font-size:.9rem;">Invite a team member</h4>
+          <form id="invite-form" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="flex:1;min-width:200px;margin:0;">
+              <label class="form-label">Email</label>
+              <input type="email" id="inv-email" class="form-control" placeholder="person@example.com" required/>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Role</label>
+              <select id="inv-role" class="form-control"></select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;">Send Invite</button>
+          </form>
+          <div id="invite-list" style="margin-top:.85rem;"></div>
+        </div>
+
+        <h4 style="margin:0 0 .6rem;font-size:.9rem;">Current members</h4>
         <div class="tbl-wrap">
           <table class="dtable">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+            <thead><tr><th>Name</th><th></th><th>Role</th></tr></thead>
             <tbody id="team-tbody"></tbody>
           </table>
         </div>
-        <p class="text-xs text-muted" style="margin-top:.6rem;">Tip: people join your organization by signing up and being added. Roles take effect on their next page load.</p>
+        <p class="text-xs text-muted" style="margin-top:.6rem;">Invited people join when they sign up with the invited email. Roles take effect on their next page load.</p>
       </div>
 
       <div class="settings-section card">
