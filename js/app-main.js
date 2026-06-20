@@ -1430,7 +1430,10 @@ function initFormHandlers() {
       given_date:     document.getElementById('gf-date').value,
       notes:          document.getElementById('gf-notes').value || null,
     };
-    const { error } = editId ? await db.giving.update(editId, data) : await db.giving.insert(data);
+    let saved, error;
+    try {
+      ({ data: saved } = editId ? await db.giving.update(editId, data) : await db.giving.insert(data));
+    } catch (err) { error = err; }
     if (error) { toast(error.message, 'error'); return; }
     delete document.getElementById('gf-member-id').dataset.editId;
     toast(editId ? 'Gift updated' : 'Gift recorded', 'success');
@@ -1438,6 +1441,10 @@ function initFormHandlers() {
     givingData = [];
     loaded.delete('page-giving');
     await fetchGiving();
+    // Auto-show printable receipt for new entries (queued offline inserts have no id)
+    if (!editId && saved?.id && givingData.some(g => g.id === saved.id)) {
+      showGivingReceipt(saved.id);
+    }
   });
 
   // Group form
@@ -1756,7 +1763,7 @@ function initFormHandlers() {
 }
 
 // ─── RECONCILIATION ──────────────────────────────────────────────────────────
-let reconData = [], activeReconId = null;
+let reconData = [], activeReconId = null, reconInit = false;
 
 async function loadReconciliation() {
   document.getElementById('recon-add-btn').onclick = async () => {
@@ -1780,44 +1787,57 @@ async function loadReconciliation() {
     toast('Marked as reconciled', 'success');
     document.getElementById('recon-back-btn').click();
   };
-  document.getElementById('recon-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-      org_id:            ORG_ID,
-      period:            document.getElementById('reconf-period').value,
-      account_id:        document.getElementById('reconf-account').value || null,
-      statement_balance: parseFloat(document.getElementById('reconf-stmt-bal').value),
-      book_balance:      parseFloat(document.getElementById('reconf-book-bal').value),
-      notes:             document.getElementById('reconf-notes').value || null,
-    };
-    const { error } = await db.reconciliations.insert(data);
-    if (error) { toast(error.message, 'error'); return; }
-    toast('Reconciliation created', 'success');
-    closeModal('modal-recon');
-    await fetchReconciliations();
-  });
-  document.getElementById('recon-item-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-      reconciliation_id: activeReconId,
-      org_id:            ORG_ID,
-      description:       document.getElementById('reconif-desc').value.trim(),
-      amount:            parseFloat(document.getElementById('reconif-amount').value),
-      item_date:         document.getElementById('reconif-date').value || null,
-      item_type:         document.getElementById('reconif-type').value,
-    };
-    const { error } = await db.reconciliations.addItem(data);
-    if (error) { toast(error.message, 'error'); return; }
-    closeModal('modal-recon-item');
-    await openReconDetail(activeReconId);
-  });
+  // Register form listeners only once
+  if (!reconInit) {
+    reconInit = true;
+    document.getElementById('recon-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = {
+        org_id:            ORG_ID,
+        period:            document.getElementById('reconf-period').value,
+        account_id:        document.getElementById('reconf-account').value || null,
+        statement_balance: parseFloat(document.getElementById('reconf-stmt-bal').value),
+        book_balance:      parseFloat(document.getElementById('reconf-book-bal').value),
+        notes:             document.getElementById('reconf-notes').value || null,
+      };
+      const { error } = await db.reconciliations.insert(data);
+      if (error) { toast(error.message, 'error'); return; }
+      toast('Reconciliation created', 'success');
+      closeModal('modal-recon');
+      await fetchReconciliations();
+    });
+    document.getElementById('recon-item-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = {
+        reconciliation_id: activeReconId,
+        org_id:            ORG_ID,
+        description:       document.getElementById('reconif-desc').value.trim(),
+        amount:            parseFloat(document.getElementById('reconif-amount').value),
+        item_date:         document.getElementById('reconif-date').value || null,
+        item_type:         document.getElementById('reconif-type').value,
+      };
+      const { error } = await db.reconciliations.addItem(data);
+      if (error) { toast(error.message, 'error'); return; }
+      closeModal('modal-recon-item');
+      await openReconDetail(activeReconId);
+    });
+  }
   await fetchReconciliations();
 }
 
 async function fetchReconciliations() {
+  const tbody = document.getElementById('recon-tbody');
   const { data, error } = await db.reconciliations.list(ORG_ID);
-  if (error) { toast(error.message, 'error'); return; }
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="7" class="tbl-empty" style="color:var(--red);">
+      Could not load reconciliations. If this is the first time, run migration <code>004_updates.sql</code> in Supabase.<br>(${error.message})</td></tr>`;
+    return;
+  }
   reconData = data || [];
+  if (!reconData.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="tbl-empty">No reconciliations yet. Click <strong>+ New Reconciliation</strong> to start.</td></tr>`;
+    return;
+  }
   buildTable(document.getElementById('recon-tbody'), reconData, r => `
     <td>${r.period}</td>
     <td>${r.accounts?.name || '—'}</td>
