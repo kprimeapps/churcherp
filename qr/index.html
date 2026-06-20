@@ -248,7 +248,7 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   serviceType = document.getElementById('service-type-input').value;
   const btn = document.getElementById('start-btn');
   btn.disabled = true; btn.textContent = 'Loading…';
-  const { data, error } = await sb.from('organizations').select('id,name,sub_name').eq('slug', slug).single();
+  const { data, error } = await sb.rpc('get_org_by_slug', { p_slug: slug }).maybeSingle();
   if (error || !data) { alert('Organization not found'); btn.disabled=false; btn.textContent='Start Scanner →'; return; }
   org = data;
   document.getElementById('church-name').textContent = data.name;

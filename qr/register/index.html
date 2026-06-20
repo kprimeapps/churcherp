@@ -147,7 +147,7 @@ async function boot() {
 
   // Load org config
   try {
-    const { data, error } = await sb.from('organizations').select('id,name,sub_name,slug,qr_reset_code,settings').eq('slug', orgSlug).eq('is_active', true).single();
+    const { data, error } = await sb.rpc('get_org_by_slug', { p_slug: orgSlug }).maybeSingle();
     if (error || !data) { showError('Organization not found. Check your link.'); return; }
     org = data;
 
