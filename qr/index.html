@@ -15,6 +15,8 @@
   .result-card  { display: none; border-radius: var(--rl); padding: 1.25rem; text-align: center; margin-top: 1rem; background: var(--green-light); border: 1.5px solid var(--green); }
   .result-card.show  { display: block; }
   .result-card.error { background: var(--red-light); border-color: var(--red); }
+  .result-card.warn  { background: #FFF7E6; border-color: var(--gold); }
+  #queue-badge { display:none; background:#FFF7E6; border:1px solid var(--gold); color:var(--ink2); border-radius:999px; padding:.2rem .65rem; font-size:.72rem; }
   .result-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; }
   .result-meta { font-size: .82rem; color: var(--ink3); margin-top: .25rem; }
   .checkin-log { margin-top: 1.25rem; max-height: 220px; overflow-y: auto; }
@@ -57,7 +59,10 @@
         <span class="badge badge-green" id="service-badge">Sunday Service</span>
         <span class="text-sm text-muted" style="margin-left:.5rem;" id="checkin-count-label">0 checked in</span>
       </div>
-      <button class="btn btn-outline btn-sm" id="stop-btn">Stop</button>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span id="queue-badge"></span>
+        <button class="btn btn-outline btn-sm" id="stop-btn">Stop</button>
+      </div>
     </div>
     <div id="video-wrap">
       <video id="scanner-video" autoplay playsinline muted></video>
@@ -82,6 +87,35 @@ let org = null, serviceType = 'Sunday Service', checkinCount = 0, scanLoop = nul
 const recentScans = new Set();
 const todayStr = new Date().toISOString().slice(0,10);
 
+// ── Offline check-in queue ──────────────────────────────────────────────────
+const QKEY = 'qr_scan_queue';
+const getQueue = () => { try { return JSON.parse(localStorage.getItem(QKEY) || '[]'); } catch { return []; } };
+const setQueue = q => localStorage.setItem(QKEY, JSON.stringify(q));
+function enqueueScan(item) { const q = getQueue(); q.push(item); setQueue(q); updateQueueBadge(); }
+function updateQueueBadge() {
+  const n = getQueue().length;
+  const el = document.getElementById('queue-badge');
+  if (el) { el.style.display = n > 0 ? '' : 'none'; el.textContent = `${n} queued offline`; }
+}
+async function syncQueue() {
+  if (!navigator.onLine) return;
+  let q = getQueue();
+  if (!q.length) return;
+  const remaining = [];
+  for (const item of q) {
+    try {
+      const { error } = await sb.rpc('qr_check_in', {
+        p_qr_id: item.qrId, p_org_id: item.orgId,
+        p_service_date: item.date, p_service_type: item.type,
+      });
+      if (error) remaining.push(item);
+    } catch { remaining.push(item); }
+  }
+  setQueue(remaining);
+  updateQueueBadge();
+}
+window.addEventListener('online', syncQueue);
+
 const params = new URLSearchParams(location.search);
 if (params.get('org'))  document.getElementById('org-slug-input').value  = params.get('org');
 if (params.get('type')) document.getElementById('service-type-input').value = params.get('type');
@@ -100,6 +134,8 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   document.getElementById('service-badge').textContent = serviceType;
   document.getElementById('setup-screen').style.display   = 'none';
   document.getElementById('scanner-screen').style.display = '';
+  updateQueueBadge();
+  syncQueue();
   await startCamera();
 });
 
@@ -140,43 +176,63 @@ function stopCamera() {
   video.srcObject?.getTracks().forEach(t => t.stop());
 }
 
+function showResult(state, name, meta) {
+  const card = document.getElementById('result-card');
+  card.className = 'result-card show' + (state === 'error' ? ' error' : state === 'warn' ? ' warn' : '');
+  document.getElementById('result-name').textContent = name;
+  document.getElementById('result-meta').textContent = meta;
+  setTimeout(() => card.className = 'result-card', 3200);
+}
+function logCheckin(name, role, suffix = '') {
+  const log = document.getElementById('checkin-log');
+  const parts = name.split(' ');
+  const row = document.createElement('div');
+  row.className = 'log-row';
+  row.innerHTML = `
+    <div class="avatar avatar-gold" style="width:28px;height:28px;font-size:.72rem;">${(parts[0]?.[0]||'')}${(parts[1]?.[0]||'')}</div>
+    <div style="flex:1"><div style="font-weight:500;">${name}${suffix}</div><div class="text-xs text-muted">${role||''}</div></div>
+    <div class="log-time">${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div>`;
+  log.prepend(row);
+}
+
 async function handleScan(qrId) {
   if (recentScans.has(qrId)) return;
   recentScans.add(qrId);
   setTimeout(() => recentScans.delete(qrId), 5000);
 
-  const { data: reg } = await sb.from('qr_registrations').select('*').eq('id', qrId).eq('org_id', org.id).single();
-  const card = document.getElementById('result-card');
-
-  if (!reg) {
-    card.className = 'result-card show error';
-    document.getElementById('result-name').textContent = 'Unknown QR Code';
-    document.getElementById('result-meta').textContent = qrId;
-    setTimeout(() => card.className = 'result-card', 3000);
+  // Offline: queue and let the server resolve member-link + dedupe on sync
+  if (!navigator.onLine) {
+    enqueueScan({ qrId, orgId: org.id, date: todayStr, type: serviceType });
+    showResult('warn', 'Saved offline', `${qrId} · will sync when online`);
     return;
   }
 
-  const name = `${reg.first_name} ${reg.last_name || ''}`.trim();
-  await sb.from('attendance').insert({
-    org_id: org.id, guest_name: name, guest_phone: reg.phone, guest_role: reg.role,
-    service_date: todayStr, service_type: serviceType, check_in_method: 'qr',
-  });
+  let res;
+  try {
+    res = await sb.rpc('qr_check_in', {
+      p_qr_id: qrId, p_org_id: org.id, p_service_date: todayStr, p_service_type: serviceType,
+    });
+  } catch {
+    enqueueScan({ qrId, orgId: org.id, date: todayStr, type: serviceType });
+    showResult('warn', 'Saved offline', 'Network error · will sync');
+    return;
+  }
+
+  const out = res?.data || {};
+  if (res?.error || out.status === 'unknown') {
+    showResult('error', 'Unknown QR Code', qrId);
+    return;
+  }
+  if (out.status === 'duplicate') {
+    showResult('warn', out.name || 'Already checked in', `${out.role || ''} · already recorded`);
+    return;
+  }
 
   checkinCount++;
   document.getElementById('checkin-count-label').textContent = `${checkinCount} checked in`;
-  card.className = 'result-card show';
-  document.getElementById('result-name').textContent = name;
-  document.getElementById('result-meta').textContent = `${reg.role || ''} · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
-  setTimeout(() => card.className = 'result-card', 3500);
-
-  const log = document.getElementById('checkin-log');
-  const row = document.createElement('div');
-  row.className = 'log-row';
-  row.innerHTML = `
-    <div class="avatar avatar-gold" style="width:28px;height:28px;font-size:.72rem;">${(reg.first_name[0]||'')}${(reg.last_name?.[0]||'')}</div>
-    <div style="flex:1"><div style="font-weight:500;">${name}</div><div class="text-xs text-muted">${reg.role||''}</div></div>
-    <div class="log-time">${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div>`;
-  log.prepend(row);
+  const tag = out.member_id ? ' ✓' : '';
+  showResult('ok', out.name, `${out.role || ''} · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`);
+  logCheckin(out.name, out.role, tag);
 }
 </script>
 </body>
