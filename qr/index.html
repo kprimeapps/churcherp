@@ -205,6 +205,7 @@ const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let org = null, serviceType = 'Sunday Service', checkinCount = 0, scanLoop = null;
+let stream = null, detector = null;
 const recentScans = new Set();
 const todayStr = new Date().toISOString().slice(0,10);
 
@@ -268,33 +269,67 @@ document.getElementById('stop-btn').addEventListener('click', () => {
 
 async function startCamera() {
   const video = document.getElementById('scanner-video');
+  stopCamera();
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
     video.srcObject = stream;
     await video.play();
-    const canvas = document.createElement('canvas');
-    const ctx    = canvas.getContext('2d', { willReadFrequently: true });
-    function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-        if (code?.data) handleScan(code.data);
-      }
-      scanLoop = requestAnimationFrame(tick);
-    }
-    tick();
-  } catch {
+    startDetection(video);
+  } catch (e) {
     alert('Camera access denied. Please allow camera and reload.');
   }
 }
 
 function stopCamera() {
-  const video = document.getElementById('scanner-video');
-  if (scanLoop) cancelAnimationFrame(scanLoop);
-  video.srcObject?.getTracks().forEach(t => t.stop());
+  if (scanLoop) { cancelAnimationFrame(scanLoop); scanLoop = null; }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+
+// Prefer the native BarcodeDetector (hardware-accelerated, sub-second);
+// fall back to a downscaled jsQR scan only where it's unavailable (e.g. iOS Safari).
+function startDetection(video) {
+  if ('BarcodeDetector' in window) {
+    BarcodeDetector.getSupportedFormats()
+      .then(formats => {
+        const fmts = formats.includes('qr_code') ? ['qr_code'] : formats;
+        detector = new BarcodeDetector({ formats: fmts });
+        detectLoop(video);
+      })
+      .catch(() => { detector = new BarcodeDetector({ formats: ['qr_code'] }); detectLoop(video); });
+  } else {
+    canvasLoop(video);
+  }
+}
+
+function detectLoop(video) {
+  if (!stream) return;
+  detector.detect(video)
+    .then(codes => { if (codes.length) handleScan(codes[0].rawValue); })
+    .catch(() => {})
+    .finally(() => { if (stream) scanLoop = requestAnimationFrame(() => detectLoop(video)); });
+}
+
+// jsQR fallback — downscale to a ~480px working canvas so decoding stays fast.
+const _canvas = document.createElement('canvas');
+const _ctx = _canvas.getContext('2d', { willReadFrequently: true });
+function canvasLoop(video) {
+  if (!stream) return;
+  if (video.readyState === video.HAVE_ENOUGH_DATA && window.jsQR) {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (vw > 0 && vh > 0) {
+      const scale = Math.min(1, 480 / Math.max(vw, vh));
+      const w = Math.round(vw * scale), h = Math.round(vh * scale);
+      _canvas.width = w; _canvas.height = h;
+      _ctx.drawImage(video, 0, 0, w, h);
+      const img = _ctx.getImageData(0, 0, w, h);
+      const code = jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' });
+      if (code?.data) handleScan(code.data);
+    }
+  }
+  scanLoop = requestAnimationFrame(() => canvasLoop(video));
 }
 
 function showResult(state, name, meta) {
