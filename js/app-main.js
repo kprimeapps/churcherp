@@ -6,6 +6,7 @@ import {
   initials, today, thisYear, thisMonth, debounce, buildTable,
   memberSelect, initOfflineBanner, navigate
 } from './ui.js';
+import { reconBoot, budgetBoot } from './finance-tools.js';
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 let ORG_ID, CURRENCY;
@@ -930,10 +931,10 @@ let accountsCache = [];
 async function loadFinanceTab(tab) {
   switch (tab) {
     case 'ledger':   await loadLedger();   break;
-    case 'budgets':        await loadBudgets();        break;
+    case 'budgets':        await budgetBoot();         break;
     case 'payroll':        await loadPayroll();        break;
     case 'accounts':       await loadAccounts();       break;
-    case 'reconciliation': await loadReconciliation(); break;
+    case 'reconciliation': await reconBoot();          break;
   }
 }
 

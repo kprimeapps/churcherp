@@ -359,6 +359,25 @@ export const db = {
     stats: (orgId) => supabase.rpc('get_dashboard_stats', { p_org_id: orgId }),
   },
 
+  // Reconciliation snapshots (rich tool — JSON state per account+period)
+  reconSnap: {
+    listForOrg: (orgId) => supabase.from('recon_snapshots').select('*').eq('org_id', orgId),
+    upsert: (orgId, account, period, state) =>
+      supabase.from('recon_snapshots')
+        .upsert({ org_id: orgId, account, period, state, updated_at: new Date().toISOString() },
+                { onConflict: 'org_id,account,period' }),
+    remove: (orgId, account, period) =>
+      supabase.from('recon_snapshots').delete().match({ org_id: orgId, account, period }),
+  },
+
+  // Budget plan (rich tool — single JSON doc per org)
+  budgetPlan: {
+    get:    (orgId) => supabase.from('budget_plans').select('plan').eq('org_id', orgId).maybeSingle(),
+    upsert: (orgId, plan) =>
+      supabase.from('budget_plans')
+        .upsert({ org_id: orgId, plan, updated_at: new Date().toISOString() }, { onConflict: 'org_id' }),
+  },
+
   // Organizations
   org: {
     get:    (id) => supabase.from('organizations').select('*').eq('id', id).single(),

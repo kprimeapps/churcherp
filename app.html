@@ -398,13 +398,75 @@
       </div>
     </div>
 
-    <!-- Budgets -->
+    <!-- Budgets (receipts / payments vs actual) -->
     <div id="ftab-budgets" style="display:none;">
-      <div class="page-header" style="margin-bottom:.75rem;">
-        <div></div>
-        <div class="page-actions"><button class="btn btn-primary btn-sm" id="budget-add-btn">+ New Budget</button></div>
+      <style>
+        #ftab-budgets .ft-bctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+        #ftab-budgets .ft-bylbl{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+        #ftab-budgets .ft-bysel{padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:#fff}
+        #ftab-budgets .ft-bb{padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;background:#fff;color:var(--navy)}
+        #ftab-budgets .ft-bb-gold{background:var(--gold);color:#fff;border-color:var(--gold);font-weight:600}
+        #ftab-budgets .ft-bb-outline:hover{background:var(--cream)}
+        #ftab-budgets .ft-bsr{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+        #ftab-budgets .ft-bsc{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;border-top:3px solid var(--gold)}
+        #ftab-budgets .ft-bsc-re{border-top-color:#8B1F1F}
+        #ftab-budgets .ft-bsc-nv{border-top-color:#1A6B45}
+        #ftab-budgets .ft-bsl{font-size:10.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+        #ftab-budgets .ft-bsv{font-size:20px;font-weight:700;color:var(--navy);margin-top:4px}
+        #ftab-budgets .ft-bss{font-size:11px;color:var(--ink3);margin-top:2px}
+        #ftab-budgets .ft-bchr{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+        #ftab-budgets .ft-bcc{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px}
+        #ftab-budgets .ft-bcc h3{font-size:12.5px;color:var(--navy);margin:0 0 8px}
+        #ftab-budgets .ft-bcw{height:200px;position:relative}
+        #ftab-budgets .ft-btc{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px}
+        #ftab-budgets .ft-bth{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+        #ftab-budgets .ft-bth h3{font-size:13px;color:var(--navy);margin:0}
+        #ftab-budgets .ft-bth-note{font-size:11px;color:var(--ink3);margin-left:auto}
+        #ftab-budgets .ft-sbadge{font-size:9.5px;padding:2px 7px;border-radius:10px;font-weight:600}
+        #ftab-budgets .ft-sbi{background:rgba(26,107,69,.12);color:#1A6B45}
+        #ftab-budgets .ft-sbe{background:rgba(139,31,31,.12);color:#8B1F1F}
+        #ftab-budgets .ft-bt{width:100%;border-collapse:collapse;font-size:12px}
+        #ftab-budgets .ft-bt th{background:var(--cream);color:var(--ink3);text-transform:uppercase;font-size:10px;letter-spacing:.05em;padding:7px 9px;text-align:left;font-weight:600}
+        #ftab-budgets .ft-bt th.n,#ftab-budgets .ft-bt td.n{text-align:right}
+        #ftab-budgets .ft-bt td{padding:5px 9px;border-bottom:1px solid var(--border)}
+        #ftab-budgets .ft-bt tfoot .tot td{font-weight:700;background:var(--cream);border-top:2px solid var(--gold)}
+        #ftab-budgets .ft-bi{width:100px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:right}
+        #ftab-budgets .ft-vp{padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600}
+        #ftab-budgets .ft-vpg{background:rgba(26,107,69,.12);color:#1A6B45}
+        #ftab-budgets .ft-vpr{background:rgba(139,31,31,.12);color:#8B1F1F}
+        #ftab-budgets .ft-vpn{background:rgba(0,0,0,.05);color:var(--ink3)}
+        #ftab-budgets .ft-pw{display:inline-block;width:54px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-left:6px;vertical-align:middle}
+        #ftab-budgets .ft-pf{display:block;height:100%;background:var(--gold)}
+      </style>
+      <div class="ft-bctrl">
+        <span class="ft-bylbl">Year</span>
+        <select class="ft-bysel" id="ftBudYearSel" onchange="ftRenderBudget()"></select>
+        <button class="ft-bb ft-bb-gold" onclick="ftSaveBudget()">💾 Save Budget</button>
+        <button class="ft-bb ft-bb-outline" onclick="ftExportBudgetCSV()">⬇ Export CSV</button>
+        <input type="file" id="ftBudImportFile" accept=".csv" style="display:none" onchange="ftImportBudgetCSV(event)">
+        <button class="ft-bb ft-bb-outline" onclick="document.getElementById('ftBudImportFile').click()">⬆ Import CSV</button>
+        <button class="ft-bb ft-bb-outline" onclick="ftResetBudget()">↩ Reset Defaults</button>
+        <button class="ft-bb ft-bb-outline" style="background:#FDEAEA;color:#C53030;border-color:#FEB2B2" onclick="ftRemoveSelectedBud()">✕ Remove Selected</button>
+        <span style="font-size:11px;color:var(--ink3);margin-left:auto">Click any figure or name to edit</span>
       </div>
-      <div id="budgets-list" style="display:flex;flex-direction:column;gap:.75rem;"></div>
+      <div class="ft-bsr">
+        <div class="ft-bsc"><div class="ft-bsl">Budget Receipts</div><div class="ft-bsv" id="ft-bsum-br">—</div><div class="ft-bss" id="ft-bsum-br-a">Actual: —</div></div>
+        <div class="ft-bsc ft-bsc-re"><div class="ft-bsl">Budget Payments</div><div class="ft-bsv" id="ft-bsum-bp">—</div><div class="ft-bss" id="ft-bsum-bp-a">Actual: —</div></div>
+        <div class="ft-bsc ft-bsc-nv"><div class="ft-bsl">Surplus / (Deficit)</div><div class="ft-bsv" id="ft-bsum-bal">—</div><div class="ft-bss" id="ft-bsum-bal-a">Actual Net: —</div></div>
+        <div class="ft-bsc"><div class="ft-bsl">Receipt Attainment</div><div class="ft-bsv" id="ft-bsum-pct">—</div><div class="ft-bss" id="ft-bsum-pct-s">Actual vs budget</div></div>
+      </div>
+      <div class="ft-bchr">
+        <div class="ft-bcc"><h3>Income — Budget vs Actual</h3><div class="ft-bcw"><canvas id="ftBudIncChart"></canvas></div></div>
+        <div class="ft-bcc"><h3>Expenditure — Budget vs Actual</h3><div class="ft-bcw"><canvas id="ftBudExpChart"></canvas></div></div>
+      </div>
+      <div class="ft-btc">
+        <div class="ft-bth"><h3>Receipts <span class="ft-sbadge ft-sbi">Income</span></h3><button class="ft-bb ft-bb-outline" style="padding:4px 10px;font-size:11px" onclick="ftAddBudItem('receipt')">＋ Add</button><span class="ft-bth-note">✏ Click to edit · Actuals from Giving</span></div>
+        <div style="overflow-x:auto"><table class="ft-bt"><thead><tr><th style="width:34%">Category</th><th class="n">Prev Budget</th><th class="n">Prev Actual</th><th class="n">Budget</th><th class="n">Actual YTD</th><th class="n">Variance</th><th class="n">Progress</th><th></th></tr></thead><tbody id="ftBudRecBody"></tbody><tfoot id="ftBudRecFoot"></tfoot></table></div>
+      </div>
+      <div class="ft-btc">
+        <div class="ft-bth"><h3>Payments <span class="ft-sbadge ft-sbe">Expenditure</span></h3><button class="ft-bb ft-bb-outline" style="padding:4px 10px;font-size:11px" onclick="ftAddBudItem('payment')">＋ Add</button><span class="ft-bth-note">✏ Click to edit · Actuals from Expenses</span></div>
+        <div style="overflow-x:auto"><table class="ft-bt"><thead><tr><th style="width:34%">Category</th><th class="n">Prev Budget</th><th class="n">Prev Actual</th><th class="n">Budget</th><th class="n">Actual YTD</th><th class="n">Variance</th><th class="n">Progress</th><th></th></tr></thead><tbody id="ftBudPayBody"></tbody><tfoot id="ftBudPayFoot"></tfoot></table></div>
+      </div>
     </div>
 
     <!-- Payroll -->
@@ -424,50 +486,239 @@
       </div>
     </div>
 
-    <!-- Reconciliation -->
+    <!-- Reconciliation (full tool) -->
     <div id="ftab-reconciliation" style="display:none;">
-      <div class="page-header" style="margin-bottom:.75rem;">
-        <div></div>
-        <div class="page-actions"><button class="btn btn-primary btn-sm" id="recon-add-btn">+ New Reconciliation</button></div>
-      </div>
-      <div id="recon-list-view">
-        <div class="tbl-wrap">
-          <table class="dtable">
-            <thead><tr><th>Period</th><th>Account</th><th>Statement Balance</th><th>Book Balance</th><th>Difference</th><th>Status</th><th></th></tr></thead>
-            <tbody id="recon-tbody"></tbody>
-          </table>
+      <div id="rn-root" style="display:flex;flex-direction:column;min-height:620px;border:1px solid rgba(184,150,74,.2);border-radius:10px;overflow:hidden;background:#0f1923;color:#e8dcc8;font-family:'DM Sans',sans-serif;position:relative;">
+        <style>
+          #rn-root .rn-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#0a1520;border-bottom:2px solid rgba(184,150,74,.2);flex-shrink:0;flex-wrap:wrap}
+          #rn-root .rn-topbar-title{font-family:'Playfair Display',serif;font-size:14px;color:#c9a84c;font-weight:700}
+          #rn-root .rn-sep{width:1px;height:22px;background:rgba(255,255,255,.12);margin:0 4px}
+          #rn-root .rn-btn{padding:5px 12px;border:1.5px solid rgba(184,150,74,.4);background:rgba(184,150,74,.08);color:#c9a84c;border-radius:5px;font-size:11px;cursor:pointer;transition:all .15s}
+          #rn-root .rn-btn:hover{background:rgba(184,150,74,.2)}
+          #rn-root .rn-btn.gold{background:#b8964a;color:#0a1520;border-color:#b8964a;font-weight:700}
+          #rn-root .rn-btn.danger{border-color:rgba(220,80,80,.5);color:#e05555;background:rgba(220,80,80,.08)}
+          #rn-root .rn-tabs{display:flex;border-bottom:2px solid rgba(184,150,74,.15);background:#0a1520;flex-shrink:0}
+          #rn-root .rn-tab{padding:8px 18px;font-size:12px;cursor:pointer;color:rgba(232,220,200,.5);border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500}
+          #rn-root .rn-tab:hover{color:#c9a84c}
+          #rn-root .rn-tab.active{color:#c9a84c;border-bottom-color:#c9a84c}
+          #rn-root .rn-panel{display:none;flex:1;overflow:hidden}
+          #rn-root .rn-panel.active{display:flex;flex-direction:column}
+          #rn-root .rn-stats{display:flex;gap:10px;padding:14px 16px;flex-wrap:wrap;background:#0d1722;border-bottom:1px solid rgba(255,255,255,.06)}
+          #rn-root .rn-stat{flex:1;min-width:120px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;position:relative;overflow:hidden}
+          #rn-root .rn-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#b8964a,transparent)}
+          #rn-root .rn-stat-lbl{font-size:9.5px;color:rgba(232,220,200,.45);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+          #rn-root .rn-stat-val{font-size:17px;font-weight:700;color:#e8dcc8;margin-top:4px}
+          #rn-root .rn-stat-sub{font-size:9.5px;color:rgba(232,220,200,.35);margin-top:2px}
+          #rn-root .rn-stat.green .rn-stat-val{color:#4fd18a}
+          #rn-root .rn-stat.red .rn-stat-val{color:#e05555}
+          #rn-root .rn-stat.gold .rn-stat-val{color:#c9a84c}
+          #rn-root .rn-progress-wrap{padding:10px 16px;background:#0a1520;border-bottom:1px solid rgba(255,255,255,.06)}
+          #rn-root .rn-progress-lbl{display:flex;justify-content:space-between;font-size:10px;color:rgba(232,220,200,.45);margin-bottom:5px}
+          #rn-root .rn-progress-track{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+          #rn-root .rn-progress-bar{height:100%;background:linear-gradient(90deg,#b8964a,#4fd18a);border-radius:3px;transition:width .6s}
+          #rn-root .rn-import-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.08);padding:0 16px;background:#0d1722}
+          #rn-root .rn-imp-tab{padding:7px 16px;font-size:11.5px;cursor:pointer;color:rgba(232,220,200,.45);border-bottom:2px solid transparent;margin-bottom:-1px}
+          #rn-root .rn-imp-tab.active{color:#c9a84c;border-bottom-color:#c9a84c}
+          #rn-root .rn-dropzone{border:2px dashed rgba(184,150,74,.3);border-radius:10px;padding:32px;text-align:center;cursor:pointer;background:rgba(184,150,74,.03)}
+          #rn-root .rn-dropzone:hover,#rn-root .rn-dropzone.drag-over{border-color:#b8964a;background:rgba(184,150,74,.08)}
+          #rn-root .rn-dropzone-icon{font-size:36px;margin-bottom:10px}
+          #rn-root .rn-dropzone p{font-size:12px;color:rgba(232,220,200,.5);margin:4px 0}
+          #rn-root .rn-dropzone strong{color:#c9a84c}
+          #rn-root .rn-sample-btn{font-size:10.5px;color:rgba(184,150,74,.7);cursor:pointer;text-decoration:underline;background:none;border:none}
+          #rn-root .rn-tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+          #rn-root .rn-tbl th{background:rgba(255,255,255,.05);color:rgba(232,220,200,.5);font-weight:600;text-transform:uppercase;font-size:9.5px;letter-spacing:.07em;padding:7px 10px;position:sticky;top:0;text-align:left}
+          #rn-root .rn-tbl td{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:#e8dcc8}
+          #rn-root .rn-tbl .amt-pos{color:#4fd18a}
+          #rn-root .rn-tbl .amt-neg{color:#e05555}
+          #rn-root .rn-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:9.5px;font-weight:600}
+          #rn-root .rn-badge.high,#rn-root .rn-badge.matched{background:rgba(79,209,138,.15);color:#4fd18a}
+          #rn-root .rn-badge.med{background:rgba(200,160,60,.15);color:#c9a84c}
+          #rn-root .rn-badge.low{background:rgba(180,100,80,.15);color:#e08870}
+          #rn-root .rn-badge.unmatched{background:rgba(232,220,200,.08);color:rgba(232,220,200,.5)}
+          #rn-root .rn-recon-layout{display:flex;flex:1;overflow:hidden}
+          #rn-root .rn-recon-col{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid rgba(255,255,255,.07)}
+          #rn-root .rn-recon-col:last-child{border-right:none}
+          #rn-root .rn-col-hdr{padding:8px 12px;background:#0a1520;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px}
+          #rn-root .rn-col-title{font-size:11.5px;font-weight:700;color:#c9a84c}
+          #rn-root .rn-item{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;display:flex;flex-direction:column;gap:2px}
+          #rn-root .rn-item:hover{background:rgba(184,150,74,.06)}
+          #rn-root .rn-item.selected{background:rgba(184,150,74,.14);border-left:3px solid #b8964a}
+          #rn-root .rn-item.matched-item{opacity:.5}
+          #rn-root .rn-item-desc{font-size:11.5px;color:#e8dcc8}
+          #rn-root .rn-item-meta{font-size:10px;color:rgba(232,220,200,.45);display:flex;gap:8px}
+          #rn-root .rn-item-amt{font-size:12px;font-weight:700;color:#c9a84c}
+          #rn-root .rn-filter-bar{padding:6px 12px;background:#0d1722;border-bottom:1px solid rgba(255,255,255,.06);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+          #rn-root .rn-filter-btn{padding:3px 10px;border:1px solid rgba(255,255,255,.12);border-radius:4px;background:transparent;color:rgba(232,220,200,.5);font-size:10.5px;cursor:pointer}
+          #rn-root .rn-filter-btn:hover,#rn-root .rn-filter-btn.active{background:rgba(184,150,74,.12);color:#c9a84c;border-color:rgba(184,150,74,.4)}
+          #rn-root .rn-report-title{font-size:11px;font-weight:700;color:rgba(232,220,200,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+          #rn-root .rn-rs-row{display:flex;justify-content:space-between;padding:5px 0;font-size:11.5px;border-bottom:1px dotted rgba(255,255,255,.05)}
+          #rn-root .rn-rs-row.subtotal{font-weight:700;color:#c9a84c;border-bottom:2px solid rgba(184,150,74,.3)}
+          #rn-root .rn-diff-banner{padding:12px 16px;border-radius:8px;font-size:13px;font-weight:700;margin:14px 16px}
+          #rn-root .rn-diff-banner.ok{background:rgba(79,209,138,.1);border:1px solid rgba(79,209,138,.3);color:#4fd18a}
+          #rn-root .rn-diff-banner.bad{background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.3);color:#e05555}
+          #rn-root .rn-quick-actions{display:flex;gap:8px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.06)}
+          #rn-root .rn-sel,#rn-root .rn-inp{padding:5px 10px;border:1.5px solid rgba(184,150,74,.25);border-radius:5px;background:#0a1520;color:#e8dcc8;font-size:11.5px;font-family:'DM Sans',sans-serif;outline:none}
+          #rn-root .rn-sel:focus,#rn-root .rn-inp:focus{border-color:#b8964a}
+          #rn-root .rn-match-banner{background:rgba(184,150,74,.1);border:1px solid rgba(184,150,74,.3);border-radius:6px;padding:8px 12px;margin:8px;font-size:11px;color:#c9a84c}
+        </style>
+        <!-- Top bar -->
+        <div class="rn-topbar">
+          <span class="rn-topbar-title">🏦 Bank Reconciliation</span>
+          <div class="rn-sep"></div>
+          <label style="font-size:9.5px;color:rgba(232,220,200,.4);text-transform:uppercase">Account</label>
+          <select class="rn-sel" id="rnAccount" onchange="rnOnAcctChange()"></select>
+          <div class="rn-sep"></div>
+          <select class="rn-sel" id="rnYear" onchange="rnRefresh()"></select>
+          <select class="rn-sel" id="rnMonth" onchange="rnRefresh()">
+            <option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option>
+          </select>
+          <div class="rn-sep"></div>
+          <button class="rn-btn gold" onclick="rnSave()">💾 Save</button>
+          <button class="rn-btn" onclick="rnPrint()">🖨 Print</button>
+          <button class="rn-btn" onclick="rnExportJSON()">📦 Backup</button>
+          <button class="rn-btn danger" onclick="rnReset()">🗑 Reset</button>
         </div>
-      </div>
-      <div id="recon-detail-view" style="display:none;">
-        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
-          <button class="btn btn-outline btn-sm" id="recon-back-btn">← Back</button>
-          <h3 id="recon-detail-title" style="margin:0;"></h3>
-          <span id="recon-detail-diff" style="font-weight:700;margin-left:auto;"></span>
+        <!-- Sub-tabs -->
+        <div class="rn-tabs">
+          <div class="rn-tab active" id="rn-tab-dashboard" onclick="rnSwitchTab('dashboard')">📊 Dashboard</div>
+          <div class="rn-tab" id="rn-tab-import" onclick="rnSwitchTab('import')">📥 Import Data</div>
+          <div class="rn-tab" id="rn-tab-reconcile" onclick="rnSwitchTab('reconcile')">🔗 Reconcile</div>
+          <div class="rn-tab" id="rn-tab-adjustments" onclick="rnSwitchTab('adjustments')">⚙ Adjustments</div>
+          <div class="rn-tab" id="rn-tab-reports" onclick="rnSwitchTab('reports')">📄 Reports</div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-              <strong>Book Items</strong>
-              <button class="btn btn-outline btn-sm" onclick="addReconItem('book')">+ Add</button>
-            </div>
-            <div class="tbl-wrap"><table class="dtable" id="recon-book-table">
-              <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>✓</th><th></th></tr></thead>
-              <tbody id="recon-book-tbody"></tbody>
-            </table></div>
+        <!-- Dashboard -->
+        <div class="rn-panel active" id="rn-panel-dashboard" style="overflow:auto">
+          <div class="rn-stats">
+            <div class="rn-stat gold"><div class="rn-stat-lbl">Bank Balance</div><div class="rn-stat-val" id="rn-s-bank">—</div><div class="rn-stat-sub">Per bank statement</div></div>
+            <div class="rn-stat"><div class="rn-stat-lbl">Book Balance</div><div class="rn-stat-val" id="rn-s-book">—</div><div class="rn-stat-sub">Cash book / ledger</div></div>
+            <div class="rn-stat green"><div class="rn-stat-lbl">Matched</div><div class="rn-stat-val" id="rn-s-matched">0</div><div class="rn-stat-sub">Transaction pairs</div></div>
+            <div class="rn-stat"><div class="rn-stat-lbl">Unmatched</div><div class="rn-stat-val" id="rn-s-unmatched">0</div><div class="rn-stat-sub">Items pending</div></div>
+            <div class="rn-stat"><div class="rn-stat-lbl">Adj. Bank Bal</div><div class="rn-stat-val" id="rn-s-adj-bank">—</div><div class="rn-stat-sub">After adjustments</div></div>
+            <div class="rn-stat" id="rn-s-diff-card"><div class="rn-stat-lbl">Difference</div><div class="rn-stat-val" id="rn-s-diff">—</div><div class="rn-stat-sub" id="rn-s-diff-sub">—</div></div>
           </div>
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-              <strong>Statement Items</strong>
-              <button class="btn btn-outline btn-sm" onclick="addReconItem('statement')">+ Add</button>
-            </div>
-            <div class="tbl-wrap"><table class="dtable" id="recon-stmt-table">
-              <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>✓</th><th></th></tr></thead>
-              <tbody id="recon-stmt-tbody"></tbody>
-            </table></div>
+          <div class="rn-progress-wrap">
+            <div class="rn-progress-lbl"><span>Reconciliation Progress</span><span id="rn-prog-pct">0%</span></div>
+            <div class="rn-progress-track"><div class="rn-progress-bar" id="rn-prog-bar" style="width:0%"></div></div>
+          </div>
+          <div class="rn-quick-actions">
+            <button class="rn-btn" onclick="rnSwitchTab('import')">📥 Import Bank CSV</button>
+            <button class="rn-btn" onclick="rnImportFromLedger()">📒 Load from Ledger</button>
+            <button class="rn-btn" onclick="rnAutoMatch();rnSwitchTab('reconcile')">⚡ Auto-Match All</button>
+            <button class="rn-btn gold" onclick="rnSwitchTab('reports')">📄 View Report</button>
+          </div>
+          <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:12px"><div class="rn-report-title">Unmatched Bank Items</div><div id="rn-dash-bank-list" style="font-size:11.5px;color:rgba(232,220,200,.5)">No data yet.</div></div>
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:12px"><div class="rn-report-title">Unmatched Book Items</div><div id="rn-dash-book-list" style="font-size:11.5px;color:rgba(232,220,200,.5)">No data yet.</div></div>
           </div>
         </div>
-        <div style="text-align:right;">
-          <button class="btn btn-primary btn-sm" id="recon-mark-done-btn">Mark as Reconciled</button>
+        <!-- Import -->
+        <div class="rn-panel" id="rn-panel-import" style="overflow:hidden">
+          <div class="rn-import-tabs">
+            <div class="rn-imp-tab active" id="rn-imp-tab-bank" onclick="rnSwitchImpTab('bank')">🏦 Bank Statement</div>
+            <div class="rn-imp-tab" id="rn-imp-tab-book" onclick="rnSwitchImpTab('book')">📒 Book / Ledger CSV</div>
+            <div class="rn-imp-tab" id="rn-imp-tab-ledger" onclick="rnSwitchImpTab('ledger')">📋 From Giving & Expenses</div>
+          </div>
+          <div style="overflow:auto;flex:1;padding:16px">
+            <div id="rn-imp-bank">
+              <div class="rn-dropzone" onclick="document.getElementById('rn-file-bank').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="rnHandleDrop(event,'bank')">
+                <div class="rn-dropzone-icon">🏦</div><p><strong>Drop your bank statement CSV here</strong></p><p>or click to browse</p>
+                <input type="file" id="rn-file-bank" accept=".csv,.txt" style="display:none" onchange="rnReadCSV(event,'bank')">
+              </div>
+              <div style="text-align:center;margin-top:10px"><button class="rn-sample-btn" onclick="rnDownloadSample('bank')">⬇ Download sample bank CSV</button></div>
+              <div id="rn-bank-preview" style="margin-top:16px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:#c9a84c">Preview — Map Columns</div><div style="display:flex;gap:8px"><button class="rn-btn" onclick="rnCancelImport('bank')">Cancel</button><button class="rn-btn gold" onclick="rnConfirmImport('bank')">✓ Import</button></div></div>
+                <div id="rn-bank-map" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px"></div>
+                <div style="overflow:auto;max-height:240px"><table class="rn-tbl" id="rn-bank-prev-tbl"><thead></thead><tbody></tbody></table></div>
+              </div>
+              <div id="rn-bank-loaded" style="margin-top:16px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:#4fd18a" id="rn-bank-loaded-lbl"></div><button class="rn-btn danger" onclick="rnClearImport('bank')">Clear Bank Data</button></div>
+                <div style="overflow:auto;max-height:300px"><table class="rn-tbl"><thead><tr><th>Date</th><th>Description</th><th>Reference</th><th>Credits</th><th>Debits</th></tr></thead><tbody id="rn-bank-tbody"></tbody></table></div>
+              </div>
+            </div>
+            <div id="rn-imp-book" style="display:none">
+              <div class="rn-dropzone" onclick="document.getElementById('rn-file-book').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="rnHandleDrop(event,'book')">
+                <div class="rn-dropzone-icon">📒</div><p><strong>Drop your ledger/book CSV here</strong></p><p>or click to browse</p>
+                <input type="file" id="rn-file-book" accept=".csv,.txt" style="display:none" onchange="rnReadCSV(event,'book')">
+              </div>
+              <div style="text-align:center;margin-top:10px"><button class="rn-sample-btn" onclick="rnDownloadSample('book')">⬇ Download sample book CSV</button></div>
+              <div id="rn-book-preview" style="margin-top:16px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:#c9a84c">Preview — Map Columns</div><div style="display:flex;gap:8px"><button class="rn-btn" onclick="rnCancelImport('book')">Cancel</button><button class="rn-btn gold" onclick="rnConfirmImport('book')">✓ Import</button></div></div>
+                <div id="rn-book-map" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px"></div>
+                <div style="overflow:auto;max-height:240px"><table class="rn-tbl" id="rn-book-prev-tbl"><thead></thead><tbody></tbody></table></div>
+              </div>
+              <div id="rn-book-loaded" style="margin-top:16px;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:#4fd18a" id="rn-book-loaded-lbl"></div><button class="rn-btn danger" onclick="rnClearImport('book')">Clear Book Data</button></div>
+                <div style="overflow:auto;max-height:300px"><table class="rn-tbl"><thead><tr><th>Date</th><th>Description</th><th>Reference</th><th>Receipts</th><th>Payments</th></tr></thead><tbody id="rn-book-tbody"></tbody></table></div>
+              </div>
+            </div>
+            <div id="rn-imp-ledger" style="display:none">
+              <div style="background:rgba(184,150,74,.06);border:1px solid rgba(184,150,74,.2);border-radius:8px;padding:14px;margin-bottom:14px"><div style="font-size:12px;font-weight:600;color:#c9a84c;margin-bottom:6px">📋 Import from Giving & Expenses</div><div style="font-size:11.5px;color:rgba(232,220,200,.6)">Pull recorded giving (receipts) and expenses (payments) for a month as your Book records.</div></div>
+              <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+                <div><label style="font-size:10px;color:rgba(232,220,200,.45);display:block;margin-bottom:3px;text-transform:uppercase">Year</label><select class="rn-sel" id="rn-ledger-imp-year"></select></div>
+                <div><label style="font-size:10px;color:rgba(232,220,200,.45);display:block;margin-bottom:3px;text-transform:uppercase">Month</label><select class="rn-sel" id="rn-ledger-imp-month"><option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option></select></div>
+                <div><label style="font-size:10px;color:rgba(232,220,200,.45);display:block;margin-bottom:3px;text-transform:uppercase">Type</label><select class="rn-sel" id="rn-ledger-imp-type"><option value="both">Both</option><option value="receipt">Receipts Only</option><option value="payment">Payments Only</option></select></div>
+                <button class="rn-btn gold" onclick="rnLoadFromLedger()">⬇ Load Records</button>
+              </div>
+              <div id="rn-ledger-preview-wrap" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:#4fd18a" id="rn-ledger-prev-lbl"></div><button class="rn-btn gold" onclick="rnConfirmLedgerImport()">✓ Use as Book Records</button></div>
+                <div style="overflow:auto;max-height:350px"><table class="rn-tbl"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Ref</th><th>Type</th><th>Amount</th></tr></thead><tbody id="rn-ledger-prev-tbody"></tbody></table></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Reconcile -->
+        <div class="rn-panel" id="rn-panel-reconcile" style="overflow:hidden">
+          <div class="rn-filter-bar">
+            <span style="font-size:10px;color:rgba(232,220,200,.4);font-weight:600;text-transform:uppercase">Show:</span>
+            <button class="rn-filter-btn active" id="rn-f-all" onclick="rnSetFilter('all')">All</button>
+            <button class="rn-filter-btn" id="rn-f-unmatched" onclick="rnSetFilter('unmatched')">Unmatched</button>
+            <button class="rn-filter-btn" id="rn-f-matched" onclick="rnSetFilter('matched')">Matched</button>
+            <div class="rn-sep"></div>
+            <button class="rn-btn" onclick="rnAutoMatch()" style="padding:3px 10px;font-size:10.5px">⚡ Auto-Match</button>
+            <button class="rn-btn" id="rn-confirm-match-btn" style="display:none;padding:3px 10px;font-size:10.5px;background:rgba(79,209,138,.1);border-color:rgba(79,209,138,.4);color:#4fd18a" onclick="rnConfirmManualMatch()">✓ Confirm Match</button>
+            <button class="rn-btn danger" id="rn-cancel-sel-btn" style="display:none;padding:3px 10px;font-size:10.5px" onclick="rnCancelSelection()">✕ Cancel</button>
+            <div id="rn-sel-hint" style="font-size:10.5px;color:rgba(184,150,74,.7);display:none">Select one bank item and one book item to match</div>
+            <div style="margin-left:auto"><input type="text" class="rn-inp" id="rn-recon-search" placeholder="Search…" oninput="rnRefresh()" style="width:140px"></div>
+          </div>
+          <div class="rn-recon-layout">
+            <div class="rn-recon-col"><div class="rn-col-hdr"><span class="rn-col-title">🏦 Bank Statement</span><span style="font-size:10px;color:rgba(232,220,200,.35)" id="rn-bank-col-sub"></span></div><div style="overflow:auto;flex:1"><div id="rn-bank-items"></div></div></div>
+            <div class="rn-recon-col"><div class="rn-col-hdr"><span class="rn-col-title">📒 Book / Ledger</span><span style="font-size:10px;color:rgba(232,220,200,.35)" id="rn-book-col-sub"></span></div><div style="overflow:auto;flex:1"><div id="rn-book-items"></div></div></div>
+            <div class="rn-recon-col" style="max-width:280px;background:rgba(255,255,255,.02)"><div class="rn-col-hdr"><span class="rn-col-title">✅ Matched Pairs</span><span style="font-size:10px;color:rgba(232,220,200,.35)" id="rn-pairs-sub"></span></div><div style="overflow:auto;flex:1" id="rn-pairs-list"><div style="padding:12px;font-size:11px;color:rgba(232,220,200,.35)">No matches yet.</div></div></div>
+          </div>
+        </div>
+        <!-- Adjustments -->
+        <div class="rn-panel" id="rn-panel-adjustments" style="overflow:hidden">
+          <div style="display:flex;flex:1;overflow:hidden">
+            <div style="width:300px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07);padding:16px;overflow:auto">
+              <div style="font-size:12px;font-weight:700;color:#c9a84c;margin-bottom:12px">Add Adjustment Entry</div>
+              <div style="margin-bottom:8px"><label style="font-size:10px;color:rgba(232,220,200,.45);display:block;margin-bottom:3px;text-transform:uppercase">Side</label><select class="rn-sel" id="rn-adj-side" style="width:100%"><option value="bank">Bank Side</option><option value="book">Book Side</option></select></div>
+              <div style="margin-bottom:8px"><label style="font-size:10px;color:rgba(232,220,200,.45);display:block;margin-bottom:3px;text-transform:uppercase">Type</label><select class="rn-sel" id="rn-adj-type" style="width:100%"><option value="add">Add (Increase)</option><option value="subtract">Subtract (Decrease)</option></select></div>
+              <div style="margin-bottom:8px"><label style="font-size:10px;color:rgba(232,220,200,.45);display:block;margin-bottom:3px;text-transform:uppercase">Description</label><input type="text" class="rn-inp" id="rn-adj-desc" placeholder="Bank charges, interest…" style="width:100%"></div>
+              <div style="margin-bottom:12px"><label style="font-size:10px;color:rgba(232,220,200,.45);display:block;margin-bottom:3px;text-transform:uppercase">Amount</label><input type="number" class="rn-inp" id="rn-adj-amount" placeholder="0.00" step="0.01" min="0" style="width:100%"></div>
+              <button class="rn-btn gold" style="width:100%" onclick="rnAddAdjustment()">＋ Add Adjustment</button>
+              <div style="margin-top:20px;padding:12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,255,255,.07)">
+                <div style="font-size:10px;font-weight:700;color:rgba(232,220,200,.4);text-transform:uppercase;margin-bottom:10px">Balance Summary</div>
+                <div class="rn-rs-row"><span style="color:rgba(232,220,200,.6)">Bank Closing Bal.</span><span style="color:#c9a84c" id="rn-adj-sum-bank-raw">—</span></div>
+                <div class="rn-rs-row"><span style="color:rgba(232,220,200,.6)">Bank Adjustments</span><span id="rn-adj-sum-bank-adj">+0.00</span></div>
+                <div class="rn-rs-row subtotal"><span>Adj. Bank Balance</span><span style="color:#4fd18a" id="rn-adj-sum-adj-bank">—</span></div>
+                <div class="rn-rs-row"><span style="color:rgba(232,220,200,.6)">Book Balance</span><span id="rn-adj-sum-book-raw">—</span></div>
+                <div class="rn-rs-row"><span style="color:rgba(232,220,200,.6)">Book Adjustments</span><span id="rn-adj-sum-book-adj">+0.00</span></div>
+                <div class="rn-rs-row subtotal"><span>Adj. Book Balance</span><span style="color:#4fd18a" id="rn-adj-sum-adj-book">—</span></div>
+              </div>
+            </div>
+            <div style="flex:1;overflow:auto;padding:16px"><div style="font-size:12px;font-weight:700;color:#c9a84c;margin-bottom:12px">Current Adjustments</div><div id="rn-adj-list"><div style="font-size:11.5px;color:rgba(232,220,200,.4);padding:12px 0">No adjustments added.</div></div></div>
+          </div>
+        </div>
+        <!-- Reports -->
+        <div class="rn-panel" id="rn-panel-reports" style="overflow:hidden">
+          <div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
+            <button class="rn-btn gold" onclick="rnExportReportCSV('full')">⬇ Full Report CSV</button>
+            <button class="rn-btn" onclick="rnExportReportCSV('matched')">⬇ Matched CSV</button>
+            <button class="rn-btn" onclick="rnExportReportCSV('unmatched')">⬇ Unmatched CSV</button>
+            <button class="rn-btn" onclick="rnPrint()">🖨 Print</button>
+            <div style="margin-left:auto"><label style="font-size:10.5px;color:rgba(232,220,200,.45)">Statement Closing Balance:</label><input type="number" class="rn-inp" id="rn-closing-bal" placeholder="0.00" step="0.01" oninput="rnRefresh()" style="width:140px;margin-left:8px"></div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:16px" id="rn-report-body"><div style="font-size:11.5px;color:rgba(232,220,200,.35)">Load data and reconcile to generate report.</div></div>
         </div>
       </div>
     </div>
@@ -1091,6 +1342,21 @@
       <button type="button" class="btn btn-outline" onclick="closeModal('modal-csv-preview')">Cancel</button>
       <button type="button" class="btn btn-primary" id="csv-import-confirm-btn">Import All</button>
     </div>
+  </div>
+</div>
+
+<!-- Budget item modal -->
+<div class="modal-overlay hidden" id="modal-buditem">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header"><h3 class="modal-title" id="ftBudItemTitle">Add Category</h3><button class="modal-close" onclick="document.getElementById('modal-buditem').classList.add('hidden')">✕</button></div>
+    <input type="hidden" id="ftBudItemType"/>
+    <div class="form-group"><label class="form-label">Category Name *</label><input type="text" id="ftBudItemCat" class="form-control"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" id="ftBudItemPrevLbl">Prev Budget</label><input type="number" id="ftBudItemBPrev" class="form-control" value="0" step="50"/></div>
+      <div class="form-group"><label class="form-label" id="ftBudItemAPrevLbl">Prev Actual</label><input type="number" id="ftBudItemAPrev" class="form-control" value="0" step="50"/></div>
+    </div>
+    <div class="form-group"><label class="form-label" id="ftBudItemCurLbl">Budget</label><input type="number" id="ftBudItemBCur" class="form-control" value="0" step="50"/></div>
+    <div class="form-actions"><button type="button" class="btn btn-outline" onclick="document.getElementById('modal-buditem').classList.add('hidden')">Cancel</button><button type="button" class="btn btn-primary" onclick="ftSaveBudItem()">Add</button></div>
   </div>
 </div>
 
