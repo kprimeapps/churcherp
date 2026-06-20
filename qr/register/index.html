@@ -268,9 +268,10 @@ document.getElementById('reg-form').addEventListener('submit', async e => {
 });
 
 // ─── DOWNLOAD & SHARE ──────────────────────────────────────────────────────
-function downloadQR(suffix) {
+// Compose the branded QR card (navy frame + white quiet-zone panel + text).
+function buildQRCard(suffix) {
   const canvas = document.querySelector('#qr-display' + suffix + ' canvas');
-  if (!canvas) return;
+  if (!canvas) return null;
   const out = document.createElement('canvas');
   const pad = 32;        // navy margin around the white panel
   const quiet = 22;      // white quiet zone around the QR (required for scanning)
@@ -301,19 +302,42 @@ function downloadQR(suffix) {
   ctx.font = '13px sans-serif';
   ctx.fillText(personData?.role || '', out.width / 2, baseY + 56);
   ctx.fillText(personData?.id || '', out.width / 2, baseY + 74);
+  return out;
+}
+
+function qrFileName() {
+  const name = `${personData?.first_name || ''} ${personData?.last_name || ''}`.trim() || 'checkin';
+  return `qr-${name.replace(/\s+/g,'-')}.png`;
+}
+
+function downloadQR(suffix) {
+  const out = buildQRCard(suffix);
+  if (!out) return;
   const link = document.createElement('a');
-  link.download = `qr-${name.replace(/\s+/g,'-')}.png`;
+  link.download = qrFileName();
   link.href = out.toDataURL('image/png');
   link.click();
 }
 
-function shareQR(suffix) {
+async function shareQR(suffix) {
+  const out = buildQRCard(suffix);
+  if (!out) return;
   const name = `${personData?.first_name || ''} ${personData?.last_name || ''}`.trim();
-  if (navigator.share) {
-    navigator.share({ title: `${org?.name || ''} QR Code — ${name}`, text: `My church check-in QR: ${personData?.id}` }).catch(() => {});
-  } else {
-    navigator.clipboard?.writeText(personData?.id || '').then(() => alert('QR ID copied to clipboard'));
+  const blob = await new Promise(res => out.toBlob(res, 'image/png'));
+  const file = blob ? new File([blob], qrFileName(), { type: 'image/png' }) : null;
+
+  // Preferred: share the actual image to WhatsApp / Photos / etc.
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: `${org?.name || ''} QR Code — ${name}` });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return; // user cancelled the share sheet
+    }
   }
+  // Fallback for browsers that can't share files: download the image instead.
+  downloadQR(suffix);
+  alert('Your browser can’t share images directly — the QR image was downloaded so you can attach it.');
 }
 
 document.getElementById('dl-btn')?.addEventListener('click', () => downloadQR(''));
