@@ -37,7 +37,7 @@ const ROLE_ACCESS = {
   viewer: 'READ_ALL',
 
   finance_team:         mk(FINANCE),
-  usher:                mk(['page-attendance','page-qr'], ['page-members']),
+  usher:                mk(['page-attendance']),
   missions_coordinator: mk(['page-missions']),
   education_coordinator:mk(['page-education','page-scholarship']),
   welfare_coordinator:  mk(['page-welfare']),
