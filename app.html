@@ -1061,7 +1061,7 @@
         <div class="form-group"><label class="form-label">Phone</label><input type="tel" id="visf-phone" class="form-control"/></div>
         <div class="form-group"><label class="form-label">Visit Date *</label><input type="date" id="visf-date" class="form-control" required/></div>
       </div>
-      <div class="form-group"><label class="form-label">How did they hear about us?</label><input type="text" id="visf-how" class="form-control"/></div>
+      <div class="form-group"><label class="form-label">How did they hear about us?</label><input type="text" id="visf-how" class="form-control" list="visitor-sources-list"/><datalist id="visitor-sources-list"></datalist></div>
       <div class="form-group"><label class="form-label">Notes</label><textarea id="visf-notes" class="form-control" rows="2"></textarea></div>
       <input type="hidden" id="visf-id"/>
       <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-visitor')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
@@ -1100,7 +1100,7 @@
   <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Education Record</h3><button class="modal-close" onclick="closeModal('modal-education')">✕</button></div>
     <form id="education-form">
       <div class="form-group"><label class="form-label">Member</label><input type="text" id="eduf-member-name" class="form-control" autocomplete="off"/><input type="hidden" id="eduf-member-id"/></div>
-      <div class="form-group"><label class="form-label">Program *</label><input type="text" id="eduf-prog" class="form-control" required placeholder="BSc Computer Science…"/></div>
+      <div class="form-group"><label class="form-label">Program *</label><input type="text" id="eduf-prog" class="form-control" required placeholder="BSc Computer Science…" list="education-programs-list"/><datalist id="education-programs-list"></datalist></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Institution</label><input type="text" id="eduf-inst" class="form-control"/></div>
         <div class="form-group"><label class="form-label">Year</label><input type="text" id="eduf-year" class="form-control" placeholder="2025"/></div>

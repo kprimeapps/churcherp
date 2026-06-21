@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b17 · lists panel';
+const APP_BUILD = 'b18 · more lists';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -968,6 +968,31 @@ const CONFIG_LISTS = {
     defaults: ['General','Elder','Deacon','Youth','Children','Visitor'],
     targets: [{ datalist: 'member-roles-list' }],
   },
+  service_types: {
+    label: 'Attendance Service Types',
+    defaults: ['Sunday Service','Prayer Meeting','Group Meeting','Special Service'],
+    targets: [{ select: 'att-type' }],
+  },
+  visitor_sources: {
+    label: 'Visitor Sources (How heard)',
+    defaults: ['Friend / Family','Social Media','Flyer / Poster','Walked in','Website','Invited to event','Other'],
+    targets: [{ datalist: 'visitor-sources-list' }],
+  },
+  education_programs: {
+    label: 'Education Programs',
+    defaults: ['Primary','JHS','SHS','Tertiary','Vocational / Technical','Apprenticeship','Other'],
+    targets: [{ datalist: 'education-programs-list' }],
+  },
+  education_status: {
+    label: 'Education Status',
+    defaults: ['Enrolled','Completed','Withdrawn','Deferred'],
+    targets: [{ select: 'eduf-status' }],
+  },
+  scholarship_status: {
+    label: 'Scholarship Status',
+    defaults: ['Active','Completed','Suspended'],
+    targets: [{ select: 'schf-status' }],
+  },
 };
 
 function listValues(key) {
@@ -1081,7 +1106,7 @@ async function loadScholarship() {
     <td>${s.field_of_study || '—'}</td>
     <td>${s.academic_year || '—'}</td>
     <td>${s.amount ? fmtMoney(s.amount, CURRENCY) : '—'}</td>
-    <td><span class="badge badge-${s.status==='active'?'green':s.status==='completed'?'blue':'gray'}">${s.status}</span></td>
+    <td><span class="badge badge-${(s.status||'').toLowerCase()==='active'?'green':(s.status||'').toLowerCase()==='completed'?'blue':'gray'}">${s.status}</span></td>
     <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteSch('${s.id}')">Delete</button></td>`);
 }
 
