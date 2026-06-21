@@ -10,7 +10,7 @@ import {
 import { reconBoot, budgetBoot } from './finance-tools.js';
 import {
   canSee, canWritePage, isOrgAdmin, pageAccess,
-  ROLE_LABELS, ASSIGNABLE_ROLES,
+  ROLE_LABELS, ASSIGNABLE_ROLES, isKiosk, landingPage,
 } from './permissions.js';
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
@@ -43,6 +43,13 @@ async function boot() {
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {
     if (!canSee(item.dataset.page)) item.classList.add('rbac-hidden');
   });
+
+  // Kiosk mode (single-page roles like Usher): no sidebar, just a Sign out button
+  if (isKiosk()) {
+    document.body.classList.add('kiosk');
+    const ks = document.getElementById('kiosk-signout');
+    if (ks) { ks.style.display = ''; ks.addEventListener('click', () => signOut()); }
+  }
 
   // Sidebar navigation
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {
@@ -127,8 +134,8 @@ async function boot() {
   syncQueue();
 
   // Load the last active page or dashboard
-  let lastPage = sessionStorage.getItem('churchos_page') || 'page-dashboard';
-  if (!canSee(lastPage)) lastPage = 'page-dashboard';
+  let lastPage = sessionStorage.getItem('churchos_page') || landingPage();
+  if (!canSee(lastPage)) lastPage = landingPage();
   navigate(lastPage, document.querySelector(`.nav-item[data-page="${lastPage}"]`)?.dataset.title || 'Dashboard');
   activatePage(lastPage);
 }
@@ -137,7 +144,10 @@ async function boot() {
 const loaded = new Set();
 function activatePage(pageId) {
   // RBAC: block direct access to pages this role can't see
-  if (!canSee(pageId)) { navigate('page-dashboard', 'Dashboard'); pageId = 'page-dashboard'; }
+  if (!canSee(pageId)) {
+    pageId = landingPage();
+    navigate(pageId, document.querySelector(`.nav-item[data-page="${pageId}"]`)?.dataset.title || '');
+  }
   // Mark page read-only (CSS hides add/edit/delete affordances) when no write access
   const pageEl = document.getElementById(pageId);
   if (pageEl) pageEl.classList.toggle('readonly', pageAccess(pageId) === 'read');

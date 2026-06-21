@@ -37,7 +37,7 @@ const ROLE_ACCESS = {
   viewer: 'READ_ALL',
 
   finance_team:         mk(FINANCE),
-  usher:                mk(['page-attendance']),
+  usher:                { 'page-attendance': 'write' },  // kiosk: attendance only
   missions_coordinator: mk(['page-missions']),
   education_coordinator:mk(['page-education','page-scholarship']),
   welfare_coordinator:  mk(['page-welfare']),
@@ -78,3 +78,10 @@ export function canSee(pageId)       { return pageAccess(pageId) !== null; }
 export function canWritePage(pageId) { return pageAccess(pageId) === 'write'; }
 export function isOrgAdmin()         { return ['owner','admin'].includes(role()); }
 export function isFullAccess()       { return ROLE_ACCESS[role()] === '*'; }
+
+// Pages this role can see, in sidebar order.
+export function visiblePages() { return ALL_PAGES.filter(canSee); }
+// Where to land after login (first visible page).
+export function landingPage()  { return visiblePages()[0] || 'page-dashboard'; }
+// Single-page roles (e.g. Usher) get a stripped-down, nav-less kiosk view.
+export function isKiosk()      { return visiblePages().length <= 1; }

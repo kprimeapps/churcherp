@@ -470,6 +470,12 @@ textarea.form-control { min-height: 90px; resize: vertical; }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: .75rem; padding: 3rem; color: var(--ink3); font-size: .85rem; }
 
 /* ─── RESPONSIVE ───────────────────────────────────────────────────────────── */
+/* Kiosk mode (single-page roles, e.g. Usher): hide nav entirely */
+body.kiosk .sidebar,
+body.kiosk #menu-toggle,
+body.kiosk #sidebar-backdrop { display: none !important; }
+body.kiosk .main-wrap { margin-left: 0 !important; }
+
 /* Mobile sidebar backdrop (tap to close) */
 .sidebar-backdrop {
   display: none;
