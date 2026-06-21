@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>ChurchOS — Operator Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:#0A1628; --navy-2:#0F1E38; --navy-3:#162240; --navy-4:#1C2A4E;
+    --gold:#C9A84C; --gold-2:#E2C06A; --gold-dim:rgba(201,168,76,0.18); --gold-glow:rgba(201,168,76,0.08);
+    --white:#F8F5EE; --white-dim:rgba(248,245,238,0.72); --muted:rgba(248,245,238,0.45);
+    --border:rgba(201,168,76,0.15); --border-2:rgba(201,168,76,0.28);
+    --success:#2ECC71; --success-bg:rgba(46,204,113,0.12);
+    --danger:#E74C3C;  --danger-bg:rgba(231,76,60,0.12);
+    --warn:#F39C12;    --warn-bg:rgba(243,156,18,0.12);
+    --display:'Playfair Display',Georgia,serif; --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+    --r:8px; --rl:14px; --tap:48px;
+  }
+  *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:var(--sans); color:var(--white); background:var(--navy); min-height:100vh; font-size:15px; -webkit-tap-highlight-color:transparent; display:flex; justify-content:center; padding:1.25rem 1rem; }
+  .shell { width:100%; max-width:480px; }
+  .head { display:flex; align-items:center; gap:.7rem; margin-bottom:18px; }
+  .logo { width:38px; height:38px; border-radius:10px; background:var(--gold-dim); border:.5px solid var(--border-2); display:flex; align-items:center; justify-content:center; }
+  .logo svg { width:20px; height:20px; }
+  .eyebrow { font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); }
+  .title { font-family:var(--display); font-size:20px; font-weight:600; }
+  .signout { margin-left:auto; }
+  .card { background:var(--navy-2); border:.5px solid var(--border-2); border-radius:var(--rl); padding:18px; margin-bottom:14px; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,.3),transparent); }
+  label.fl { font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; display:block; }
+  .field { margin-bottom:13px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  input,select { width:100%; font-family:var(--sans); font-size:15px; padding:11px 13px; border:.5px solid var(--border-2); border-radius:var(--r); background:var(--navy-3); color:var(--white); outline:none; -webkit-appearance:none; }
+  input::placeholder { color:var(--muted); }
+  input:focus,select:focus { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-glow); }
+  .btn { font-family:var(--sans); font-size:13.5px; font-weight:500; padding:0 18px; height:var(--tap); border:.5px solid var(--border-2); background:var(--navy-3); color:var(--white-dim); border-radius:var(--r); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+  .btn:active { transform:scale(.97); }
+  .btn.primary { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:600; }
+  .btn.full { width:100%; }
+  .btn.sm { height:36px; font-size:12px; padding:0 12px; }
+  .btn.stop { background:var(--danger-bg); color:var(--danger); border-color:rgba(231,76,60,.3); }
+  .tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+  .tab { flex:1; text-align:center; padding:10px; font-size:13px; font-weight:500; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-2px; }
+  .tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+  .panel { display:none; } .panel.active { display:block; }
+  /* QR output */
+  .qr-out { text-align:center; }
+  .qr-wrap { background:#fff; border-radius:var(--rl); padding:16px; display:inline-block; margin:10px 0; }
+  .qr-name { font-family:var(--display); font-size:18px; font-weight:600; }
+  .qr-meta { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:3px; }
+  .count { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.05em; }
+  .sess-list { margin-top:12px; max-height:180px; overflow:auto; }
+  .sess-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:.5px solid var(--border); font-size:13px; }
+  .sess-row .nm { flex:1; }
+  .sess-row .tag { font-family:var(--mono); font-size:10px; color:var(--gold); }
+  /* Camera */
+  #cam-wrap { position:relative; background:#000; border-radius:var(--rl); overflow:hidden; aspect-ratio:1/1; max-height:320px; border:.5px solid var(--border-2); margin-bottom:12px; }
+  #cam-wrap video { width:100%; height:100%; object-fit:cover; display:block; }
+  .cam-frame { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .frame-box { width:58%; aspect-ratio:1/1; position:relative; }
+  .corner { position:absolute; width:22px; height:22px; border-color:var(--gold); border-style:solid; }
+  .corner.tl{top:0;left:0;border-width:2.5px 0 0 2.5px;border-radius:4px 0 0 0;}
+  .corner.tr{top:0;right:0;border-width:2.5px 2.5px 0 0;border-radius:0 4px 0 0;}
+  .corner.bl{bottom:0;left:0;border-width:0 0 2.5px 2.5px;border-radius:0 0 0 4px;}
+  .corner.br{bottom:0;right:0;border-width:0 2.5px 2.5px 0;border-radius:0 0 4px 0;}
+  .scan-line { position:absolute; left:0; right:0; height:1.5px; background:linear-gradient(90deg,transparent,var(--gold),transparent); box-shadow:0 0 8px var(--gold); animation:sl 2.2s ease-in-out infinite; top:10%; }
+  @keyframes sl { 0%,100%{top:5%;opacity:.5} 50%{top:90%;opacity:1} }
+  .result { display:none; border-radius:var(--rl); padding:14px; text-align:center; margin-bottom:12px; border:.5px solid transparent; }
+  .result.show { display:block; }
+  .result.ok { background:var(--success-bg); border-color:rgba(46,204,113,.25); }
+  .result.error { background:var(--danger-bg); border-color:rgba(231,76,60,.25); }
+  .result.warn { background:var(--warn-bg); border-color:rgba(243,156,18,.25); }
+  .result .nm { font-family:var(--display); font-size:17px; font-weight:600; }
+  .result .mt { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:4px; }
+  .manual { display:flex; gap:8px; margin-bottom:12px; }
+  .manual input { font-family:var(--mono); letter-spacing:.06em; }
+  #queue-badge { display:none; background:var(--warn-bg); border:.5px solid rgba(243,156,18,.25); color:var(--warn); border-radius:99px; padding:.25rem .7rem; font-family:var(--mono); font-size:10px; }
+  .hint { font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:6px; }
+  .err-screen { text-align:center; padding:2rem 0; color:var(--danger); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="head">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg></div>
+    <div>
+      <div class="eyebrow">Operator Console</div>
+      <div class="title" id="church-name">ChurchOS</div>
+    </div>
+    <button class="btn sm signout" id="switch-btn" style="display:none;">Switch</button>
+  </div>
+
+  <!-- Setup: enter org slug -->
+  <div id="setup-screen">
+    <div class="card">
+      <div class="field">
+        <label class="fl">Congregation Slug</label>
+        <input type="text" id="org-slug" placeholder="immanuel" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+      </div>
+      <button class="btn primary full" id="start-btn">Continue →</button>
+      <div class="hint">For staff use — register multiple people and capture attendance.</div>
+    </div>
+  </div>
+
+  <!-- Console -->
+  <div id="console" style="display:none;">
+    <div class="tabs">
+      <div class="tab active" id="tab-register" data-tab="register">＋ Register</div>
+      <div class="tab" id="tab-scan" data-tab="scan">📷 Scan</div>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="panel active" id="panel-register">
+      <div class="card" id="reg-form-card">
+        <div class="row2">
+          <div class="field"><label class="fl">First Name *</label><input type="text" id="rf-first"/></div>
+          <div class="field"><label class="fl">Last Name</label><input type="text" id="rf-last"/></div>
+        </div>
+        <div class="field"><label class="fl">Phone *</label><input type="tel" id="rf-phone" inputmode="tel"/></div>
+        <div class="row2">
+          <div class="field"><label class="fl">Membership #</label><input type="text" id="rf-mno"/></div>
+          <div class="field"><label class="fl">Role / Group</label>
+            <select id="rf-role">
+              <option value="General">General Member</option><option value="Visitor">Visitor</option>
+              <option value="Elder">Elder</option><option value="Deacon">Deacon</option>
+              <option value="Youth">Youth</option><option value="Children">Children</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn primary full" id="reg-btn">Register &amp; Generate QR →</button>
+      </div>
+
+      <div class="card qr-out" id="reg-result" style="display:none;">
+        <div style="font-size:1.6rem;">✅</div>
+        <div class="qr-wrap"><div id="qr-display"></div></div>
+        <div class="qr-name" id="reg-name">—</div>
+        <div class="qr-meta" id="reg-meta">—</div>
+        <div style="display:flex;gap:.5rem;justify-content:center;margin:.75rem 0;">
+          <button class="btn sm" id="dl-btn">⬇ Download</button>
+          <button class="btn sm" id="share-btn">Share</button>
+        </div>
+        <button class="btn primary full" id="another-btn">＋ Register Another</button>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="count">Registered this session: <strong id="reg-count">0</strong></span>
+        </div>
+        <div class="sess-list" id="reg-session"></div>
+      </div>
+    </div>
+
+    <!-- SCAN -->
+    <div class="panel" id="panel-scan">
+      <div class="card">
+        <div class="field"><label class="fl">Service Type</label>
+          <select id="service-type">
+            <option>Sunday Service</option><option>Prayer Meeting</option><option>Group Meeting</option><option>Special Service</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span class="count" id="scan-count">0 checked in</span>
+          <span id="queue-badge"></span>
+        </div>
+        <div id="cam-wrap">
+          <video id="cam-video" autoplay playsinline muted></video>
+          <div class="cam-frame"><div class="frame-box"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span><span class="scan-line"></span></div></div>
+        </div>
+        <div class="manual">
+          <input type="text" id="manual-code" placeholder="Enter code e.g. P1A2B3C4" autocapitalize="characters" style="flex:1;"/>
+          <button class="btn sm" id="manual-btn">Check in</button>
+        </div>
+        <div class="result" id="scan-result"><div class="nm" id="scan-name">—</div><div class="mt" id="scan-meta">—</div></div>
+        <div class="sess-list" id="scan-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="err-screen" class="err-screen" style="display:none;"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script type="module">
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../../js/config.js';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let org = null, regCount = 0, lastPerson = null;
+const todayStr = new Date().toISOString().slice(0,10);
+
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+if (params.get('org')) $('org-slug').value = params.get('org');
+
+// ─── Setup ───────────────────────────────────────────────────────────────
+$('start-btn').addEventListener('click', startConsole);
+$('org-slug').addEventListener('keydown', e => { if (e.key === 'Enter') startConsole(); });
+$('switch-btn').addEventListener('click', () => {
+  stopCamera();
+  $('console').style.display = 'none';
+  $('setup-screen').style.display = '';
+  $('switch-btn').style.display = 'none';
+});
+
+async function startConsole() {
+  const slug = $('org-slug').value.trim();
+  if (!slug) { alert('Enter the congregation slug'); return; }
+  const btn = $('start-btn'); btn.disabled = true; btn.textContent = 'Loading…';
+  const { data, error } = await sb.rpc('get_org_by_slug', { p_slug: slug }).maybeSingle();
+  btn.disabled = false; btn.textContent = 'Continue →';
+  if (error || !data) { alert('Organization not found'); return; }
+  org = data;
+  $('church-name').textContent = data.name;
+  $('setup-screen').style.display = 'none';
+  $('console').style.display = '';
+  $('switch-btn').style.display = '';
+  updateQueueBadge(); syncQueue();
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  $('panel-' + t.dataset.tab).classList.add('active');
+  if (t.dataset.tab === 'scan') startCamera(); else stopCamera();
+}));
+
+// ─── REGISTER ──────────────────────────────────────────────────────────────
+$('reg-btn').addEventListener('click', registerPerson);
+$('another-btn').addEventListener('click', () => {
+  $('reg-result').style.display = 'none';
+  $('reg-form-card').style.display = '';
+  ['rf-first','rf-last','rf-phone','rf-mno'].forEach(id => $(id).value = '');
+  $('rf-first').focus();
+});
+
+async function registerPerson() {
+  const first = $('rf-first').value.trim();
+  const last  = $('rf-last').value.trim();
+  const phone = $('rf-phone').value.trim();
+  const mno   = $('rf-mno').value.trim();
+  const role  = $('rf-role').value;
+  if (!first || !phone) { alert('First name and phone are required'); return; }
+  const btn = $('reg-btn'); btn.disabled = true; btn.textContent = 'Registering…';
+  const id = 'P' + Array.from(crypto.getRandomValues(new Uint8Array(4))).map(b => b.toString(16).padStart(2,'0')).join('').toUpperCase();
+  const { error } = await sb.from('qr_registrations').insert({
+    id, org_id: org.id, first_name: first, last_name: last || null,
+    phone, membership_no: mno || null, role,
+  });
+  btn.disabled = false; btn.textContent = 'Register & Generate QR →';
+  if (error) {
+    alert(error.code === '23505' ? 'This person is already registered (same name & phone).' : error.message);
+    return;
+  }
+  lastPerson = { id, first_name: first, last_name: last, phone, membership_no: mno, role };
+  regCount++;
+  $('reg-count').textContent = regCount;
+  // session list
+  const row = document.createElement('div');
+  row.className = 'sess-row';
+  row.innerHTML = `<span class="nm">${first} ${last||''}</span><span class="tag">${id}</span>`;
+  $('reg-session').prepend(row);
+  // show QR
+  renderQR('qr-display', id);
+  $('reg-name').textContent = `${first} ${last||''}`.trim();
+  $('reg-meta').textContent = [role, mno ? '# '+mno : '', id].filter(Boolean).join(' · ');
+  $('reg-form-card').style.display = 'none';
+  $('reg-result').style.display = '';
+}
+
+function renderQR(elId, text) {
+  const el = $(elId); el.innerHTML = '';
+  new QRCode(el, { text, width: 200, height: 200, colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.H });
+}
+
+function buildQRCard() {
+  const canvas = document.querySelector('#qr-display canvas');
+  if (!canvas) return null;
+  const out = document.createElement('canvas');
+  const pad = 32, quiet = 22, textH = 88, qrW = canvas.width, qrH = canvas.height;
+  const panelW = qrW + quiet*2, panelH = qrH + quiet*2;
+  out.width = panelW + pad*2; out.height = panelH + pad*2 + textH;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#0F2340'; ctx.fillRect(0,0,out.width,out.height);
+  ctx.fillStyle = '#B8964A'; ctx.fillRect(0,0,out.width,8);
+  const px = pad, py = pad + 8;
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(px,py,panelW,panelH);
+  ctx.drawImage(canvas, px+quiet, py+quiet, qrW, qrH);
+  const name = `${lastPerson.first_name} ${lastPerson.last_name||''}`.trim();
+  const baseY = py + panelH;
+  ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 18px serif';
+  ctx.fillText(name, out.width/2, baseY+36);
+  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '13px sans-serif';
+  ctx.fillText(lastPerson.role||'', out.width/2, baseY+56);
+  ctx.fillText(lastPerson.id||'', out.width/2, baseY+74);
+  return out;
+}
+const fileName = () => `qr-${(`${lastPerson.first_name}-${lastPerson.last_name||''}`).replace(/\s+/g,'-')}.png`;
+$('dl-btn').addEventListener('click', () => {
+  const out = buildQRCard(); if (!out) return;
+  const a = document.createElement('a'); a.download = fileName(); a.href = out.toDataURL('image/png'); a.click();
+});
+$('share-btn').addEventListener('click', async () => {
+  const out = buildQRCard(); if (!out) return;
+  const blob = await new Promise(r => out.toBlob(r, 'image/png'));
+  const file = blob ? new File([blob], fileName(), { type:'image/png' }) : null;
+  if (file && navigator.canShare && navigator.canShare({ files:[file] })) {
+    try { await navigator.share({ files:[file], title: `${org.name} QR — ${lastPerson.first_name}` }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.download = fileName(); a.href = out.toDataURL('image/png'); a.click();
+});
+
+// ─── SCAN ───────────────────────────────────────────────────────────────────
+let stream = null, detector = null, scanLoop = null, checkins = 0;
+const recent = new Set();
+
+// offline queue
+const QKEY = 'qr_scan_queue';
+const getQ = () => { try { return JSON.parse(localStorage.getItem(QKEY)||'[]'); } catch { return []; } };
+const setQ = q => localStorage.setItem(QKEY, JSON.stringify(q));
+function enqueue(item){ const q=getQ(); q.push(item); setQ(q); updateQueueBadge(); }
+function updateQueueBadge(){ const n=getQ().length; const el=$('queue-badge'); if(el){ el.style.display=n>0?'inline-flex':'none'; el.textContent=`⟳ ${n} queued`; } }
+async function syncQueue(){
+  if (!navigator.onLine) return;
+  let q = getQ(); if (!q.length) return;
+  const rem = [];
+  for (const it of q) {
+    try { const { error } = await sb.rpc('qr_check_in', { p_qr_id: it.qrId, p_org_id: it.orgId, p_service_date: it.date, p_service_type: it.type }); if (error) rem.push(it); }
+    catch { rem.push(it); }
+  }
+  setQ(rem); updateQueueBadge();
+}
+window.addEventListener('online', syncQueue);
+
+async function startCamera() {
+  if (stream) return;
+  const video = $('cam-video');
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }, audio:false });
+    video.srcObject = stream; await video.play();
+    if ('BarcodeDetector' in window) {
+      try { detector = new BarcodeDetector({ formats:['qr_code'] }); } catch { detector = null; }
+    }
+    detector ? detectLoop(video) : canvasLoop(video);
+  } catch { /* camera denied — manual entry still works */ }
+}
+function stopCamera() {
+  if (scanLoop) { cancelAnimationFrame(scanLoop); scanLoop = null; }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+function detectLoop(video){
+  if (!stream) return;
+  detector.detect(video).then(c => { if (c.length) handleScan(c[0].rawValue); }).catch(()=>{}).finally(() => { if (stream) scanLoop = requestAnimationFrame(() => detectLoop(video)); });
+}
+const _c = document.createElement('canvas'), _x = _c.getContext('2d', { willReadFrequently:true });
+function canvasLoop(video){
+  if (!stream) return;
+  if (video.readyState === video.HAVE_ENOUGH_DATA && window.jsQR) {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (vw && vh) {
+      const s = Math.min(1, 480/Math.max(vw,vh)), w = Math.round(vw*s), h = Math.round(vh*s);
+      _c.width = w; _c.height = h; _x.drawImage(video,0,0,w,h);
+      const code = window.jsQR(_x.getImageData(0,0,w,h).data, w, h, { inversionAttempts:'dontInvert' });
+      if (code?.data) handleScan(code.data);
+    }
+  }
+  scanLoop = requestAnimationFrame(() => canvasLoop(video));
+}
+
+$('manual-btn').addEventListener('click', submitManual);
+$('manual-code').addEventListener('keydown', e => { if (e.key === 'Enter') submitManual(); });
+function submitManual(){ const v = $('manual-code').value.trim().toUpperCase(); if (!v) return; $('manual-code').value = ''; handleScan(v); }
+
+function showScan(state, name, meta){
+  const r = $('scan-result');
+  r.className = 'result show ' + state;
+  $('scan-name').textContent = name; $('scan-meta').textContent = meta;
+  setTimeout(() => r.className = 'result', 3000);
+}
+async function handleScan(qrId){
+  if (recent.has(qrId)) return;
+  recent.add(qrId); setTimeout(() => recent.delete(qrId), 5000);
+  const type = $('service-type').value;
+  if (!navigator.onLine) { enqueue({ qrId, orgId: org.id, date: todayStr, type }); showScan('warn','Saved offline', `${qrId} · will sync`); return; }
+  let res;
+  try { res = await sb.rpc('qr_check_in', { p_qr_id: qrId, p_org_id: org.id, p_service_date: todayStr, p_service_type: type }); }
+  catch { enqueue({ qrId, orgId: org.id, date: todayStr, type }); showScan('warn','Saved offline','Network error · will sync'); return; }
+  const out = res?.data || {};
+  if (res?.error || out.status === 'unknown') { showScan('error','Unknown QR Code', qrId); return; }
+  if (out.status === 'duplicate') { showScan('warn', out.name || 'Already checked in', `${out.role||''} · already recorded`); return; }
+  checkins++; $('scan-count').textContent = `${checkins} checked in`;
+  showScan('ok', out.name, `${out.role||''} · ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`);
+  const row = document.createElement('div'); row.className = 'sess-row';
+  row.innerHTML = `<span class="nm">${out.name}${out.member_id?' ✓':''}</span><span class="tag">${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span>`;
+  $('scan-log').prepend(row);
+}
+</script>
+</body>
+</html>
