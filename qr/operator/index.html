@@ -363,7 +363,7 @@ async function startCamera() {
     stream = null;
     startBtn.style.display = 'flex';
     label.textContent = e.name === 'NotAllowedError'
-      ? 'Camera blocked — allow access in your browser, then tap to retry'
+      ? 'Camera blocked. Close any floating overlay/bubble apps, allow camera for this site, then tap to retry'
       : 'Could not start camera — tap to retry (or use manual entry)';
   }
 }
