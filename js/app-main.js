@@ -392,10 +392,10 @@ async function fetchOnline() {
   const total = onlineData.reduce((s, r) => s + Number(r.count), 0);
   document.getElementById('online-total').textContent = fmtNum(total);
   buildTable(document.getElementById('online-tbody'), onlineData, r => `
-    <td class="td-name">${r.channel}</td>
-    <td style="font-weight:600;">${fmtNum(r.count)}</td>
-    <td class="text-sm text-muted">${r.notes || '—'}</td>
-    <td class="td-actions">
+    <td class="td-name" data-label="Channel">${r.channel}</td>
+    <td style="font-weight:600;" data-label="Viewers">${fmtNum(r.count)}</td>
+    <td class="text-sm text-muted" data-label="Notes">${r.notes || '—'}</td>
+    <td class="td-actions" data-label="">
       <button class="btn btn-ghost btn-sm" onclick="editOnline('${r.id}')">Edit</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteOnline('${r.id}')">Delete</button>
     </td>`);
@@ -441,11 +441,11 @@ function renderAttendance() {
       ? '<span class="badge badge-blue">QR</span>'
       : '<span class="badge badge-gray">Manual</span>';
     return `
-      <td class="td-name">${name}</td>
-      <td>${role}</td>
-      <td>${methodBadge}</td>
-      <td class="text-sm text-muted">${new Date(r.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</td>
-      <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAtt('${r.id}')">✕</button></td>`;
+      <td class="td-name" data-label="Name">${name}</td>
+      <td data-label="Role / Group">${role}</td>
+      <td data-label="Method">${methodBadge}</td>
+      <td class="text-sm text-muted" data-label="Time">${new Date(r.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td class="td-actions" data-label=""><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAtt('${r.id}')">✕</button></td>`;
   });
   document.getElementById('att-count').textContent = `${attData.length} recorded`;
 }

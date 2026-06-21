@@ -517,6 +517,28 @@ body.kiosk .main-wrap { margin-left: 0 !important; }
   .topbar-page-title { font-size: .95rem; }
   .topbar-right { gap: .5rem; }
   #status-text { display: none; }   /* keep the status dot, drop the label */
+
+  /* Card layout: reflow tagged tables into stacked rows instead of side-scroll */
+  .dtable-cards { min-width: 0; }
+  .dtable-cards thead { display: none; }
+  .dtable-cards tbody, .dtable-cards tr, .dtable-cards td { display: block; width: 100%; }
+  .dtable-cards tr {
+    border: 1px solid var(--cream3); border-radius: 10px;
+    margin-bottom: .6rem; background: #fff; padding: .25rem .15rem;
+  }
+  .dtable-cards td {
+    display: flex; justify-content: space-between; gap: 1rem;
+    border: none; padding: .4rem .65rem; text-align: right;
+  }
+  .dtable-cards td::before {
+    content: attr(data-label); font-weight: 600; color: var(--ink3);
+    text-align: left; flex-shrink: 0;
+  }
+  .dtable-cards td.td-actions { justify-content: flex-end; }
+  .dtable-cards td.td-actions::before,
+  .dtable-cards td[data-label=""]::before { content: ""; }
+  .dtable-cards td[colspan] { text-align: center; }
+  .dtable-cards td[colspan]::before { content: ""; }
 }
 
 @media (hover: none) and (pointer: coarse) {
