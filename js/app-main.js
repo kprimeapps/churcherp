@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b16 · config lists';
+const APP_BUILD = 'b17 · lists panel';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -135,6 +135,7 @@ async function boot() {
   initOfflineBanner();
   initDayCheckboxes();
   await prefetchMembers();
+  populateAllConfigTargets();   // fill configurable dropdowns from org settings
   initFormHandlers();
   initQRPage();
   initSettings();
@@ -612,7 +613,7 @@ window.editGiving = (id) => {
   document.getElementById('gf-member-name').value = name;
   document.getElementById('gf-member-id').value   = r.member_id || '';
   document.getElementById('gf-amount').value       = r.amount;
-  document.getElementById('gf-cat').value          = r.category;
+  setSelectValue('gf-cat', r.category);
   document.getElementById('gf-method').value       = r.payment_method;
   document.getElementById('gf-date').value         = r.given_date;
   document.getElementById('gf-notes').value        = r.notes || '';
@@ -842,7 +843,7 @@ window.editEvt = (id) => {
   if (!e) return;
   document.getElementById('evtf-id').value = e.id;
   document.getElementById('evtf-title').value = e.title;
-  document.getElementById('evtf-type').value = e.event_type;
+  setSelectValue('evtf-type', e.event_type);
   document.getElementById('evtf-loc').value = e.location || '';
   document.getElementById('evtf-start').value = e.start_date ? e.start_date.slice(0,16) : '';
   document.getElementById('evtf-end').value = e.end_date ? e.end_date.slice(0,16) : '';
@@ -939,19 +940,75 @@ window.deleteEdu = async (id) => {
   await loadEducation();
 };
 
+// ─── CONFIGURABLE LISTS (admin-managed dropdown options) ─────────────────────
+// Stored per-org in organizations.settings.lists.<key>. No schema change ever.
+const CONFIG_LISTS = {
+  coordinating_groups: {
+    label: 'Mission Coordinating Groups',
+    defaults: ['M&E Committee','BSPG','JY','YPG','YAF','MF','WF','Others'],
+    targets: [{ select: 'misf-group', blank: true }],
+  },
+  welfare_types: {
+    label: 'Welfare Types',
+    defaults: ['Bereavement','Hospital','Financial Assistance','Food','Invalid/Homebound','Marriage','Child Naming','Accident','Other'],
+    targets: [{ select: 'wff-type' }],
+  },
+  event_types: {
+    label: 'Event Types',
+    defaults: ['Service','Meeting','Outreach','Concert','Conference','ESR','DSS','Other'],
+    targets: [{ select: 'evtf-type' }],
+  },
+  giving_categories: {
+    label: 'Giving Categories',
+    defaults: ['Tithe','Offering','Pledge','Donation','Building Fund','Missions','Special'],
+    targets: [{ select: 'gf-cat' }],
+  },
+  member_roles: {
+    label: 'Member Roles',
+    defaults: ['General','Elder','Deacon','Youth','Children','Visitor'],
+    targets: [{ datalist: 'member-roles-list' }],
+  },
+};
+
+function listValues(key) {
+  const s = currentOrg?.settings || {};
+  const v = (s.lists && s.lists[key]) || s[key];   // s[key] = legacy coordinating_groups
+  return Array.isArray(v) && v.length ? v : CONFIG_LISTS[key].defaults;
+}
+
+// Populate every select/datalist bound to a configurable list.
+function populateAllConfigTargets() {
+  Object.entries(CONFIG_LISTS).forEach(([key, def]) => {
+    const values = listValues(key);
+    def.targets.forEach(t => {
+      if (t.select) {
+        const sel = document.getElementById(t.select);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = (t.blank ? '<option value="">—</option>' : '') +
+          values.map(v => `<option>${v}</option>`).join('');
+        if (cur) setSelectValue(t.select, cur);
+      } else if (t.datalist) {
+        const dl = document.getElementById(t.datalist);
+        if (dl) dl.innerHTML = values.map(v => `<option value="${v}">`).join('');
+      }
+    });
+  });
+}
+
+// Set a select's value, adding the option first if missing (so editing a record
+// whose value was later removed from the list still displays correctly).
+function setSelectValue(selectId, value) {
+  const sel = document.getElementById(selectId);
+  if (!sel || value == null) return;
+  if (![...sel.options].some(o => o.value === value)) {
+    sel.insertAdjacentHTML('beforeend', `<option>${value}</option>`);
+  }
+  sel.value = value;
+}
+
 // ─── MISSIONS ─────────────────────────────────────────────────────────────────
-const DEFAULT_COORD_GROUPS = ['M&E Committee','BSPG','JY','YPG','YAF','MF','WF','Others'];
-function coordGroups() {
-  const g = currentOrg?.settings?.coordinating_groups;
-  return Array.isArray(g) && g.length ? g : DEFAULT_COORD_GROUPS;
-}
-function populateMissionGroups() {
-  const sel = document.getElementById('misf-group');
-  const current = sel.value;
-  sel.innerHTML = '<option value="">—</option>' +
-    coordGroups().map(g => `<option>${g}</option>`).join('');
-  sel.value = current;
-}
+const populateMissionGroups = populateAllConfigTargets;
 
 let missionsCache = [];
 async function loadMissions() {
@@ -1512,43 +1569,56 @@ function loadSettings() {
   if (canEditOrg) loadLists();
 }
 
-let listsInit = false;
 function loadLists() {
-  if (!listsInit) {
-    listsInit = true;
-    document.getElementById('cg-add-form').addEventListener('submit', async e => {
+  const container = document.getElementById('lists-container');
+  container.innerHTML = Object.entries(CONFIG_LISTS).map(([key, def]) => `
+    <div style="margin-bottom:1.25rem;">
+      <h4 style="margin:0 0 .5rem;font-size:.9rem;">${def.label}</h4>
+      <div id="lst-${key}" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem;"></div>
+      <form data-key="${key}" class="lst-add-form" style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <input type="text" class="form-control lst-new" placeholder="Add an option…" style="flex:1;min-width:160px;"/>
+        <button type="submit" class="btn btn-outline btn-sm" style="min-height:40px;">Add</button>
+      </form>
+    </div>`).join('');
+  Object.keys(CONFIG_LISTS).forEach(renderListChips);
+  container.querySelectorAll('.lst-add-form').forEach(form => {
+    form.addEventListener('submit', async e => {
       e.preventDefault();
-      const val = document.getElementById('cg-new').value.trim();
+      const key = form.dataset.key;
+      const input = form.querySelector('.lst-new');
+      const val = input.value.trim();
       if (!val) return;
-      const groups = coordGroups().slice();
-      if (groups.some(g => g.toLowerCase() === val.toLowerCase())) { toast('Already in the list', 'error'); return; }
-      groups.push(val);
-      await saveCoordGroups(groups);
-      document.getElementById('cg-new').value = '';
+      const items = listValues(key).slice();
+      if (items.some(x => x.toLowerCase() === val.toLowerCase())) { toast('Already in the list', 'error'); return; }
+      items.push(val);
+      await saveList(key, items);
+      input.value = '';
     });
-  }
-  renderCgList();
+  });
 }
 
-function renderCgList() {
-  document.getElementById('cg-list').innerHTML = coordGroups().map(g =>
-    `<span class="role-pill" style="display:inline-flex;align-items:center;gap:.4rem;">${g}
-       <button onclick="removeCoordGroup('${g.replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;line-height:1;">✕</button>
+function renderListChips(key) {
+  const box = document.getElementById('lst-' + key);
+  if (!box) return;
+  box.innerHTML = listValues(key).map(v =>
+    `<span class="role-pill" style="display:inline-flex;align-items:center;gap:.4rem;">${v}
+       <button onclick="removeListItem('${key}','${v.replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;line-height:1;">✕</button>
      </span>`).join('');
 }
 
-async function saveCoordGroups(groups) {
-  const settings = { ...(currentOrg.settings || {}), coordinating_groups: groups };
+async function saveList(key, items) {
+  const lists = { ...((currentOrg.settings || {}).lists || {}), [key]: items };
+  const settings = { ...(currentOrg.settings || {}), lists };
   const { error } = await db.org.update(currentOrg.id, { settings });
   if (error) { toast(error.message, 'error'); return; }
-  currentOrg.settings = settings;   // keep local copy in sync
+  currentOrg.settings = settings;        // keep local copy in sync
   toast('Saved', 'success');
-  renderCgList();
+  renderListChips(key);
+  populateAllConfigTargets();            // refresh the live dropdowns
 }
 
-window.removeCoordGroup = async (name) => {
-  const groups = coordGroups().filter(g => g !== name);
-  await saveCoordGroups(groups);
+window.removeListItem = async (key, value) => {
+  await saveList(key, listValues(key).filter(v => v !== value));
 };
 
 let teamInit = false;

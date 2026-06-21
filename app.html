@@ -883,13 +883,9 @@
       </div>
 
       <div class="settings-section card" id="lists-section" style="margin-bottom:1.25rem;display:none;">
-        <h3 style="margin-bottom:.25rem;">Mission Coordinating Groups</h3>
-        <p class="text-sm text-muted" style="margin:0 0 1rem;">These are the options in the “Coordinating Group” dropdown on the Mission &amp; Evangelism page.</p>
-        <div id="cg-list" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem;"></div>
-        <form id="cg-add-form" style="display:flex;gap:.5rem;flex-wrap:wrap;">
-          <input type="text" id="cg-new" class="form-control" placeholder="Add a group (e.g. BSPG)" style="flex:1;min-width:160px;"/>
-          <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;">Add</button>
-        </form>
+        <h3 style="margin-bottom:.25rem;">Lists &amp; Options</h3>
+        <p class="text-sm text-muted" style="margin:0 0 1rem;">Customize the dropdown choices used across the app. Changes apply to your organization only.</p>
+        <div id="lists-container"></div>
       </div>
 
       <div class="settings-section card">
@@ -936,7 +932,7 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Role</label><input type="text" id="mf-role" class="form-control" placeholder="General"/></div>
+        <div class="form-group"><label class="form-label">Role</label><input type="text" id="mf-role" class="form-control" placeholder="General" list="member-roles-list"/><datalist id="member-roles-list"></datalist></div>
         <div class="form-group"><label class="form-label">Group</label><input type="text" id="mf-group" class="form-control" list="group-list"/><datalist id="group-list"></datalist></div>
       </div>
       <div class="form-row">
