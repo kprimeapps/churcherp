@@ -51,6 +51,15 @@ async function boot() {
     if (ks) { ks.style.display = ''; ks.addEventListener('click', () => signOut()); }
   }
 
+  // Show the correct landing page immediately so no other page flashes first
+  {
+    const stored = sessionStorage.getItem('churchos_page');
+    const initial = stored && canSee(stored) ? stored : landingPage();
+    document.querySelectorAll('.erp-page').forEach(p => p.classList.toggle('active', p.id === initial));
+    document.getElementById('topbar-title').textContent =
+      document.querySelector(`.nav-item[data-page="${initial}"]`)?.dataset.title || '';
+  }
+
   // Sidebar navigation
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {
     item.addEventListener('click', () => {

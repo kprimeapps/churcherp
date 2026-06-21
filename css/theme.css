@@ -510,6 +510,13 @@ body.kiosk .main-wrap { margin-left: 0 !important; }
   .modal { width: 100%; max-width: 100%; max-height: 92vh; overflow-y: auto; }
   .form-actions { flex-wrap: wrap; }
   .form-actions .btn { flex: 1 1 auto; }
+
+  /* Top bar fits narrow screens (keep the Sign out button visible) */
+  body { overflow-x: hidden; }
+  .topbar { padding: 0 .75rem; gap: .5rem; }
+  .topbar-page-title { font-size: .95rem; }
+  .topbar-right { gap: .5rem; }
+  #status-text { display: none; }   /* keep the status dot, drop the label */
 }
 
 @media (hover: none) and (pointer: coarse) {
