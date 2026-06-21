@@ -365,7 +365,7 @@
     </div>
     <div class="tbl-wrap">
       <table class="dtable">
-        <thead><tr><th>Title</th><th>Missionary</th><th>Location</th><th>Start</th><th>Budget</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Title</th><th>Group</th><th>Location</th><th>Start</th><th>Participants</th><th>Reached</th><th>Souls</th><th>Status</th><th></th></tr></thead>
         <tbody id="mis-tbody"></tbody>
       </table>
     </div>
@@ -1113,7 +1113,13 @@
     <form id="mission-form">
       <div class="form-group"><label class="form-label">Title *</label><input type="text" id="misf-title" class="form-control" required/></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Missionary Name</label><input type="text" id="misf-name" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Coordinating Group</label>
+          <select id="misf-group" class="form-control">
+            <option value="">—</option>
+            <option>M&amp;E Committee</option><option>BSPG</option><option>JY</option>
+            <option>YPG</option><option>YAF</option><option>MF</option><option>WF</option><option>Others</option>
+          </select>
+        </div>
         <div class="form-group"><label class="form-label">Location</label><input type="text" id="misf-loc" class="form-control"/></div>
       </div>
       <div class="form-row">
@@ -1121,10 +1127,15 @@
         <div class="form-group"><label class="form-label">End Date</label><input type="date" id="misf-end" class="form-control"/></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label class="form-label">Participants</label><input type="number" id="misf-participants" class="form-control" min="0" step="1"/></div>
+        <div class="form-group"><label class="form-label">Persons Reached</label><input type="number" id="misf-reached" class="form-control" min="0" step="1"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Souls Won</label><input type="number" id="misf-souls" class="form-control" min="0" step="1"/></div>
         <div class="form-group"><label class="form-label">Budget</label><input type="number" id="misf-budget" class="form-control" step="0.01"/></div>
-        <div class="form-group"><label class="form-label">Status</label>
-          <select id="misf-status" class="form-control"><option value="active">Active</option><option value="completed">Completed</option><option value="paused">Paused</option></select>
-        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select id="misf-status" class="form-control"><option value="active">Active</option><option value="completed">Completed</option><option value="paused">Paused</option></select>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><textarea id="misf-notes" class="form-control" rows="2"></textarea></div>
       <input type="hidden" id="misf-id"/>

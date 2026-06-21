@@ -1,5 +1,9 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b12 · invites';
+const APP_BUILD = 'b15 · missions';
+const intOrNull = (id) => {
+  const v = document.getElementById(id).value;
+  return v !== '' ? parseInt(v, 10) : null;
+};
 import { supabase, db, syncQueue } from './db.js';
 import { requireAuth, currentProfile, currentOrg, signOut } from './auth.js';
 import {
@@ -936,6 +940,7 @@ window.deleteEdu = async (id) => {
 };
 
 // ─── MISSIONS ─────────────────────────────────────────────────────────────────
+let missionsCache = [];
 async function loadMissions() {
   document.getElementById('mis-add-btn').onclick = () => {
     document.getElementById('mission-form').reset();
@@ -944,15 +949,39 @@ async function loadMissions() {
   };
   const { data, error } = await db.missions.list(ORG_ID);
   if (error) { toast(error.message, 'error'); return; }
-  buildTable(document.getElementById('mis-tbody'), data || [], m => `
+  missionsCache = data || [];
+  buildTable(document.getElementById('mis-tbody'), missionsCache, m => `
     <td class="td-name">${m.title}</td>
-    <td>${m.missionary_name || '—'}</td>
+    <td>${m.coordinating_group || '—'}</td>
     <td>${m.location || '—'}</td>
     <td>${fmtDate(m.start_date)}</td>
-    <td>${m.budget ? fmtMoney(m.budget, CURRENCY) : '—'}</td>
+    <td>${m.participants != null ? fmtNum(m.participants) : '—'}</td>
+    <td>${m.persons_reached != null ? fmtNum(m.persons_reached) : '—'}</td>
+    <td>${m.souls_won != null ? fmtNum(m.souls_won) : '—'}</td>
     <td><span class="badge badge-${m.status==='active'?'green':m.status==='completed'?'blue':'gray'}">${m.status}</span></td>
-    <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteMis('${m.id}')">Delete</button></td>`);
+    <td class="td-actions">
+      <button class="btn btn-ghost btn-sm" onclick="editMis('${m.id}')">Edit</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteMis('${m.id}')">Delete</button>
+    </td>`);
 }
+
+window.editMis = (id) => {
+  const m = missionsCache.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('misf-id').value = m.id;
+  document.getElementById('misf-title').value = m.title || '';
+  document.getElementById('misf-group').value = m.coordinating_group || '';
+  document.getElementById('misf-loc').value = m.location || '';
+  document.getElementById('misf-start').value = m.start_date || '';
+  document.getElementById('misf-end').value = m.end_date || '';
+  document.getElementById('misf-participants').value = m.participants ?? '';
+  document.getElementById('misf-reached').value = m.persons_reached ?? '';
+  document.getElementById('misf-souls').value = m.souls_won ?? '';
+  document.getElementById('misf-budget').value = m.budget ?? '';
+  document.getElementById('misf-status').value = m.status || 'active';
+  document.getElementById('misf-notes').value = m.notes || '';
+  openModal('modal-mission');
+};
 
 window.deleteMis = async (id) => {
   if (!confirm('Delete?')) return;
@@ -1771,16 +1800,19 @@ function initFormHandlers() {
     e.preventDefault();
     const id = document.getElementById('misf-id').value;
     const data = {
-      org_id:          ORG_ID,
-      title:           document.getElementById('misf-title').value.trim(),
-      missionary_name: document.getElementById('misf-name').value.trim() || null,
-      location:        document.getElementById('misf-loc').value.trim() || null,
-      start_date:      document.getElementById('misf-start').value || null,
-      end_date:        document.getElementById('misf-end').value || null,
-      budget:          parseFloat(document.getElementById('misf-budget').value) || null,
-      currency:        CURRENCY,
-      status:          document.getElementById('misf-status').value,
-      notes:           document.getElementById('misf-notes').value || null,
+      org_id:             ORG_ID,
+      title:              document.getElementById('misf-title').value.trim(),
+      coordinating_group: document.getElementById('misf-group').value || null,
+      location:           document.getElementById('misf-loc').value.trim() || null,
+      start_date:         document.getElementById('misf-start').value || null,
+      end_date:           document.getElementById('misf-end').value || null,
+      participants:       intOrNull('misf-participants'),
+      persons_reached:    intOrNull('misf-reached'),
+      souls_won:          intOrNull('misf-souls'),
+      budget:             parseFloat(document.getElementById('misf-budget').value) || null,
+      currency:           CURRENCY,
+      status:             document.getElementById('misf-status').value,
+      notes:              document.getElementById('misf-notes').value || null,
     };
     const { error } = id ? await db.missions.update(id, data) : await db.missions.insert(data);
     if (error) { toast(error.message, 'error'); return; }
