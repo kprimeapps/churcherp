@@ -195,6 +195,15 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let org = null, regCount = 0, lastPerson = null;
 const todayStr = new Date().toISOString().slice(0,10);
 
+const DEFAULT_SERVICE_TYPES = ['Sunday Service','Prayer Meeting','Group Meeting','Special Service'];
+function populateServiceTypes(sel, settings) {
+  if (!sel) return;
+  const cur = sel.value;
+  const types = (settings?.lists?.service_types?.length) ? settings.lists.service_types : DEFAULT_SERVICE_TYPES;
+  sel.innerHTML = types.map(t => `<option>${t}</option>`).join('');
+  if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 if (params.get('org')) $('org-slug').value = params.get('org');
@@ -217,6 +226,7 @@ async function startConsole() {
   btn.disabled = false; btn.textContent = 'Continue →';
   if (error || !data) { alert('Organization not found'); return; }
   org = data;
+  populateServiceTypes($('service-type'), org.settings);
   $('church-name').textContent = data.name;
   $('setup-screen').style.display = 'none';
   $('console').style.display = '';

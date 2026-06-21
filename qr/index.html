@@ -212,6 +212,15 @@ const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let org = null, serviceType = 'Sunday Service', checkinCount = 0, scanLoop = null;
+
+const DEFAULT_SERVICE_TYPES = ['Sunday Service','Prayer Meeting','Group Meeting','Special Service'];
+function populateServiceTypes(sel, settings) {
+  if (!sel) return;
+  const cur = sel.value;
+  const types = (settings?.lists?.service_types?.length) ? settings.lists.service_types : DEFAULT_SERVICE_TYPES;
+  sel.innerHTML = types.map(t => `<option>${t}</option>`).join('');
+  if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
 let stream = null, detector = null;
 const recentScans = new Set();
 const todayStr = new Date().toISOString().slice(0,10);
@@ -259,6 +268,9 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   const { data, error } = await sb.rpc('get_org_by_slug', { p_slug: slug }).maybeSingle();
   if (error || !data) { alert('Organization not found'); btn.disabled=false; btn.textContent='Start Scanner →'; return; }
   org = data;
+  // Sync service types with the org's configured list
+  populateServiceTypes(document.getElementById('service-type-input'), org.settings);
+  serviceType = document.getElementById('service-type-input').value;
   document.getElementById('church-name').textContent = data.name;
   document.getElementById('service-badge').textContent = serviceType;
   document.getElementById('setup-screen').style.display   = 'none';
