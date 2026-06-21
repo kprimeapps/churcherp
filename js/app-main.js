@@ -52,6 +52,7 @@ async function boot() {
       if (!canSee(pageId)) { toast('You don’t have access to that area', 'error'); return; }
       navigate(pageId, title);
       activatePage(pageId);
+      window.__closeSidebar?.();
     });
   });
 
@@ -63,15 +64,28 @@ async function boot() {
         const pg = el.dataset.page;
         navigate(pg, el.textContent.replace('→','').trim());
         activatePage(pg);
+        window.__closeSidebar?.();
       });
     }
   });
 
-  // Mobile menu
+  // Mobile menu + tap-to-close backdrop
   const menuBtn = document.getElementById('menu-toggle');
   const sidebar = document.getElementById('sidebar');
   if (window.innerWidth <= 768) { menuBtn.style.display = 'flex'; }
-  menuBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+  let backdrop = document.getElementById('sidebar-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'sidebar-backdrop';
+    backdrop.className = 'sidebar-backdrop';
+    document.body.appendChild(backdrop);
+  }
+  const openSidebar  = () => { sidebar.classList.add('open');  backdrop.classList.add('show'); };
+  const closeSidebar = () => { sidebar.classList.remove('open'); backdrop.classList.remove('show'); };
+  window.__closeSidebar = closeSidebar;
+  menuBtn.addEventListener('click', () =>
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+  backdrop.addEventListener('click', closeSidebar);
 
   // Sign out
   document.getElementById('signout-btn').addEventListener('click', () => signOut());

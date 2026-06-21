@@ -470,13 +470,45 @@ textarea.form-control { min-height: 90px; resize: vertical; }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: .75rem; padding: 3rem; color: var(--ink3); font-size: .85rem; }
 
 /* ─── RESPONSIVE ───────────────────────────────────────────────────────────── */
+/* Mobile sidebar backdrop (tap to close) */
+.sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(15,35,64,.45);
+  z-index: 95;
+}
+.sidebar-backdrop.show { display: block; }
+
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
+  .sidebar { transform: translateX(-100%); z-index: 110; box-shadow: 6px 0 24px rgba(0,0,0,.25); }
   .sidebar.open { transform: translateX(0); }
   .main-wrap { margin-left: 0; }
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
   .page-content { padding: 1rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Page header + action bars stack and go full-width so nothing overflows */
+  .page-header { align-items: flex-start; }
+  .page-actions { width: 100%; flex-wrap: wrap; }
+  .page-actions .form-control,
+  .page-actions select,
+  .page-actions input { flex: 1 1 140px; min-width: 0; width: auto !important; }
+  .page-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .search-box { width: 100%; }
+
+  /* Tables scroll horizontally inside their card instead of breaking layout */
+  .tbl-wrap { -webkit-overflow-scrolling: touch; }
+  .dtable { min-width: 560px; }
+
+  /* Modals fit small screens */
+  .modal { width: 100%; max-width: 100%; max-height: 92vh; overflow-y: auto; }
+  .form-actions { flex-wrap: wrap; }
+  .form-actions .btn { flex: 1 1 auto; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* Larger tap targets on touch devices */
+  .nav-item { padding-top: .7rem; padding-bottom: .7rem; }
 }
 
 /* ─── PRINT ────────────────────────────────────────────────────────────────── */
