@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b15 · missions';
+const APP_BUILD = 'b16 · config lists';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -940,11 +940,25 @@ window.deleteEdu = async (id) => {
 };
 
 // ─── MISSIONS ─────────────────────────────────────────────────────────────────
+const DEFAULT_COORD_GROUPS = ['M&E Committee','BSPG','JY','YPG','YAF','MF','WF','Others'];
+function coordGroups() {
+  const g = currentOrg?.settings?.coordinating_groups;
+  return Array.isArray(g) && g.length ? g : DEFAULT_COORD_GROUPS;
+}
+function populateMissionGroups() {
+  const sel = document.getElementById('misf-group');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">—</option>' +
+    coordGroups().map(g => `<option>${g}</option>`).join('');
+  sel.value = current;
+}
+
 let missionsCache = [];
 async function loadMissions() {
   document.getElementById('mis-add-btn').onclick = () => {
     document.getElementById('mission-form').reset();
     document.getElementById('misf-id').value = '';
+    populateMissionGroups();
     openModal('modal-mission');
   };
   const { data, error } = await db.missions.list(ORG_ID);
@@ -968,9 +982,15 @@ async function loadMissions() {
 window.editMis = (id) => {
   const m = missionsCache.find(x => x.id === id);
   if (!m) return;
+  populateMissionGroups();
   document.getElementById('misf-id').value = m.id;
   document.getElementById('misf-title').value = m.title || '';
-  document.getElementById('misf-group').value = m.coordinating_group || '';
+  // Include a legacy/removed group as an option so it still shows when editing
+  const sel = document.getElementById('misf-group');
+  if (m.coordinating_group && ![...sel.options].some(o => o.value === m.coordinating_group)) {
+    sel.insertAdjacentHTML('beforeend', `<option>${m.coordinating_group}</option>`);
+  }
+  sel.value = m.coordinating_group || '';
   document.getElementById('misf-loc').value = m.location || '';
   document.getElementById('misf-start').value = m.start_date || '';
   document.getElementById('misf-end').value = m.end_date || '';
@@ -1486,7 +1506,50 @@ function loadSettings() {
   } else {
     document.getElementById('team-section').style.display = 'none';
   }
+
+  // Configurable lists (coordinating groups) — anyone who can edit org settings
+  document.getElementById('lists-section').style.display = canEditOrg ? '' : 'none';
+  if (canEditOrg) loadLists();
 }
+
+let listsInit = false;
+function loadLists() {
+  if (!listsInit) {
+    listsInit = true;
+    document.getElementById('cg-add-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const val = document.getElementById('cg-new').value.trim();
+      if (!val) return;
+      const groups = coordGroups().slice();
+      if (groups.some(g => g.toLowerCase() === val.toLowerCase())) { toast('Already in the list', 'error'); return; }
+      groups.push(val);
+      await saveCoordGroups(groups);
+      document.getElementById('cg-new').value = '';
+    });
+  }
+  renderCgList();
+}
+
+function renderCgList() {
+  document.getElementById('cg-list').innerHTML = coordGroups().map(g =>
+    `<span class="role-pill" style="display:inline-flex;align-items:center;gap:.4rem;">${g}
+       <button onclick="removeCoordGroup('${g.replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;line-height:1;">✕</button>
+     </span>`).join('');
+}
+
+async function saveCoordGroups(groups) {
+  const settings = { ...(currentOrg.settings || {}), coordinating_groups: groups };
+  const { error } = await db.org.update(currentOrg.id, { settings });
+  if (error) { toast(error.message, 'error'); return; }
+  currentOrg.settings = settings;   // keep local copy in sync
+  toast('Saved', 'success');
+  renderCgList();
+}
+
+window.removeCoordGroup = async (name) => {
+  const groups = coordGroups().filter(g => g !== name);
+  await saveCoordGroups(groups);
+};
 
 let teamInit = false;
 async function loadTeam() {

@@ -882,6 +882,16 @@
         <p class="text-xs text-muted" style="margin-top:.6rem;">Invited people join when they sign up with the invited email. Roles take effect on their next page load.</p>
       </div>
 
+      <div class="settings-section card" id="lists-section" style="margin-bottom:1.25rem;display:none;">
+        <h3 style="margin-bottom:.25rem;">Mission Coordinating Groups</h3>
+        <p class="text-sm text-muted" style="margin:0 0 1rem;">These are the options in the “Coordinating Group” dropdown on the Mission &amp; Evangelism page.</p>
+        <div id="cg-list" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem;"></div>
+        <form id="cg-add-form" style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <input type="text" id="cg-new" class="form-control" placeholder="Add a group (e.g. BSPG)" style="flex:1;min-width:160px;"/>
+          <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;">Add</button>
+        </form>
+      </div>
+
       <div class="settings-section card">
         <h3 style="margin-bottom:.75rem;">Account</h3>
         <div class="settings-row">
@@ -1114,11 +1124,7 @@
       <div class="form-group"><label class="form-label">Title *</label><input type="text" id="misf-title" class="form-control" required/></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Coordinating Group</label>
-          <select id="misf-group" class="form-control">
-            <option value="">—</option>
-            <option>M&amp;E Committee</option><option>BSPG</option><option>JY</option>
-            <option>YPG</option><option>YAF</option><option>MF</option><option>WF</option><option>Others</option>
-          </select>
+          <select id="misf-group" class="form-control"><option value="">—</option></select>
         </div>
         <div class="form-group"><label class="form-label">Location</label><input type="text" id="misf-loc" class="form-control"/></div>
       </div>
