@@ -139,18 +139,30 @@
       <div class="onboard-step" id="step-1">
         <h2 class="serif" style="margin-bottom:.35rem;">Choose a plan</h2>
         <p class="text-muted text-sm" style="margin-bottom:1rem;">Start free, upgrade anytime.</p>
-        <div class="plan-cards">
+        <div class="plan-cards" style="grid-template-columns:1fr;">
           <div class="plan-card selected" data-plan="free" id="plan-free">
             <h4>Free <span class="plan-badge">Current</span></h4>
-            <p>Up to 200 members, all core modules, QR check-in.</p>
+            <p>Up to <strong>50 members</strong>, all modules, QR check-in (up to 50 registrations).</p>
+          </div>
+          <div class="plan-card" data-plan="starter" id="plan-starter">
+            <h4>Starter <span class="plan-badge" id="price-starter">—</span></h4>
+            <p>Up to <strong>200 members</strong>, all modules, unlimited QR. Billed yearly.</p>
           </div>
           <div class="plan-card" data-plan="pro" id="plan-pro">
-            <h4>Pro <span class="plan-badge">$9/mo</span></h4>
-            <p>Unlimited members, hierarchy rollup, priority support.</p>
+            <h4>Pro <span class="plan-badge" id="price-pro">—</span></h4>
+            <p><strong>Unlimited members</strong>, all modules, priority support &amp; <strong>free data migration</strong>. Billed yearly.</p>
+          </div>
+        </div>
+        <div id="plan-contact" style="display:none;background:var(--cream2);border:1px solid var(--gold);border-radius:8px;padding:.85rem 1rem;font-size:.82rem;margin-bottom:1rem;">
+          <strong>Activate Starter / Pro</strong><br/>
+          Payments aren't online yet. Create your free account now, then contact us to unlock your paid plan:
+          <div style="margin-top:.5rem;">
+            📞 / WhatsApp: <a href="https://wa.me/233544343586" style="color:var(--gold-dark);font-weight:600;">+233 54 434 3586</a><br/>
+            ✉️ <a href="mailto:osaetaz@gmail.com" style="color:var(--gold-dark);font-weight:600;">osaetaz@gmail.com</a>
           </div>
         </div>
         <div style="font-size:.75rem;color:var(--ink3);text-align:center;margin-bottom:1rem;">
-          No credit card required for Free plan.
+          No credit card required. You'll start on Free.
         </div>
         <button class="btn btn-primary" style="width:100%;justify-content:center;" id="ob-next-1">Continue →</button>
         <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:.5rem;" id="ob-back-1">← Back</button>
@@ -269,12 +281,31 @@ document.getElementById('ob-name').addEventListener('input', e => {
   document.getElementById('ob-slug').value = slug;
 });
 
+// Per-currency yearly pricing (≈ $3 Starter / $9 Pro)
+const PLAN_PRICES = {
+  USD: { starter: 36,   pro: 108,   sym: '$'    },
+  GHS: { starter: 540,  pro: 1620,  sym: 'GH₵'  },
+  NGN: { starter: 54000,pro: 162000,sym: '₦'    },
+  KES: { starter: 4680, pro: 14040, sym: 'KSh '  },
+  ZAR: { starter: 660,  pro: 1980,  sym: 'R '    },
+  GBP: { starter: 30,   pro: 90,    sym: '£'    },
+  EUR: { starter: 33,   pro: 99,    sym: '€'    },
+  CAD: { starter: 48,   pro: 144,   sym: 'C$'   },
+};
+function renderPlanPrices() {
+  const cur = document.getElementById('ob-currency').value;
+  const p = PLAN_PRICES[cur] || PLAN_PRICES.USD;
+  document.getElementById('price-starter').textContent = `${p.sym}${p.starter.toLocaleString()}/yr`;
+  document.getElementById('price-pro').textContent     = `${p.sym}${p.pro.toLocaleString()}/yr`;
+}
+
 // Plan selection
 document.querySelectorAll('.plan-card').forEach(card => {
   card.addEventListener('click', () => {
     document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
     selectedPlan = card.dataset.plan;
+    document.getElementById('plan-contact').style.display = selectedPlan === 'free' ? 'none' : 'block';
   });
 });
 
@@ -293,6 +324,7 @@ document.getElementById('ob-next-0').addEventListener('click', () => {
   const slug = document.getElementById('ob-slug').value.trim();
   if (!name || !slug) { toast('Church name and slug are required', 'error'); return; }
   if (!/^[a-z0-9-]+$/.test(slug)) { toast('Slug can only contain lowercase letters, numbers, hyphens', 'error'); return; }
+  renderPlanPrices();
   setStep(1);
 });
 
@@ -313,10 +345,12 @@ document.getElementById('ob-next-1').addEventListener('click', async () => {
     // (SELECT would fail because profile.org_id isn't set yet)
     const orgId = crypto.randomUUID();
 
-    // Create org
+    // Everyone starts on Free; paid plans are activated manually after contact
+    // (no online payments yet). Record what they asked for so we can unlock it.
+    const settings = selectedPlan === 'free' ? {} : { requested_plan: selectedPlan };
     const { error: orgErr } = await sb.from('organizations').insert({
       id: orgId, name, slug, sub_name: sub || null, denomination: denom || null,
-      currency, plan: selectedPlan, org_type: 'congregation',
+      currency, plan: 'free', settings, org_type: 'congregation',
     });
     if (orgErr) throw orgErr;
 
