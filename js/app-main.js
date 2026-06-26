@@ -1,9 +1,32 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b20 · plans+admin';
+const APP_BUILD = 'b21 · plan banner';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
 };
+
+// Nudge Free/Starter orgs toward an upgrade as they approach their member cap.
+const PLAN_MEMBER_LIMIT = { free: 50, starter: 200 };  // pro/enterprise = unlimited
+function checkPlanBanner() {
+  const banner = document.getElementById('plan-banner');
+  if (!banner) return;
+  const plan = currentOrg?.plan;
+  const limit = PLAN_MEMBER_LIMIT[plan];
+  if (!limit) return;                              // unlimited plan
+  if (sessionStorage.getItem('plan_banner_dismissed') === plan) return;
+  const count = allMembers.length;
+  if (count < Math.ceil(limit * 0.8)) return;      // only when ≥ 80% used
+  const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
+  const atLimit = count >= limit;
+  document.getElementById('plan-banner-text').innerHTML = atLimit
+    ? `<strong>${planName} plan limit reached</strong> — ${count}/${limit} members. Upgrade to add more:`
+    : `You're using <strong>${count} of ${limit}</strong> members on the ${planName} plan. Upgrade for more:`;
+  banner.style.display = 'flex';
+  document.getElementById('plan-banner-x').onclick = () => {
+    banner.style.display = 'none';
+    sessionStorage.setItem('plan_banner_dismissed', plan);
+  };
+}
 import { supabase, db, syncQueue } from './db.js';
 import { requireAuth, currentProfile, currentOrg, signOut } from './auth.js';
 import {
@@ -135,6 +158,7 @@ async function boot() {
   initOfflineBanner();
   initDayCheckboxes();
   await prefetchMembers();
+  checkPlanBanner();
   populateAllConfigTargets();   // fill configurable dropdowns from org settings
   initFormHandlers();
   initQRPage();
