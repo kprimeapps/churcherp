@@ -78,6 +78,7 @@
 
   <div class="nav-section-label">Modules</div>
   <div class="nav-item active" data-page="page-dashboard" data-title="Dashboard"><span class="nav-icon">◈</span> Dashboard</div>
+  <div class="nav-item" data-page="page-reports"   data-title="Reports"><span class="nav-icon">📊</span> Reports</div>
   <div class="nav-item" data-page="page-members"    data-title="Members"><span class="nav-icon">👥</span> Members</div>
   <div class="nav-item" data-page="page-attendance" data-title="Attendance"><span class="nav-icon">✅</span> Attendance</div>
   <div class="nav-item" data-page="page-groups"     data-title="Groups"><span class="nav-icon">🫂</span> Groups</div>
@@ -144,6 +145,110 @@
       <div class="chart-card">
         <div class="chart-card-header"><span class="chart-card-title">Giving by Category</span></div>
         <div class="chart-wrap"><canvas id="giving-chart" height="180"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ REPORTS ════════════════════════════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-reports">
+    <div class="page-header"><div class="page-header-left"><h2>Reports</h2><p>Attendance, growth, giving &amp; spending insights</p></div></div>
+    <div class="tabs" id="report-tabs">
+      <div class="tab-btn active" data-rtab="attendance">Attendance</div>
+      <div class="tab-btn" data-rtab="growth">Growth</div>
+      <div class="tab-btn" data-rtab="giving">Giving</div>
+      <div class="tab-btn" data-rtab="spending">Spending</div>
+      <div class="tab-btn" data-rtab="groups">Groups</div>
+    </div>
+
+    <!-- ATTENDANCE REPORT -->
+    <div class="rtab" id="rtab-attendance">
+      <div class="page-actions" style="margin-bottom:1rem;">
+        <input type="date" id="rep-att-date" class="form-control" style="width:auto;min-height:40px;"/>
+        <select id="rep-att-type" class="form-control" style="width:auto;min-height:40px;"></select>
+        <button class="btn btn-outline btn-sm" id="rep-att-refresh">Refresh</button>
+        <button class="btn btn-primary btn-sm" id="rep-summary-btn">+ Record Service Total</button>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">
+        <div class="stat-card"><div class="stat-card-label">Present (members)</div><div class="stat-card-value" id="rep-att-present">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">Absent (members)</div><div class="stat-card-value" id="rep-att-absent">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">Recorded Total</div><div class="stat-card-value" id="rep-att-total">—</div><div class="stat-card-sub">incl. manual totals &amp; guests</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;" id="rep-att-cols">
+        <div class="card"><h3 style="margin:0 0 .6rem;">✅ Present <span class="text-sm text-muted" id="rep-present-count"></span></h3><div class="tbl-wrap" style="max-height:340px;overflow:auto;"><table class="dtable"><tbody id="rep-present-tbody"></tbody></table></div></div>
+        <div class="card"><h3 style="margin:0 0 .6rem;">⭕ Absent <span class="text-sm text-muted" id="rep-absent-count"></span></h3><div class="tbl-wrap" style="max-height:340px;overflow:auto;"><table class="dtable"><tbody id="rep-absent-tbody"></tbody></table></div></div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 .6rem;">Manual Service Totals</h3>
+        <div class="tbl-wrap"><table class="dtable">
+          <thead><tr><th>Date</th><th>Service</th><th>Total</th><th>Male</th><th>Female</th><th>Children</th><th></th></tr></thead>
+          <tbody id="rep-summary-tbody"></tbody>
+        </table></div>
+      </div>
+      <div class="card" style="margin-top:1.25rem;"><h3 style="margin:0 0 .6rem;">Attendance Trend</h3><div class="chart-wrap"><canvas id="rep-att-trend-chart" height="200"></canvas></div></div>
+    </div>
+
+    <!-- GROWTH REPORT -->
+    <div class="rtab" id="rtab-growth" style="display:none;">
+      <div class="page-actions" style="margin-bottom:1rem;">
+        <select id="rep-growth-period" class="form-control" style="width:auto;min-height:40px;">
+          <option value="month">Monthly</option><option value="year">Yearly</option>
+        </select>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem;"><h3 style="margin:0 0 .6rem;">Membership Growth (cumulative)</h3><div class="chart-wrap"><canvas id="rep-membership-chart" height="200"></canvas></div></div>
+      <div class="card"><h3 style="margin:0 0 .6rem;">Attendance Over Time</h3><div class="chart-wrap"><canvas id="rep-attgrowth-chart" height="200"></canvas></div></div>
+    </div>
+
+    <!-- GIVING REPORT -->
+    <div class="rtab" id="rtab-giving" style="display:none;">
+      <div class="page-actions" style="margin-bottom:1rem;">
+        <select id="rep-giving-year" class="form-control" style="width:auto;min-height:40px;"></select>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">
+        <div class="stat-card"><div class="stat-card-label">Total (year)</div><div class="stat-card-value" id="rep-giving-total">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">This Month</div><div class="stat-card-value" id="rep-giving-month">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">Unique Givers</div><div class="stat-card-value" id="rep-giving-givers">—</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+        <div class="card"><h3 style="margin:0 0 .6rem;">By Month</h3><div class="chart-wrap"><canvas id="rep-giving-month-chart" height="200"></canvas></div></div>
+        <div class="card"><h3 style="margin:0 0 .6rem;">By Category</h3><div class="chart-wrap"><canvas id="rep-giving-cat-chart" height="200"></canvas></div></div>
+      </div>
+      <div class="card"><h3 style="margin:0 0 .6rem;">By Category</h3><div class="tbl-wrap"><table class="dtable"><thead><tr><th>Category</th><th>Total</th><th>% of giving</th></tr></thead><tbody id="rep-giving-tbody"></tbody></table></div></div>
+    </div>
+
+    <!-- SPENDING REPORT -->
+    <div class="rtab" id="rtab-spending" style="display:none;">
+      <div class="page-actions" style="margin-bottom:1rem;">
+        <select id="rep-spend-year" class="form-control" style="width:auto;min-height:40px;"></select>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:1.25rem;">
+        <div class="stat-card"><div class="stat-card-label">Total Spending (year)</div><div class="stat-card-value" id="rep-spend-total">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">This Month</div><div class="stat-card-value" id="rep-spend-month">—</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+        <div class="card"><h3 style="margin:0 0 .6rem;">By Month</h3><div class="chart-wrap"><canvas id="rep-spend-month-chart" height="200"></canvas></div></div>
+        <div class="card"><h3 style="margin:0 0 .6rem;">By Category</h3><div class="chart-wrap"><canvas id="rep-spend-cat-chart" height="200"></canvas></div></div>
+      </div>
+      <div class="card"><h3 style="margin:0 0 .6rem;">By Category</h3><div class="tbl-wrap"><table class="dtable"><thead><tr><th>Category</th><th>Total</th><th>% of spend</th></tr></thead><tbody id="rep-spend-tbody"></tbody></table></div></div>
+    </div>
+
+    <!-- GROUPS REPORT -->
+    <div class="rtab" id="rtab-groups" style="display:none;">
+      <div class="page-actions" style="margin-bottom:1rem;">
+        <button class="btn btn-primary btn-sm" id="rep-group-meeting-btn">+ Record Group Meeting</button>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem;">
+        <h3 style="margin:0 0 .6rem;">Groups</h3>
+        <div class="tbl-wrap"><table class="dtable">
+          <thead><tr><th>Group</th><th>Members</th><th>Meetings logged</th><th>Avg attendance</th><th>Last meeting</th></tr></thead>
+          <tbody id="rep-groups-tbody"></tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 .6rem;">Recent Group Meetings</h3>
+        <div class="tbl-wrap"><table class="dtable">
+          <thead><tr><th>Date</th><th>Group</th><th>Total</th><th>Male</th><th>Female</th><th></th></tr></thead>
+          <tbody id="rep-groupmeetings-tbody"></tbody>
+        </table></div>
       </div>
     </div>
   </div>
@@ -1428,6 +1533,47 @@
       <button type="button" class="btn btn-outline" onclick="closeModal('modal-csv-preview')">Cancel</button>
       <button type="button" class="btn btn-primary" id="csv-import-confirm-btn">Import All</button>
     </div>
+  </div>
+</div>
+
+<!-- Attendance summary / group meeting modal -->
+<div class="modal-overlay hidden" id="modal-attsummary">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header"><h3 class="modal-title" id="as-title">Record Service Total</h3><button class="modal-close" onclick="closeModal('modal-attsummary')">✕</button></div>
+    <form id="attsummary-form">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Date *</label><input type="date" id="as-date" class="form-control" required/></div>
+        <div class="form-group" id="as-type-wrap"><label class="form-label">Service Type</label><select id="as-type" class="form-control"></select></div>
+      </div>
+      <div class="form-group" id="as-group-wrap" style="display:none;"><label class="form-label">Group *</label><select id="as-group" class="form-control"></select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Male</label><input type="number" id="as-male" class="form-control" min="0" step="1" oninput="asRecalc()"/></div>
+        <div class="form-group"><label class="form-label">Female</label><input type="number" id="as-female" class="form-control" min="0" step="1" oninput="asRecalc()"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Children</label><input type="number" id="as-children" class="form-control" min="0" step="1" oninput="asRecalc()"/></div>
+        <div class="form-group"><label class="form-label">Total *</label><input type="number" id="as-total" class="form-control" min="0" step="1" required/></div>
+      </div>
+      <p class="text-xs text-muted" style="margin:0 0 .5rem;">Enter a total only, or split by gender (Total auto-sums when you fill the splits).</p>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" id="as-notes" class="form-control"/></div>
+      <input type="hidden" id="as-id"/><input type="hidden" id="as-mode" value="service"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-attsummary')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Member giving history modal -->
+<div class="modal-overlay hidden" id="modal-member-giving">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header"><h3 class="modal-title" id="mg-title">Giving History</h3><button class="modal-close" onclick="closeModal('modal-member-giving')">✕</button></div>
+    <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:1rem;">
+      <div class="stat-card"><div class="stat-card-label">Total Given</div><div class="stat-card-value" id="mg-total">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">Gifts</div><div class="stat-card-value" id="mg-count">—</div></div>
+    </div>
+    <div class="tbl-wrap" style="max-height:360px;overflow:auto;"><table class="dtable">
+      <thead><tr><th>Date</th><th>Category</th><th>Method</th><th>Amount</th></tr></thead>
+      <tbody id="mg-tbody"></tbody>
+    </table></div>
   </div>
 </div>
 

@@ -180,6 +180,36 @@ export const db = {
     delete: (id) => dbDelete('online_attendance', { id }),
   },
 
+  // Manual attendance summaries (service totals + group meetings)
+  summaries: {
+    forDate: (orgId, date) => supabase.from('attendance_summaries').select('*')
+      .eq('org_id', orgId).eq('summary_date', date).is('group_name', null).order('service_type'),
+    groupMeetings: (orgId, limit = 100) => supabase.from('attendance_summaries').select('*')
+      .eq('org_id', orgId).not('group_name', 'is', null).order('summary_date', { ascending: false }).limit(limit),
+    range: (orgId, start, end) => supabase.from('attendance_summaries').select('*')
+      .eq('org_id', orgId).gte('summary_date', start).lte('summary_date', end),
+    insert: (data) => dbInsert('attendance_summaries', data),
+    update: (id, data) => dbUpdate('attendance_summaries', data, { id }),
+    delete: (id) => dbDelete('attendance_summaries', { id }),
+  },
+
+  // Reports — raw rows for client-side roll-ups
+  reports: {
+    givingByMember: (orgId, memberId) => supabase.from('giving').select('*')
+      .eq('org_id', orgId).eq('member_id', memberId).order('given_date', { ascending: false }),
+    givingYear: (orgId, year) => supabase.from('giving')
+      .select('amount,category,given_date,member_id')
+      .eq('org_id', orgId).gte('given_date', `${year}-01-01`).lte('given_date', `${year}-12-31`),
+    expensesYear: (orgId, year) => supabase.from('expenses')
+      .select('amount,category,expense_date')
+      .eq('org_id', orgId).gte('expense_date', `${year}-01-01`).lte('expense_date', `${year}-12-31`),
+    membersJoined: (orgId) => supabase.from('members')
+      .select('date_joined,created_at').eq('org_id', orgId),
+    attendanceRange: (orgId, start, end) => supabase.from('attendance')
+      .select('service_date,service_type,member_id').eq('org_id', orgId)
+      .gte('service_date', start).lte('service_date', end),
+  },
+
   // Team / roles
   team: {
     list: (orgId) => supabase.from('profiles')

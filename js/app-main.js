@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b18 · more lists';
+const APP_BUILD = 'b19 · reports';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -170,6 +170,7 @@ function activatePage(pageId) {
   loaded.add(pageId);
   switch (pageId) {
     case 'page-dashboard':  loadDashboard(); break;
+    case 'page-reports':    loadReports(); break;
     case 'page-members':    loadMembers(); break;
     case 'page-attendance': loadAttendance(); break;
     case 'page-groups':     loadGroups(); break;
@@ -254,6 +255,312 @@ async function loadDashboard() {
   });
 }
 
+// ─── REPORTS ────────────────────────────────────────────────────────────────
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const repCharts = {};
+function repChart(id, config) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (repCharts[id]) repCharts[id].destroy();
+  repCharts[id] = new Chart(el.getContext('2d'), config);
+}
+function lastSunday() {
+  const d = new Date(); d.setDate(d.getDate() - d.getDay());
+  return d.toISOString().slice(0, 10);
+}
+
+let reportsInit = false;
+async function loadReports() {
+  if (!reportsInit) {
+    reportsInit = true;
+    // Sub-tab switching
+    document.querySelectorAll('#report-tabs .tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#report-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.rtab;
+        ['attendance','growth','giving','spending','groups'].forEach(t =>
+          document.getElementById('rtab-' + t).style.display = t === tab ? '' : 'none');
+        repLoadTab(tab);
+      });
+    });
+    // Attendance controls
+    populateAllConfigTargets(); // ensure rep-att-type + as-type filled
+    document.getElementById('rep-att-type').innerHTML =
+      listValues('service_types').map(t => `<option>${t}</option>`).join('');
+    document.getElementById('rep-att-date').value = lastSunday();
+    document.getElementById('rep-att-refresh').onclick = repAttendance;
+    document.getElementById('rep-att-date').addEventListener('change', repAttendance);
+    document.getElementById('rep-att-type').addEventListener('change', repAttendance);
+    document.getElementById('rep-summary-btn').onclick = () => openSummaryModal('service');
+    document.getElementById('rep-group-meeting-btn').onclick = () => openSummaryModal('group');
+    // Only attendance-writers can record manual totals
+    const canRecord = canWritePage('page-attendance');
+    document.getElementById('rep-summary-btn').style.display = canRecord ? '' : 'none';
+    document.getElementById('rep-group-meeting-btn').style.display = canRecord ? '' : 'none';
+    document.getElementById('rep-growth-period').addEventListener('change', repGrowth);
+    // Year selectors
+    const yrs = [0,1,2].map(i => new Date().getFullYear() - i);
+    document.getElementById('rep-giving-year').innerHTML = yrs.map(y => `<option>${y}</option>`).join('');
+    document.getElementById('rep-spend-year').innerHTML = yrs.map(y => `<option>${y}</option>`).join('');
+    document.getElementById('rep-giving-year').addEventListener('change', repGiving);
+    document.getElementById('rep-spend-year').addEventListener('change', repSpending);
+    initSummaryForm();
+  }
+  repLoadTab('attendance');
+}
+
+function repLoadTab(tab) {
+  if (tab === 'attendance') repAttendance();
+  else if (tab === 'growth') repGrowth();
+  else if (tab === 'giving') repGiving();
+  else if (tab === 'spending') repSpending();
+  else if (tab === 'groups') repGroups();
+}
+
+// ── Attendance: present / absent / totals / trend ──
+async function repAttendance() {
+  const date = document.getElementById('rep-att-date').value;
+  const type = document.getElementById('rep-att-type').value;
+  if (!date) return;
+  const [{ data: att }, { data: summaries }] = await Promise.all([
+    db.attendance.forDate(ORG_ID, date, type),
+    db.summaries.forDate(ORG_ID, date),
+  ]);
+  const present = new Map();   // member_id -> name
+  let guestCount = 0;
+  (att || []).forEach(r => {
+    if (r.member_id) present.set(r.member_id, r.members ? `${r.members.first_name} ${r.members.last_name}` : 'Member');
+    else guestCount++;
+  });
+  const activeMembers = allMembers.filter(m => m.is_active !== false);
+  const absent = activeMembers.filter(m => !present.has(m.id));
+  const manualTotal = (summaries || []).filter(s => s.service_type === type)
+    .reduce((sum, s) => sum + Number(s.total_count), 0);
+  const recordedTotal = present.size + guestCount + manualTotal;
+
+  document.getElementById('rep-att-present').textContent = fmtNum(present.size);
+  document.getElementById('rep-att-absent').textContent  = fmtNum(absent.length);
+  document.getElementById('rep-att-total').textContent   = fmtNum(recordedTotal);
+  document.getElementById('rep-present-count').textContent = `(${present.size})`;
+  document.getElementById('rep-absent-count').textContent  = `(${absent.length})`;
+
+  document.getElementById('rep-present-tbody').innerHTML =
+    [...present.values()].sort().map(n => `<tr><td class="td-name">${n}</td></tr>`).join('') ||
+    '<tr><td class="tbl-empty">No members checked in</td></tr>';
+  document.getElementById('rep-absent-tbody').innerHTML =
+    absent.map(m => `<tr><td class="td-name">${m.first_name} ${m.last_name}</td></tr>`).join('') ||
+    '<tr><td class="tbl-empty">Everyone present 🎉</td></tr>';
+
+  // Manual totals list (all dates, this service type context shown)
+  const { data: allSum } = await db.summaries.forDate(ORG_ID, date);
+  buildTable(document.getElementById('rep-summary-tbody'), allSum || [], s => `
+    <td>${fmtDate(s.summary_date)}</td><td>${s.service_type}</td>
+    <td style="font-weight:600;">${fmtNum(s.total_count)}</td>
+    <td>${fmtNum(s.male_count)}</td><td>${fmtNum(s.female_count)}</td><td>${fmtNum(s.children_count)}</td>
+    <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteSummary('${s.id}')">Delete</button></td>`);
+
+  await repAttendanceTrend(type);
+}
+
+async function repAttendanceTrend(type) {
+  const end = new Date(); const start = new Date(); start.setDate(start.getDate() - 84); // ~12 weeks
+  const startStr = start.toISOString().slice(0,10), endStr = end.toISOString().slice(0,10);
+  const [{ data: att }, { data: sums }] = await Promise.all([
+    db.reports.attendanceRange(ORG_ID, startStr, endStr),
+    db.summaries.range(ORG_ID, startStr, endStr),
+  ]);
+  const byDate = {};
+  (att || []).filter(r => r.service_type === type).forEach(r => { byDate[r.service_date] = (byDate[r.service_date]||0) + 1; });
+  (sums || []).filter(r => !r.group_name && r.service_type === type).forEach(r => { byDate[r.summary_date] = (byDate[r.summary_date]||0) + Number(r.total_count); });
+  const dates = Object.keys(byDate).sort();
+  repChart('rep-att-trend-chart', {
+    type: 'bar',
+    data: { labels: dates.map(d => fmtDate(d)), datasets: [{ label: type, data: dates.map(d => byDate[d]), backgroundColor: 'rgba(184,150,74,.6)', borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+  });
+}
+
+// ── Growth: membership + attendance over time ──
+async function repGrowth() {
+  const period = document.getElementById('rep-growth-period').value;
+  const { data: members } = await db.reports.membersJoined(ORG_ID);
+  const keyOf = d => period === 'year' ? d.slice(0,4) : d.slice(0,7);
+  // cumulative membership by period
+  const joins = (members || []).map(m => (m.date_joined || m.created_at || '').slice(0,10)).filter(Boolean).sort();
+  const buckets = {};
+  joins.forEach(d => { const k = keyOf(d); buckets[k] = (buckets[k]||0) + 1; });
+  const keys = Object.keys(buckets).sort();
+  let running = 0; const cum = keys.map(k => (running += buckets[k]));
+  repChart('rep-membership-chart', {
+    type: 'line',
+    data: { labels: keys, datasets: [{ label: 'Total members', data: cum, borderColor: '#0F2340', backgroundColor: 'rgba(15,35,64,.1)', fill: true, tension: .3 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+  });
+  // attendance over time (per-person + manual totals)
+  const end = new Date(); const start = new Date(); start.setFullYear(start.getFullYear() - 1);
+  const startStr = start.toISOString().slice(0,10), endStr = end.toISOString().slice(0,10);
+  const [{ data: att }, { data: sums }] = await Promise.all([
+    db.reports.attendanceRange(ORG_ID, startStr, endStr),
+    db.summaries.range(ORG_ID, startStr, endStr),
+  ]);
+  const ab = {};
+  (att || []).forEach(r => { const k = keyOf(r.service_date); ab[k] = (ab[k]||0) + 1; });
+  (sums || []).filter(r => !r.group_name).forEach(r => { const k = keyOf(r.summary_date); ab[k] = (ab[k]||0) + Number(r.total_count); });
+  const akeys = Object.keys(ab).sort();
+  repChart('rep-attgrowth-chart', {
+    type: 'bar',
+    data: { labels: akeys, datasets: [{ label: 'Attendance', data: akeys.map(k => ab[k]), backgroundColor: 'rgba(184,150,74,.6)', borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+  });
+}
+
+// ── Giving report ──
+async function repGiving() {
+  const year = document.getElementById('rep-giving-year').value;
+  const { data } = await db.reports.givingYear(ORG_ID, year);
+  const rows = data || [];
+  const total = rows.reduce((s,r) => s + Number(r.amount), 0);
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const monthTotal = rows.filter(r => r.given_date?.startsWith(thisMonth)).reduce((s,r) => s + Number(r.amount), 0);
+  const givers = new Set(rows.filter(r => r.member_id).map(r => r.member_id)).size;
+  document.getElementById('rep-giving-total').textContent  = fmtMoney(total, CURRENCY);
+  document.getElementById('rep-giving-month').textContent  = fmtMoney(monthTotal, CURRENCY);
+  document.getElementById('rep-giving-givers').textContent = fmtNum(givers);
+  // by month
+  const byMonth = new Array(12).fill(0);
+  rows.forEach(r => { const m = parseInt((r.given_date||'').slice(5,7),10) - 1; if (m>=0) byMonth[m] += Number(r.amount); });
+  repChart('rep-giving-month-chart', {
+    type: 'bar', data: { labels: MONTHS, datasets: [{ label: 'Giving', data: byMonth, backgroundColor: 'rgba(26,107,69,.55)', borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+  });
+  // by category
+  const byCat = {}; rows.forEach(r => { byCat[r.category] = (byCat[r.category]||0) + Number(r.amount); });
+  const cats = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  repChart('rep-giving-cat-chart', {
+    type: 'doughnut', data: { labels: cats.map(c => c[0]), datasets: [{ data: cats.map(c => c[1]), backgroundColor: ['#B8964A','#0F2340','#1A6B45','#8B1F1F','#C9A84C','#5DADE2','#9898e0','#E2C06A'] }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } },
+  });
+  document.getElementById('rep-giving-tbody').innerHTML = cats.map(([c,v]) =>
+    `<tr><td class="td-name">${c}</td><td style="font-weight:600;">${fmtMoney(v, CURRENCY)}</td><td>${total? Math.round(v/total*100):0}%</td></tr>`).join('')
+    || '<tr><td class="tbl-empty" colspan="3">No giving recorded</td></tr>';
+}
+
+// ── Spending report ──
+async function repSpending() {
+  const year = document.getElementById('rep-spend-year').value;
+  const { data } = await db.reports.expensesYear(ORG_ID, year);
+  const rows = data || [];
+  const total = rows.reduce((s,r) => s + Number(r.amount), 0);
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const monthTotal = rows.filter(r => r.expense_date?.startsWith(thisMonth)).reduce((s,r) => s + Number(r.amount), 0);
+  document.getElementById('rep-spend-total').textContent = fmtMoney(total, CURRENCY);
+  document.getElementById('rep-spend-month').textContent = fmtMoney(monthTotal, CURRENCY);
+  const byMonth = new Array(12).fill(0);
+  rows.forEach(r => { const m = parseInt((r.expense_date||'').slice(5,7),10) - 1; if (m>=0) byMonth[m] += Number(r.amount); });
+  repChart('rep-spend-month-chart', {
+    type: 'bar', data: { labels: MONTHS, datasets: [{ label: 'Spending', data: byMonth, backgroundColor: 'rgba(139,31,31,.55)', borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+  });
+  const byCat = {}; rows.forEach(r => { byCat[r.category] = (byCat[r.category]||0) + Number(r.amount); });
+  const cats = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  repChart('rep-spend-cat-chart', {
+    type: 'doughnut', data: { labels: cats.map(c => c[0]), datasets: [{ data: cats.map(c => c[1]), backgroundColor: ['#8B1F1F','#0F2340','#B8964A','#1A6B45','#C9A84C','#5DADE2','#9898e0','#E2C06A'] }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } },
+  });
+  document.getElementById('rep-spend-tbody').innerHTML = cats.map(([c,v]) =>
+    `<tr><td class="td-name">${c}</td><td style="font-weight:600;">${fmtMoney(v, CURRENCY)}</td><td>${total? Math.round(v/total*100):0}%</td></tr>`).join('')
+    || '<tr><td class="tbl-empty" colspan="3">No spending recorded</td></tr>';
+}
+
+// ── Groups report ──
+async function repGroups() {
+  const { data: groups } = await db.groups.list(ORG_ID);
+  const { data: meetings } = await db.summaries.groupMeetings(ORG_ID);
+  const meetByGroup = {};
+  (meetings || []).forEach(m => { (meetByGroup[m.group_name] = meetByGroup[m.group_name] || []).push(m); });
+  // member counts per group from cached members
+  const memberCounts = {};
+  allMembers.forEach(m => { if (m.group_name) memberCounts[m.group_name] = (memberCounts[m.group_name]||0) + 1; });
+  const names = new Set([...(groups||[]).map(g => g.name), ...Object.keys(meetByGroup), ...Object.keys(memberCounts)]);
+  document.getElementById('rep-groups-tbody').innerHTML = [...names].sort().map(name => {
+    const ms = meetByGroup[name] || [];
+    const avg = ms.length ? Math.round(ms.reduce((s,x) => s+Number(x.total_count),0) / ms.length) : 0;
+    const last = ms.length ? ms[0].summary_date : null;
+    return `<tr><td class="td-name">${name}</td><td>${fmtNum(memberCounts[name]||0)}</td><td>${ms.length}</td><td>${ms.length?fmtNum(avg):'—'}</td><td>${last?fmtDate(last):'—'}</td></tr>`;
+  }).join('') || '<tr><td class="tbl-empty" colspan="5">No groups yet</td></tr>';
+
+  buildTable(document.getElementById('rep-groupmeetings-tbody'), meetings || [], m => `
+    <td>${fmtDate(m.summary_date)}</td><td class="td-name">${m.group_name}</td>
+    <td style="font-weight:600;">${fmtNum(m.total_count)}</td><td>${fmtNum(m.male_count)}</td><td>${fmtNum(m.female_count)}</td>
+    <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteSummary('${m.id}')">Delete</button></td>`);
+}
+
+// ── Summary modal (service total OR group meeting) ──
+function openSummaryModal(mode) {
+  document.getElementById('attsummary-form').reset();
+  document.getElementById('as-id').value = '';
+  document.getElementById('as-mode').value = mode;
+  document.getElementById('as-date').value = mode === 'service' ? (document.getElementById('rep-att-date').value || today()) : today();
+  document.getElementById('as-title').textContent = mode === 'service' ? 'Record Service Total' : 'Record Group Meeting';
+  document.getElementById('as-type-wrap').style.display = mode === 'service' ? '' : 'none';
+  document.getElementById('as-group-wrap').style.display = mode === 'group' ? '' : 'none';
+  document.getElementById('as-type').innerHTML = listValues('service_types').map(t => `<option>${t}</option>`).join('');
+  if (mode === 'service') document.getElementById('as-type').value = document.getElementById('rep-att-type').value;
+  const groups = [...new Set(allMembers.map(m => m.group_name).filter(Boolean))];
+  document.getElementById('as-group').innerHTML = groups.map(g => `<option>${g}</option>`).join('') || '<option value="">(no groups)</option>';
+  openModal('modal-attsummary');
+}
+window.asRecalc = () => {
+  const m = +document.getElementById('as-male').value || 0;
+  const f = +document.getElementById('as-female').value || 0;
+  const c = +document.getElementById('as-children').value || 0;
+  if (m || f || c) document.getElementById('as-total').value = m + f + c;
+};
+function initSummaryForm() {
+  document.getElementById('attsummary-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const mode = document.getElementById('as-mode').value;
+    const data = {
+      org_id: ORG_ID,
+      summary_date: document.getElementById('as-date').value,
+      service_type: mode === 'group' ? 'Group Meeting' : document.getElementById('as-type').value,
+      group_name: mode === 'group' ? (document.getElementById('as-group').value || null) : null,
+      total_count: intOrNull('as-total') || 0,
+      male_count: intOrNull('as-male') || 0,
+      female_count: intOrNull('as-female') || 0,
+      children_count: intOrNull('as-children') || 0,
+      notes: document.getElementById('as-notes').value.trim() || null,
+    };
+    const { error } = await db.summaries.insert(data);
+    if (error) { toast(error.code === '23505' ? 'A total for that date/service already exists' : error.message, 'error'); return; }
+    toast('Saved', 'success');
+    closeModal('modal-attsummary');
+    repLoadTab(mode === 'group' ? 'groups' : 'attendance');
+  });
+}
+window.deleteSummary = async (id) => {
+  if (!confirm('Delete this record?')) return;
+  await db.summaries.delete(id);
+  const tab = document.querySelector('#report-tabs .tab-btn.active')?.dataset.rtab || 'attendance';
+  repLoadTab(tab);
+};
+
+// ── Member giving history ──
+window.viewMemberGiving = async (id) => {
+  const m = membersData.find(x => x.id === id) || allMembers.find(x => x.id === id);
+  document.getElementById('mg-title').textContent = m ? `Giving — ${m.first_name} ${m.last_name}` : 'Giving History';
+  const { data } = await db.reports.givingByMember(ORG_ID, id);
+  const rows = data || [];
+  const total = rows.reduce((s,r) => s + Number(r.amount), 0);
+  document.getElementById('mg-total').textContent = fmtMoney(total, CURRENCY);
+  document.getElementById('mg-count').textContent = fmtNum(rows.length);
+  document.getElementById('mg-tbody').innerHTML = rows.map(r =>
+    `<tr><td>${fmtDate(r.given_date)}</td><td>${r.category}</td><td>${r.payment_method}</td><td style="font-weight:600;">${fmtMoney(r.amount, CURRENCY)}</td></tr>`).join('')
+    || '<tr><td class="tbl-empty" colspan="4">No giving recorded</td></tr>';
+  openModal('modal-member-giving');
+};
+
 // ─── MEMBERS ──────────────────────────────────────────────────────────────────
 let membersData = [];
 async function loadMembers() {
@@ -313,6 +620,7 @@ function renderMembers() {
     <td>${m.phone || '—'}</td>
     <td>${fmtDate(m.date_joined)}</td>
     <td class="td-actions">
+      <button class="btn btn-ghost btn-sm" onclick="viewMemberGiving('${m.id}')">Giving</button>
       <button class="btn btn-ghost btn-sm" onclick="editMember('${m.id}')">Edit</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteMember('${m.id}')">Delete</button>
     </td>`);

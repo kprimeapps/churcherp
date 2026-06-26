@@ -5,7 +5,7 @@
 import { currentProfile } from './auth.js';
 
 export const ALL_PAGES = [
-  'page-dashboard','page-members','page-attendance','page-groups','page-giving',
+  'page-dashboard','page-reports','page-members','page-attendance','page-groups','page-giving',
   'page-volunteers','page-visitors','page-family','page-comms','page-events',
   'page-welfare','page-education','page-missions','page-scholarship',
   'page-expenses','page-budget','page-qr','page-settings',
@@ -32,11 +32,11 @@ const ROLE_ACCESS = {
   district_admin: '*', presbytery_admin: '*', national_admin: '*',
 
   // Generic staff: broad pastoral write, but no finance and no org settings edit.
-  staff: mk(GENERAL),
+  staff: mk(GENERAL, ['page-reports']),
 
   viewer: 'READ_ALL',
 
-  finance_team:         mk(FINANCE),
+  finance_team:         mk(FINANCE, ['page-reports']),
   usher:                { 'page-attendance': 'write' },  // kiosk: attendance only
   missions_coordinator: mk(['page-missions']),
   education_coordinator:mk(['page-education','page-scholarship']),
