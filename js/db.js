@@ -197,12 +197,12 @@ export const db = {
   reports: {
     givingByMember: (orgId, memberId) => supabase.from('giving').select('*')
       .eq('org_id', orgId).eq('member_id', memberId).order('given_date', { ascending: false }),
-    givingYear: (orgId, year) => supabase.from('giving')
-      .select('amount,category,given_date,member_id')
-      .eq('org_id', orgId).gte('given_date', `${year}-01-01`).lte('given_date', `${year}-12-31`),
-    expensesYear: (orgId, year) => supabase.from('expenses')
-      .select('amount,category,expense_date')
-      .eq('org_id', orgId).gte('expense_date', `${year}-01-01`).lte('expense_date', `${year}-12-31`),
+    givingRange: (orgId, start, end) => supabase.from('giving')
+      .select('amount,category,given_date,member_id,member_name,payment_method')
+      .eq('org_id', orgId).gte('given_date', start).lte('given_date', end),
+    expensesRange: (orgId, start, end) => supabase.from('expenses')
+      .select('amount,category,expense_date,title,vendor')
+      .eq('org_id', orgId).gte('expense_date', start).lte('expense_date', end),
     membersJoined: (orgId) => supabase.from('members')
       .select('date_joined,created_at').eq('org_id', orgId),
     attendanceRange: (orgId, start, end) => supabase.from('attendance')

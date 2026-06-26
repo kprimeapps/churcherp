@@ -268,6 +268,14 @@ function lastSunday() {
   const d = new Date(); d.setDate(d.getDate() - d.getDay());
   return d.toISOString().slice(0, 10);
 }
+const repStore = {};   // holds last-computed report data for CSV export
+function downloadCSV(filename, headers, rows) {
+  const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const csv = [headers, ...rows].map(r => r.map(esc).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = filename; a.click();
+}
 
 let reportsInit = false;
 async function loadReports() {
@@ -299,12 +307,16 @@ async function loadReports() {
     document.getElementById('rep-summary-btn').style.display = canRecord ? '' : 'none';
     document.getElementById('rep-group-meeting-btn').style.display = canRecord ? '' : 'none';
     document.getElementById('rep-growth-period').addEventListener('change', repGrowth);
-    // Year selectors
-    const yrs = [0,1,2].map(i => new Date().getFullYear() - i);
-    document.getElementById('rep-giving-year').innerHTML = yrs.map(y => `<option>${y}</option>`).join('');
-    document.getElementById('rep-spend-year').innerHTML = yrs.map(y => `<option>${y}</option>`).join('');
-    document.getElementById('rep-giving-year').addEventListener('change', repGiving);
-    document.getElementById('rep-spend-year').addEventListener('change', repSpending);
+    // Date ranges (default: Jan 1 this year → today)
+    const yStart = `${new Date().getFullYear()}-01-01`, todayStr = today();
+    ['rep-giving-start','rep-spend-start'].forEach(id => document.getElementById(id).value = yStart);
+    ['rep-giving-end','rep-spend-end'].forEach(id => document.getElementById(id).value = todayStr);
+    document.getElementById('rep-giving-apply').onclick = repGiving;
+    document.getElementById('rep-spend-apply').onclick = repSpending;
+    document.getElementById('rep-giving-csv').onclick = exportGivingCSV;
+    document.getElementById('rep-spend-csv').onclick = exportSpendingCSV;
+    document.getElementById('rep-att-csv').onclick = exportAttendanceCSV;
+    document.getElementById('rep-groups-csv').onclick = exportGroupsCSV;
     initSummaryForm();
   }
   repLoadTab('attendance');
@@ -339,6 +351,9 @@ async function repAttendance() {
     .reduce((sum, s) => sum + Number(s.total_count), 0);
   const recordedTotal = present.size + guestCount + manualTotal;
 
+  repStore.attendance = { date, type,
+    present: [...present.values()].sort(),
+    absent: absent.map(m => `${m.first_name} ${m.last_name}`) };
   document.getElementById('rep-att-present').textContent = fmtNum(present.size);
   document.getElementById('rep-att-absent').textContent  = fmtNum(absent.length);
   document.getElementById('rep-att-total').textContent   = fmtNum(recordedTotal);
@@ -415,11 +430,22 @@ async function repGrowth() {
   });
 }
 
+// month label list spanning a date range, e.g. ["2026-01", ...]
+function monthKeys(start, end) {
+  const keys = []; const d = new Date(start.slice(0,7) + '-01');
+  const last = new Date(end.slice(0,7) + '-01');
+  while (d <= last) { keys.push(d.toISOString().slice(0,7)); d.setMonth(d.getMonth() + 1); }
+  return keys;
+}
+
 // ── Giving report ──
 async function repGiving() {
-  const year = document.getElementById('rep-giving-year').value;
-  const { data } = await db.reports.givingYear(ORG_ID, year);
+  const start = document.getElementById('rep-giving-start').value;
+  const end   = document.getElementById('rep-giving-end').value;
+  if (!start || !end) return;
+  const { data } = await db.reports.givingRange(ORG_ID, start, end);
   const rows = data || [];
+  repStore.giving = { rows, start, end };
   const total = rows.reduce((s,r) => s + Number(r.amount), 0);
   const thisMonth = new Date().toISOString().slice(0,7);
   const monthTotal = rows.filter(r => r.given_date?.startsWith(thisMonth)).reduce((s,r) => s + Number(r.amount), 0);
@@ -427,16 +453,18 @@ async function repGiving() {
   document.getElementById('rep-giving-total').textContent  = fmtMoney(total, CURRENCY);
   document.getElementById('rep-giving-month').textContent  = fmtMoney(monthTotal, CURRENCY);
   document.getElementById('rep-giving-givers').textContent = fmtNum(givers);
-  // by month
-  const byMonth = new Array(12).fill(0);
-  rows.forEach(r => { const m = parseInt((r.given_date||'').slice(5,7),10) - 1; if (m>=0) byMonth[m] += Number(r.amount); });
+  // by month (across range)
+  const mk = monthKeys(start, end), byMonth = {};
+  mk.forEach(k => byMonth[k] = 0);
+  rows.forEach(r => { const k = (r.given_date||'').slice(0,7); if (k in byMonth) byMonth[k] += Number(r.amount); });
   repChart('rep-giving-month-chart', {
-    type: 'bar', data: { labels: MONTHS, datasets: [{ label: 'Giving', data: byMonth, backgroundColor: 'rgba(26,107,69,.55)', borderRadius: 4 }] },
+    type: 'bar', data: { labels: mk.map(k => `${MONTHS[+k.slice(5,7)-1]} ${k.slice(2,4)}`), datasets: [{ label: 'Giving', data: mk.map(k => byMonth[k]), backgroundColor: 'rgba(26,107,69,.55)', borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
   });
   // by category
   const byCat = {}; rows.forEach(r => { byCat[r.category] = (byCat[r.category]||0) + Number(r.amount); });
   const cats = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  repStore.givingCats = cats; repStore.givingTotal = total;
   repChart('rep-giving-cat-chart', {
     type: 'doughnut', data: { labels: cats.map(c => c[0]), datasets: [{ data: cats.map(c => c[1]), backgroundColor: ['#B8964A','#0F2340','#1A6B45','#8B1F1F','#C9A84C','#5DADE2','#9898e0','#E2C06A'] }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } },
@@ -445,21 +473,32 @@ async function repGiving() {
     `<tr><td class="td-name">${c}</td><td style="font-weight:600;">${fmtMoney(v, CURRENCY)}</td><td>${total? Math.round(v/total*100):0}%</td></tr>`).join('')
     || '<tr><td class="tbl-empty" colspan="3">No giving recorded</td></tr>';
 }
+function exportGivingCSV() {
+  const g = repStore.giving; if (!g) return;
+  downloadCSV(`giving_${g.start}_to_${g.end}.csv`,
+    ['Date','Member','Category','Method','Amount'],
+    g.rows.sort((a,b)=>(a.given_date||'').localeCompare(b.given_date||''))
+      .map(r => [r.given_date, r.member_name || '', r.category, r.payment_method, r.amount]));
+}
 
 // ── Spending report ──
 async function repSpending() {
-  const year = document.getElementById('rep-spend-year').value;
-  const { data } = await db.reports.expensesYear(ORG_ID, year);
+  const start = document.getElementById('rep-spend-start').value;
+  const end   = document.getElementById('rep-spend-end').value;
+  if (!start || !end) return;
+  const { data } = await db.reports.expensesRange(ORG_ID, start, end);
   const rows = data || [];
+  repStore.spending = { rows, start, end };
   const total = rows.reduce((s,r) => s + Number(r.amount), 0);
   const thisMonth = new Date().toISOString().slice(0,7);
   const monthTotal = rows.filter(r => r.expense_date?.startsWith(thisMonth)).reduce((s,r) => s + Number(r.amount), 0);
   document.getElementById('rep-spend-total').textContent = fmtMoney(total, CURRENCY);
   document.getElementById('rep-spend-month').textContent = fmtMoney(monthTotal, CURRENCY);
-  const byMonth = new Array(12).fill(0);
-  rows.forEach(r => { const m = parseInt((r.expense_date||'').slice(5,7),10) - 1; if (m>=0) byMonth[m] += Number(r.amount); });
+  const mk = monthKeys(start, end), byMonth = {};
+  mk.forEach(k => byMonth[k] = 0);
+  rows.forEach(r => { const k = (r.expense_date||'').slice(0,7); if (k in byMonth) byMonth[k] += Number(r.amount); });
   repChart('rep-spend-month-chart', {
-    type: 'bar', data: { labels: MONTHS, datasets: [{ label: 'Spending', data: byMonth, backgroundColor: 'rgba(139,31,31,.55)', borderRadius: 4 }] },
+    type: 'bar', data: { labels: mk.map(k => `${MONTHS[+k.slice(5,7)-1]} ${k.slice(2,4)}`), datasets: [{ label: 'Spending', data: mk.map(k => byMonth[k]), backgroundColor: 'rgba(139,31,31,.55)', borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
   });
   const byCat = {}; rows.forEach(r => { byCat[r.category] = (byCat[r.category]||0) + Number(r.amount); });
@@ -471,6 +510,13 @@ async function repSpending() {
   document.getElementById('rep-spend-tbody').innerHTML = cats.map(([c,v]) =>
     `<tr><td class="td-name">${c}</td><td style="font-weight:600;">${fmtMoney(v, CURRENCY)}</td><td>${total? Math.round(v/total*100):0}%</td></tr>`).join('')
     || '<tr><td class="tbl-empty" colspan="3">No spending recorded</td></tr>';
+}
+function exportSpendingCSV() {
+  const g = repStore.spending; if (!g) return;
+  downloadCSV(`spending_${g.start}_to_${g.end}.csv`,
+    ['Date','Title','Category','Vendor','Amount'],
+    g.rows.sort((a,b)=>(a.expense_date||'').localeCompare(b.expense_date||''))
+      .map(r => [r.expense_date, r.title || '', r.category, r.vendor || '', r.amount]));
 }
 
 // ── Groups report ──
@@ -494,6 +540,25 @@ async function repGroups() {
     <td>${fmtDate(m.summary_date)}</td><td class="td-name">${m.group_name}</td>
     <td style="font-weight:600;">${fmtNum(m.total_count)}</td><td>${fmtNum(m.male_count)}</td><td>${fmtNum(m.female_count)}</td>
     <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteSummary('${m.id}')">Delete</button></td>`);
+
+  repStore.groups = { names: [...names], meetByGroup, memberCounts, meetings: meetings || [] };
+}
+
+function exportAttendanceCSV() {
+  const a = repStore.attendance; if (!a) return;
+  const rows = [];
+  a.present.forEach(n => rows.push([n, 'Present']));
+  a.absent.forEach(n => rows.push([n, 'Absent']));
+  downloadCSV(`attendance_${a.type}_${a.date}.csv`.replace(/\s+/g,'-'), ['Member','Status'], rows);
+}
+function exportGroupsCSV() {
+  const g = repStore.groups; if (!g) return;
+  const rows = g.names.sort().map(name => {
+    const ms = g.meetByGroup[name] || [];
+    const avg = ms.length ? Math.round(ms.reduce((s,x) => s+Number(x.total_count),0) / ms.length) : '';
+    return [name, g.memberCounts[name]||0, ms.length, avg, ms.length ? ms[0].summary_date : ''];
+  });
+  downloadCSV('group_statistics.csv', ['Group','Members','Meetings','Avg attendance','Last meeting'], rows);
 }
 
 // ── Summary modal (service total OR group meeting) ──

@@ -166,6 +166,7 @@
         <input type="date" id="rep-att-date" class="form-control" style="width:auto;min-height:40px;"/>
         <select id="rep-att-type" class="form-control" style="width:auto;min-height:40px;"></select>
         <button class="btn btn-outline btn-sm" id="rep-att-refresh">Refresh</button>
+        <button class="btn btn-outline btn-sm" id="rep-att-csv">⬇ CSV</button>
         <button class="btn btn-primary btn-sm" id="rep-summary-btn">+ Record Service Total</button>
       </div>
       <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">
@@ -200,8 +201,11 @@
 
     <!-- GIVING REPORT -->
     <div class="rtab" id="rtab-giving" style="display:none;">
-      <div class="page-actions" style="margin-bottom:1rem;">
-        <select id="rep-giving-year" class="form-control" style="width:auto;min-height:40px;"></select>
+      <div class="page-actions" style="margin-bottom:1rem;flex-wrap:wrap;">
+        <label class="text-sm text-muted">From</label><input type="date" id="rep-giving-start" class="form-control" style="width:auto;min-height:40px;"/>
+        <label class="text-sm text-muted">To</label><input type="date" id="rep-giving-end" class="form-control" style="width:auto;min-height:40px;"/>
+        <button class="btn btn-outline btn-sm" id="rep-giving-apply">Apply</button>
+        <button class="btn btn-outline btn-sm" id="rep-giving-csv">⬇ CSV</button>
       </div>
       <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">
         <div class="stat-card"><div class="stat-card-label">Total (year)</div><div class="stat-card-value" id="rep-giving-total">—</div></div>
@@ -217,8 +221,11 @@
 
     <!-- SPENDING REPORT -->
     <div class="rtab" id="rtab-spending" style="display:none;">
-      <div class="page-actions" style="margin-bottom:1rem;">
-        <select id="rep-spend-year" class="form-control" style="width:auto;min-height:40px;"></select>
+      <div class="page-actions" style="margin-bottom:1rem;flex-wrap:wrap;">
+        <label class="text-sm text-muted">From</label><input type="date" id="rep-spend-start" class="form-control" style="width:auto;min-height:40px;"/>
+        <label class="text-sm text-muted">To</label><input type="date" id="rep-spend-end" class="form-control" style="width:auto;min-height:40px;"/>
+        <button class="btn btn-outline btn-sm" id="rep-spend-apply">Apply</button>
+        <button class="btn btn-outline btn-sm" id="rep-spend-csv">⬇ CSV</button>
       </div>
       <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:1.25rem;">
         <div class="stat-card"><div class="stat-card-label">Total Spending (year)</div><div class="stat-card-value" id="rep-spend-total">—</div></div>
@@ -234,6 +241,7 @@
     <!-- GROUPS REPORT -->
     <div class="rtab" id="rtab-groups" style="display:none;">
       <div class="page-actions" style="margin-bottom:1rem;">
+        <button class="btn btn-outline btn-sm" id="rep-groups-csv">⬇ CSV</button>
         <button class="btn btn-primary btn-sm" id="rep-group-meeting-btn">+ Record Group Meeting</button>
       </div>
       <div class="card" style="margin-bottom:1.25rem;">
