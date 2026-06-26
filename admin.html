@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ChurchOS — Platform Admin</title>
+<link rel="stylesheet" href="/css/theme.css"/>
+<style>
+  body { background: var(--cream); min-height: 100vh; padding: 1.5rem; }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  .admin-head { display:flex; align-items:center; gap:.6rem; margin-bottom:1.5rem; }
+  .admin-logo { width:40px; height:40px; background:var(--navy); color:var(--gold); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; }
+  .pill { font-size:.72rem; padding:.15rem .55rem; border-radius:999px; text-transform:capitalize; }
+  .pill.free { background:var(--cream3); color:var(--ink2); }
+  .pill.starter { background:rgba(184,150,74,.18); color:var(--gold-dark); }
+  .pill.pro { background:rgba(26,107,69,.15); color:#1A6B45; }
+  .req { color:#8B1F1F; font-weight:600; font-size:.78rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="admin-head">
+    <div class="admin-logo">⛯</div>
+    <div><h2 style="margin:0;">Platform Admin</h2><p class="text-sm text-muted" style="margin:0;">Manage organization plans</p></div>
+    <button class="btn btn-outline btn-sm" id="signout" style="margin-left:auto;">Sign out</button>
+  </div>
+
+  <div id="gate" class="card" style="text-align:center;padding:2rem;">
+    <div class="spinner" style="margin:0 auto 1rem;"></div>
+    <div class="text-muted">Checking access…</div>
+  </div>
+
+  <div id="console" style="display:none;">
+    <div class="card" style="margin-bottom:1rem;">
+      <input type="text" id="search" class="form-control" placeholder="Search by church name or slug…"/>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap"><table class="dtable">
+        <thead><tr><th>Church</th><th>Slug</th><th>Members</th><th>Plan</th><th>Requested</th><th>Set plan</th></tr></thead>
+        <tbody id="orgs-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script type="module">
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '/js/config.js';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+let orgs = [];
+
+$('signout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = '/index.html'; });
+
+(async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = '/index.html'; return; }
+  const { data: isAdmin, error } = await sb.rpc('is_super_admin');
+  if (error || !isAdmin) {
+    $('gate').innerHTML = '<h3 style="margin-bottom:.5rem;">Not authorized</h3><p class="text-muted">This area is for the platform owner only.</p>';
+    return;
+  }
+  $('gate').style.display = 'none';
+  $('console').style.display = '';
+  await loadOrgs();
+  $('search').addEventListener('input', render);
+})();
+
+async function loadOrgs() {
+  const { data, error } = await sb.rpc('admin_list_orgs');
+  if (error) { $('orgs-tbody').innerHTML = `<tr><td colspan="6">${error.message}</td></tr>`; return; }
+  orgs = data || [];
+  render();
+}
+
+function render() {
+  const q = $('search').value.toLowerCase();
+  const rows = orgs.filter(o => !q || (o.name||'').toLowerCase().includes(q) || (o.slug||'').toLowerCase().includes(q));
+  $('orgs-tbody').innerHTML = rows.map(o => `
+    <tr>
+      <td class="td-name">${o.name||'—'}</td>
+      <td class="mono text-sm">${o.slug}</td>
+      <td>${o.member_count}</td>
+      <td><span class="pill ${o.plan}">${o.plan}</span></td>
+      <td>${o.requested_plan ? `<span class="req">⚑ ${o.requested_plan}</span>` : '—'}</td>
+      <td>
+        <select onchange="setPlan('${o.id}', this.value)" class="form-control" style="width:auto;min-height:34px;font-size:.8rem;padding:.2rem .5rem;">
+          ${['free','starter','pro','enterprise'].map(p => `<option value="${p}"${o.plan===p?' selected':''}>${p}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="6" class="tbl-empty">No organizations</td></tr>';
+}
+
+window.setPlan = async (orgId, plan) => {
+  const { error } = await sb.rpc('admin_set_plan', { p_org_id: orgId, p_plan: plan });
+  if (error) { alert(error.message); return; }
+  await loadOrgs();
+};
+</script>
+</body>
+</html>
