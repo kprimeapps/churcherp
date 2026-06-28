@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Confirm Your Church Details</title>
+<link rel="stylesheet" href="/css/theme.css"/>
+<style>
+  body { background: var(--navy); min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 1.5rem 1rem; }
+  .shell { width: 100%; max-width: 480px; }
+  .card  { background: #fff; border-radius: var(--rxl); padding: 1.75rem; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .brand { display:flex; align-items:center; gap:.6rem; margin-bottom:1.25rem; }
+  .brand-icon { width:38px; height:38px; background:var(--gold); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; }
+  .brand-name { font-family:'Playfair Display',serif; font-weight:700; }
+  .brand-sub { font-size:.72rem; color:var(--ink3); }
+  .result-row { display:flex; align-items:center; gap:.6rem; padding:.65rem .75rem; border:1px solid var(--cream3); border-radius:8px; margin-bottom:.5rem; cursor:pointer; }
+  .result-row:hover { border-color:var(--gold); background:var(--cream2); }
+  .empty-flag { border-color:var(--gold) !important; box-shadow:0 0 0 2px rgba(184,150,74,.15); }
+  .hint { font-size:.72rem; color:var(--ink3); }
+  .confirmed-badge { background:rgba(26,107,69,.12); color:#1A6B45; font-size:.72rem; padding:.15rem .5rem; border-radius:999px; }
+  textarea.form-control { min-height:70px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="card">
+    <div class="brand">
+      <div class="brand-icon">⛪</div>
+      <div><div class="brand-name" id="church-name">Church</div><div class="brand-sub">Confirm your membership details</div></div>
+    </div>
+
+    <!-- Search -->
+    <div id="search-screen">
+      <p class="text-sm text-muted" style="margin-bottom:1rem;">Enter your <strong>membership number</strong> (e.g. MIPC1558) or <strong>phone number</strong> to find and confirm your details.</p>
+      <div class="form-group">
+        <input type="text" id="q" class="form-control" placeholder="MIPC1558 or 0244…" autocomplete="off"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" id="search-btn">Find My Record →</button>
+      <div id="results" style="margin-top:1rem;"></div>
+    </div>
+
+    <!-- Edit -->
+    <div id="edit-screen" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+        <div class="hint">Membership #: <strong id="ed-mno">—</strong></div>
+        <span id="ed-confirmed" class="confirmed-badge" style="display:none;">✓ Confirmed</span>
+      </div>
+      <p class="hint" style="margin-bottom:1rem;">Please review and correct anything wrong, and fill any blank fields (highlighted). Then confirm.</p>
+      <form id="edit-form">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">First Name</label><input type="text" id="f-first" class="form-control"/></div>
+          <div class="form-group"><label class="form-label">Surname</label><input type="text" id="f-last" class="form-control"/></div>
+        </div>
+        <div class="form-group"><label class="form-label">Other Names</label><input type="text" id="f-other" class="form-control"/></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Phone</label><input type="tel" id="f-phone" class="form-control"/></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" id="f-email" class="form-control"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Gender</label>
+            <select id="f-gender" class="form-control"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" id="f-dob" class="form-control"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Marital Status</label>
+            <select id="f-marital" class="form-control"><option value="">—</option><option>Single</option><option>Married</option><option>Widowed</option><option>Divorced</option><option>Separated</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Profession</label><input type="text" id="f-occupation" class="form-control"/></div>
+        </div>
+        <div class="form-group"><label class="form-label">Employment</label><input type="text" id="f-employment" class="form-control" placeholder="e.g. Active (Self-employed)"/></div>
+        <div class="form-group"><label class="form-label">Residence (area)</label><input type="text" id="f-residence" class="form-control" placeholder="e.g. Abokobi"/></div>
+        <div class="form-group"><label class="form-label">Detailed Residence <span class="hint">(house no., street, landmark)</span></label><textarea id="f-detail" class="form-control" placeholder="House number, street, nearest landmark…"></textarea></div>
+        <div style="display:flex;gap:.6rem;margin-top:.5rem;">
+          <button type="button" class="btn btn-outline" id="back-btn">← Back</button>
+          <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;" id="save-btn">Confirm &amp; Save</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Done -->
+    <div id="done-screen" style="display:none;text-align:center;padding:1rem 0;">
+      <div style="font-size:2.5rem;margin-bottom:.5rem;">✅</div>
+      <h2 class="serif" style="margin-bottom:.35rem;">Thank you!</h2>
+      <p class="text-sm text-muted" style="margin-bottom:1.25rem;">Your details have been confirmed and updated.</p>
+      <button class="btn btn-outline" id="another-btn">Confirm another record</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script type="module">
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../../js/config.js';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const slug = new URLSearchParams(location.search).get('org') || '';
+let current = null;
+
+if (!slug) { $('church-name').textContent = 'Missing ?org='; }
+else sb.rpc('get_org_by_slug', { p_slug: slug }).maybeSingle().then(({ data }) => {
+  if (data) $('church-name').textContent = data.name;
+});
+
+$('search-btn').addEventListener('click', search);
+$('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+
+async function search() {
+  const q = $('q').value.trim();
+  if (!q) return;
+  const btn = $('search-btn'); btn.disabled = true; btn.textContent = 'Searching…';
+  const { data, error } = await sb.rpc('confirm_find_member', { p_slug: slug, p_query: q });
+  btn.disabled = false; btn.textContent = 'Find My Record →';
+  if (error) { alert(error.message); return; }
+  const box = $('results');
+  if (!data || !data.length) { box.innerHTML = '<p class="hint">No record found. Check your membership number or phone, or contact your church office.</p>'; return; }
+  box.innerHTML = data.map((m, i) => `
+    <div class="result-row" data-i="${i}">
+      <div style="flex:1;">
+        <div style="font-weight:600;">${m.first_name||''} ${m.last_name||''}</div>
+        <div class="hint">${m.membership_no||''} · ${m.phone||'no phone'} ${m.member_confirmed?'· ✓ confirmed':''}</div>
+      </div><span style="color:var(--gold);">Edit →</span>
+    </div>`).join('');
+  box.querySelectorAll('.result-row').forEach(row =>
+    row.addEventListener('click', () => openEdit(data[+row.dataset.i])));
+}
+
+function val(id){ const v=$(id).value.trim(); return v || null; }
+function flag(id, empty){ $(id).classList.toggle('empty-flag', empty); }
+
+function openEdit(m) {
+  current = m;
+  $('search-screen').style.display = 'none';
+  $('edit-screen').style.display = '';
+  $('ed-mno').textContent = m.membership_no || '—';
+  $('ed-confirmed').style.display = m.member_confirmed ? '' : 'none';
+  $('f-first').value = m.first_name || '';
+  $('f-last').value = m.last_name || '';
+  $('f-other').value = m.other_names || '';
+  $('f-phone').value = m.phone || '';
+  $('f-email').value = m.email || '';
+  $('f-gender').value = m.gender || '';
+  $('f-dob').value = m.date_of_birth || '';
+  $('f-marital').value = m.marital_status || '';
+  $('f-occupation').value = m.occupation || '';
+  $('f-employment').value = m.employment_type || '';
+  $('f-residence').value = m.residence || '';
+  $('f-detail').value = m.detailed_residence || '';
+  // highlight blanks worth filling
+  flag('f-phone', !m.phone); flag('f-residence', !m.residence);
+  flag('f-detail', !m.detailed_residence); flag('f-dob', !m.date_of_birth);
+}
+
+$('back-btn').addEventListener('click', () => {
+  $('edit-screen').style.display = 'none';
+  $('search-screen').style.display = '';
+});
+
+$('edit-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('save-btn'); btn.disabled = true; btn.textContent = 'Saving…';
+  const data = {
+    first_name: val('f-first'), last_name: val('f-last'), other_names: val('f-other'),
+    phone: val('f-phone'), email: val('f-email'), gender: val('f-gender'),
+    date_of_birth: val('f-dob') || '', marital_status: val('f-marital'),
+    occupation: val('f-occupation'), employment_type: val('f-employment'),
+    residence: val('f-residence'), detailed_residence: val('f-detail'),
+  };
+  const { error } = await sb.rpc('confirm_update_member', { p_id: current.id, p_slug: slug, p_data: data });
+  btn.disabled = false; btn.textContent = 'Confirm & Save';
+  if (error) { alert(error.message); return; }
+  $('edit-screen').style.display = 'none';
+  $('done-screen').style.display = '';
+});
+
+$('another-btn').addEventListener('click', () => {
+  $('done-screen').style.display = 'none';
+  $('search-screen').style.display = '';
+  $('q').value = ''; $('results').innerHTML = '';
+});
+</script>
+</body>
+</html>
