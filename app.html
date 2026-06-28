@@ -903,6 +903,7 @@
       <div class="page-header-left"><h2>QR Check-In</h2><p>Manage QR self-registrations &amp; live check-ins</p></div>
       <div class="page-actions">
         <button class="btn btn-outline btn-sm" id="qr-copy-link">Copy QR Link</button>
+        <button class="btn btn-outline btn-sm" id="qr-link-members">Match to Members</button>
         <a id="qr-open-link" href="#" target="_blank" class="btn btn-navy btn-sm">Open QR Page ↗</a>
       </div>
     </div>
@@ -1059,6 +1060,16 @@
       <div class="form-row">
         <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" id="mf-dob" class="form-control"/></div>
         <div class="form-group"><label class="form-label">Date Joined</label><input type="date" id="mf-joined" class="form-control"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Other Names</label><input type="text" id="mf-other" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Marital Status</label>
+          <select id="mf-marital" class="form-control"><option value="">—</option><option>Single</option><option>Married</option><option>Widowed</option><option>Divorced</option><option>Separated</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Residence (area)</label><input type="text" id="mf-residence" class="form-control"/></div>
+        <div class="form-group"><label class="form-label">Detailed Residence</label><input type="text" id="mf-detail" class="form-control"/></div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><textarea id="mf-notes" class="form-control" rows="2"></textarea></div>
       <!-- Employment -->

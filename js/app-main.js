@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b21 · plan banner';
+const APP_BUILD = 'b22 · member migration';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -731,6 +731,10 @@ function openMemberModal(m = null) {
   document.getElementById('mf-dob').value      = m?.date_of_birth || '';
   document.getElementById('mf-joined').value   = m?.date_joined || '';
   document.getElementById('mf-notes').value    = m?.notes || '';
+  document.getElementById('mf-other').value    = m?.other_names || '';
+  document.getElementById('mf-marital').value  = m?.marital_status || '';
+  document.getElementById('mf-residence').value= m?.residence || '';
+  document.getElementById('mf-detail').value   = m?.detailed_residence || '';
   // Employment
   document.getElementById('mf-occupation').value  = m?.occupation || '';
   document.getElementById('mf-employer').value    = m?.employer || '';
@@ -1893,6 +1897,11 @@ function initQRPage() {
   document.getElementById('qr-copy-link')?.addEventListener('click', () => {
     navigator.clipboard.writeText(link).then(() => toast('Link copied!', 'success'));
   });
+  document.getElementById('qr-link-members')?.addEventListener('click', async () => {
+    const { data, error } = await db.qrRegs.linkToMembers(ORG_ID);
+    if (error) { toast(error.message, 'error'); return; }
+    toast(`Linked ${data ?? 0} QR registration(s) to members`, 'success');
+  });
 }
 
 async function loadQRPage() {
@@ -2146,6 +2155,10 @@ function initFormHandlers() {
       date_of_birth:      document.getElementById('mf-dob').value || null,
       date_joined:        document.getElementById('mf-joined').value || null,
       notes:              document.getElementById('mf-notes').value.trim() || null,
+      other_names:        document.getElementById('mf-other').value.trim() || null,
+      marital_status:     document.getElementById('mf-marital').value || null,
+      residence:          document.getElementById('mf-residence').value.trim() || null,
+      detailed_residence: document.getElementById('mf-detail').value.trim() || null,
       occupation:         document.getElementById('mf-occupation').value.trim() || null,
       employer:           document.getElementById('mf-employer').value.trim() || null,
       employment_type:    document.getElementById('mf-emp-type').value || null,

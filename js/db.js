@@ -227,6 +227,7 @@ export const db = {
     list: (orgId, imported = false) =>
       supabase.from('qr_registrations').select('*').eq('org_id', orgId).eq('imported', imported).order('created_at', { ascending: false }),
     import: (regId, orgId) => supabase.rpc('import_qr_registration', { p_reg_id: regId, p_org_id: orgId }),
+    linkToMembers: (orgId) => supabase.rpc('link_qr_registrations', { p_org_id: orgId }),
   },
 
   // Giving
