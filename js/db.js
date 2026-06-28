@@ -205,6 +205,13 @@ export const db = {
       .eq('org_id', orgId).gte('expense_date', start).lte('expense_date', end),
     membersJoined: (orgId) => supabase.from('members')
       .select('date_joined,created_at').eq('org_id', orgId),
+    verifyCounts: async (orgId) => {
+      const total = await supabase.from('members').select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId).eq('is_active', true);
+      const verified = await supabase.from('members').select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId).eq('is_active', true).eq('member_confirmed', true);
+      return { total: total.count || 0, verified: verified.count || 0 };
+    },
     attendanceRange: (orgId, start, end) => supabase.from('attendance')
       .select('service_date,service_type,member_id').eq('org_id', orgId)
       .gte('service_date', start).lte('service_date', end),

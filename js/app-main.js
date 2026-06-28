@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b23 · verify flag';
+const APP_BUILD = 'b24 · verify progress';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -241,6 +241,18 @@ async function loadDashboard() {
     db.attendance.trend(ORG_ID),
     db.giving.summary(ORG_ID),
   ]);
+
+  // Member verification progress (show during a confirmation drive)
+  db.reports.verifyCounts(ORG_ID).then(({ total, verified }) => {
+    const card = document.getElementById('dash-verify-card');
+    if (!card) return;
+    if (!total) { card.style.display = 'none'; return; }
+    const pct = Math.round(verified / total * 100);
+    card.style.display = verified < total ? '' : 'none';   // hide once all verified
+    document.getElementById('dash-verify-bar').style.width = pct + '%';
+    document.getElementById('dash-verify-label').textContent =
+      `${fmtNum(verified)} of ${fmtNum(total)} verified (${pct}%)`;
+  });
 
   if (stats) {
     document.getElementById('ds-members').textContent  = fmtNum(stats.total_members);

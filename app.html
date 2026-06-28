@@ -145,6 +145,18 @@
       <div class="stat-card"><div class="stat-card-label">Pending Welfare</div><div class="stat-card-value" id="ds-welfare">—</div><div class="stat-card-sub">Cases</div></div>
       <div class="stat-card"><div class="stat-card-label">QR Pending Import</div><div class="stat-card-value" id="ds-qrpending">—</div><div class="stat-card-sub"><a href="#" data-page="page-qr" style="color:var(--gold-dark)">Review →</a></div></div>
     </div>
+
+    <!-- Member verification progress (shown during a confirmation drive) -->
+    <div class="card" id="dash-verify-card" style="display:none;margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem;">
+        <div><strong>Member data verification</strong> <span class="text-sm text-muted" id="dash-verify-label"></span></div>
+        <a href="#" data-page="page-members" style="font-size:.8rem;color:var(--gold-dark);">Review unverified →</a>
+      </div>
+      <div style="height:10px;background:var(--cream3);border-radius:6px;overflow:hidden;">
+        <div id="dash-verify-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--gold),#1A6B45);transition:width .5s;"></div>
+      </div>
+    </div>
+
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;">
       <div class="chart-card">
         <div class="chart-card-header"><span class="chart-card-title">Sunday Attendance Trend</span></div>
