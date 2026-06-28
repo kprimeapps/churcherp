@@ -7,7 +7,7 @@ begin
   if v_org is null then raise exception 'Org not found — set the correct slug'; end if;
   insert into members (org_id, membership_no, last_name, first_name, other_names,
     date_of_birth, marital_status, occupation, employment_type, gender, residence,
-    detailed_residence, phone, communicant, baptised, is_active, email, date_joined, role)
+    detailed_residence, phone, communicant, baptised, is_active, email, date_joined)
   values
     (v_org, 'MIPC53', 'Dawutey', 'Gladys', null, '1974-04-03', 'Widowed', 'Trader', 'Unemployed (N/A)', 'Female', null, null, '0205888790', true, false, true, null, '2010-08-08'),
     (v_org, 'MIPC1558', 'Acquah', 'Juliet', null, '1990-05-16', 'Single', 'Fashion Designer', 'Active (Selfemployed)', 'Female', 'Abokobi', 'P.N.P-Pantang', '0543228028', true, true, true, 'aquah@gmail.com', '2017-12-19'),
