@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b22 · member migration';
+const APP_BUILD = 'b23 · verify flag';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -669,6 +669,8 @@ async function loadMembers() {
     renderMembers();
   }, 350));
 
+  document.getElementById('members-verify-filter').addEventListener('change', renderMembers);
+
   // Add button
   document.getElementById('member-add-btn').onclick = () => openMemberModal();
 
@@ -694,14 +696,18 @@ async function loadMembers() {
 function renderMembers() {
   const search = document.getElementById('members-search')?.value?.toLowerCase() || '';
   const group  = document.getElementById('members-group-filter')?.value || '';
+  const verify = document.getElementById('members-verify-filter')?.value || '';
   let rows = membersData;
   if (search) rows = rows.filter(m => `${m.first_name} ${m.last_name} ${m.phone||''} ${m.membership_no||''}`.toLowerCase().includes(search));
   if (group)  rows = rows.filter(m => m.group_name === group);
+  if (verify === 'verified')   rows = rows.filter(m => m.member_confirmed);
+  if (verify === 'unverified') rows = rows.filter(m => !m.member_confirmed);
 
   buildTable(document.getElementById('members-tbody'), rows, m => `
     <td><div style="display:flex;align-items:center;gap:.6rem;">
       <div class="member-photo">${initials(m.first_name, m.last_name)}</div>
       <span class="td-name">${m.first_name} ${m.last_name}</span>
+      ${m.member_confirmed ? '' : '<span class="badge badge-gold" title="Not yet verified">⚠ Unverified</span>'}
     </div></td>
     <td>${m.membership_no || '—'}</td>
     <td>${m.group_name ? `<span class="badge badge-gold">${m.group_name}</span>` : '—'}</td>
@@ -714,7 +720,10 @@ function renderMembers() {
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteMember('${m.id}')">Delete</button>
     </td>`);
 
-  document.getElementById('member-count-bar').textContent = `Showing ${rows.length} of ${membersData.length} members`;
+  const unverified = membersData.filter(m => !m.member_confirmed).length;
+  document.getElementById('member-count-bar').innerHTML =
+    `Showing ${rows.length} of ${membersData.length} members` +
+    (unverified ? ` · <strong style="color:var(--gold-dark)">${unverified} unverified</strong> (pending confirmation)` : '');
 }
 
 function openMemberModal(m = null) {
@@ -735,6 +744,7 @@ function openMemberModal(m = null) {
   document.getElementById('mf-marital').value  = m?.marital_status || '';
   document.getElementById('mf-residence').value= m?.residence || '';
   document.getElementById('mf-detail').value   = m?.detailed_residence || '';
+  document.getElementById('mf-verified').checked = !!m?.member_confirmed;
   // Employment
   document.getElementById('mf-occupation').value  = m?.occupation || '';
   document.getElementById('mf-employer').value    = m?.employer || '';
@@ -2159,6 +2169,8 @@ function initFormHandlers() {
       marital_status:     document.getElementById('mf-marital').value || null,
       residence:          document.getElementById('mf-residence').value.trim() || null,
       detailed_residence: document.getElementById('mf-detail').value.trim() || null,
+      member_confirmed:   document.getElementById('mf-verified').checked,
+      confirmed_at:       document.getElementById('mf-verified').checked ? new Date().toISOString() : null,
       occupation:         document.getElementById('mf-occupation').value.trim() || null,
       employer:           document.getElementById('mf-employer').value.trim() || null,
       employment_type:    document.getElementById('mf-emp-type').value || null,

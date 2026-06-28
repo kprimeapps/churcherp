@@ -276,6 +276,9 @@
       <div class="page-actions">
         <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="members-search" placeholder="Search name, phone, #…"/></div>
         <select class="form-control" id="members-group-filter" style="width:auto;min-height:40px;font-size:.82rem;"></select>
+        <select class="form-control" id="members-verify-filter" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All</option><option value="unverified">⚠ Unverified</option><option value="verified">✓ Verified</option>
+        </select>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;">⬆ Import CSV<input type="file" id="member-csv-input" accept=".csv" style="display:none"/></label>
         <button class="btn btn-primary btn-sm" id="member-add-btn">+ Add Member</button>
       </div>
@@ -1072,6 +1075,12 @@
         <div class="form-group"><label class="form-label">Detailed Residence</label><input type="text" id="mf-detail" class="form-control"/></div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><textarea id="mf-notes" class="form-control" rows="2"></textarea></div>
+      <div class="form-group" style="background:var(--cream2);border-radius:8px;padding:.6rem .85rem;">
+        <label class="form-label" style="margin:0;display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+          <input type="checkbox" id="mf-verified"/> Record verified / confirmed accurate
+        </label>
+        <p class="text-xs text-muted" style="margin:.35rem 0 0;">Imported records start unverified until an admin or the member confirms them.</p>
+      </div>
       <!-- Employment -->
       <hr style="margin:1rem 0;border-color:var(--border);"/>
       <p style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:.75rem;">Employment</p>
