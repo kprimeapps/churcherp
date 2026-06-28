@@ -1152,7 +1152,7 @@ GM-020-5513', '0016145991626', true, false, true, 'andrisey20@gmail.com', '2023-
     (v_org, 'MIPC1112', 'Yariga', 'Matilda', null, '2001-07-31', 'Single', 'Other', 'Unemployed (N/A)', 'Female', 'Madina New Road', 'Behind Melcom', '0245470779', false, false, true, null, '2017-10-10'),
     (v_org, 'MIPC432', 'Yarigah', 'Martha', null, '1997-03-03', 'Single', 'Other', 'Unemployed (N/A)', 'Female', 'Madina New Road', 'Behind Madina Melcom', '0248036582', true, true, true, 'yarigahmartha@gmail.com', '2017-08-10'),
     (v_org, 'MIPC1212', 'Yeboah', 'Faustina', null, '2001-05-09', 'Single', 'Student', 'Unemployed (N/A)', 'Female', 'Madina New Road', 'Brodease-Opposite Police Quarters', null, false, false, true, null, '2017-10-12'),
-    (v_org, 'MIPC1547', '0', null, null, '1983-12-25', 'Single', 'Other', 'Unemployed (N/A)', 'Female', 'Madina New Road', null, null, true, false, true, null, '2005-12-12'),
+    (v_org, 'MIPC1547', '0', 'Unknown', null, '1983-12-25', 'Single', 'Other', 'Unemployed (N/A)', 'Female', 'Madina New Road', null, null, true, false, true, null, '2005-12-12'),
     (v_org, 'MIPC299', 'Boatemaa', 'Kate', 'Yaa', '1938-02-17', 'Married', 'Other', 'Unemployed (N/A)', 'Female', 'Madina Nsamanpom', null, '0243531966', false, true, true, null, '2017-08-30'),
     (v_org, 'MIPC377', 'Abedi', 'Apeanimah', null, '1969-04-09', 'Single', 'Other', 'Unemployed (N/A)', 'Female', 'Madina Old Road', null, '0545523838', true, false, true, null, '2017-08-09'),
     (v_org, 'MIPC1689', 'Agbodzalu', 'Rebecca', null, '1987-03-20', 'Single', 'Other', 'Unemployed (N/A)', 'Female', 'Madina Old Road', 'Point Five(5)', '0241144025', true, true, true, null, '2018-02-20'),
@@ -2506,5 +2506,5 @@ Accra-Madina', '0243586731', true, true, true, null, '1992-08-08'),
     (v_org, 'MIPC485', 'Ofosu', 'Michael', 'Kwadjo', '1957-10-15', null, 'Other', 'Active (Antwi Baah Consult)', 'Male', 'Zongo Junction', 'Opposite Redco Cluster Of Schools', '0246813166', true, false, true, 'ofosumiki@yahoo.co.uk', '2017-08-10'),
     (v_org, 'MIPC449', 'Tettey', 'Daniel', null, '1972-08-26', null, 'Business Person', 'Active (Self Employed)', 'Male', 'Zongo Junction', 'Around Redco', '0244511531', false, false, true, null, '2017-08-10')
   on conflict (org_id, membership_no) do nothing;
-  raise notice 'Imported up to 2371 legacy members'; 
+  raise notice 'Imported up to 2371 legacy members';
 end $$;
