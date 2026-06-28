@@ -31,10 +31,10 @@
 
     <!-- Search -->
     <div id="search-screen">
-      <p class="text-sm text-muted" style="margin-bottom:1rem;">Enter your <strong>membership number</strong> (e.g. MIPC1558) or <strong>phone number</strong> to find and confirm your details.</p>
-      <div class="form-group">
-        <input type="text" id="q" class="form-control" placeholder="MIPC1558 or 0244…" autocomplete="off"/>
-      </div>
+      <p class="text-sm text-muted" style="margin-bottom:1rem;">To find your record, enter your <strong>membership number</strong>, <strong>surname</strong> and <strong>phone number</strong> — all three must match.</p>
+      <div class="form-group"><label class="form-label">Membership Number</label><input type="text" id="q-mno" class="form-control" placeholder="MIPC1558" autocomplete="off"/></div>
+      <div class="form-group"><label class="form-label">Surname</label><input type="text" id="q-surname" class="form-control" placeholder="Your last name" autocomplete="off"/></div>
+      <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" id="q-phone" class="form-control" placeholder="0244…" autocomplete="off"/></div>
       <button class="btn btn-primary" style="width:100%;justify-content:center;" id="search-btn">Find My Record →</button>
       <div id="results" style="margin-top:1rem;"></div>
     </div>
@@ -102,17 +102,17 @@ else sb.rpc('get_org_by_slug', { p_slug: slug }).maybeSingle().then(({ data }) =
 });
 
 $('search-btn').addEventListener('click', search);
-$('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+['q-mno','q-surname','q-phone'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') search(); }));
 
 async function search() {
-  const q = $('q').value.trim();
-  if (!q) return;
+  const mno = $('q-mno').value.trim(), surname = $('q-surname').value.trim(), phone = $('q-phone').value.trim();
+  if (!mno || !surname || !phone) { alert('Enter your membership number, surname and phone number'); return; }
   const btn = $('search-btn'); btn.disabled = true; btn.textContent = 'Searching…';
-  const { data, error } = await sb.rpc('confirm_find_member', { p_slug: slug, p_query: q });
+  const { data, error } = await sb.rpc('confirm_find_member', { p_slug: slug, p_mno: mno, p_surname: surname, p_phone: phone });
   btn.disabled = false; btn.textContent = 'Find My Record →';
   if (error) { alert(error.message); return; }
   const box = $('results');
-  if (!data || !data.length) { box.innerHTML = '<p class="hint">No record found. Check your membership number or phone, or contact your church office.</p>'; return; }
+  if (!data || !data.length) { box.innerHTML = '<p class="hint">No matching record. Membership number, surname and phone must all match what the church has on file — please check, or contact your church office.</p>'; return; }
   box.innerHTML = data.map((m, i) => `
     <div class="result-row" data-i="${i}">
       <div style="flex:1;">
@@ -175,7 +175,8 @@ $('edit-form').addEventListener('submit', async e => {
 $('another-btn').addEventListener('click', () => {
   $('done-screen').style.display = 'none';
   $('search-screen').style.display = '';
-  $('q').value = ''; $('results').innerHTML = '';
+  ['q-mno','q-surname','q-phone'].forEach(id => $(id).value = '');
+  $('results').innerHTML = '';
 });
 </script>
 </body>
