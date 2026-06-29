@@ -82,7 +82,7 @@
           <div class="form-group"><label class="form-label">Profession</label><input type="text" id="f-occupation" class="form-control"/></div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">Employer</label><input type="text" id="f-employer" class="form-control"/></div>
-            <div class="form-group"><label class="form-label">Employment</label><input type="text" id="f-employment" class="form-control" placeholder="e.g. Active (Self-employed)"/></div>
+            <div class="form-group"><label class="form-label">Employment</label><select id="f-employment" class="form-control"><option value="">—</option></select></div>
           </div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">Communicant member?</label>
@@ -127,11 +127,22 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../../js/config.js';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 const slug = new URLSearchParams(location.search).get('org') || '';
-let current = null;
+let current = null, org = null;
+const DEFAULT_EMPLOYMENT = ['Active','Unemployed','Retired','Self-employed','Student'];
+
+function setSel(id, value) {
+  const sel = $(id);
+  if (value && ![...sel.options].some(o => o.value === value)) sel.insertAdjacentHTML('beforeend', `<option>${value}</option>`);
+  sel.value = value || '';
+}
 
 if (!slug) { $('church-name').textContent = 'Missing ?org='; }
 else sb.rpc('get_org_by_slug', { p_slug: slug }).maybeSingle().then(({ data }) => {
-  if (data) $('church-name').textContent = data.name;
+  if (!data) return;
+  org = data;
+  $('church-name').textContent = data.name;
+  const emp = data.settings?.lists?.employment_types?.length ? data.settings.lists.employment_types : DEFAULT_EMPLOYMENT;
+  $('f-employment').innerHTML = '<option value="">—</option>' + emp.map(e => `<option>${e}</option>`).join('');
 });
 
 $('search-btn').addEventListener('click', search);
@@ -189,7 +200,7 @@ function openEdit(m) {
   $('f-detail').value = m.detailed_residence || '';
   $('f-occupation').value = m.occupation || '';
   $('f-employer').value = m.employer || '';
-  $('f-employment').value = m.employment_type || '';
+  setSel('f-employment', m.employment_type || '');
   $('f-communicant').value = bval(m.communicant);
   $('f-baptised').value = bval(m.baptised);
   $('f-baptism-date').value = m.baptism_date || '';

@@ -761,7 +761,7 @@ function openMemberModal(m = null) {
   // Employment
   document.getElementById('mf-occupation').value  = m?.occupation || '';
   document.getElementById('mf-employer').value    = m?.employer || '';
-  document.getElementById('mf-emp-type').value    = m?.employment_type || '';
+  setSelectValue('mf-emp-type', m?.employment_type || '');
   // Sacraments
   document.getElementById('mf-baptised').checked       = !!m?.baptised;
   document.getElementById('mf-baptism-date').value     = m?.baptism_date || '';
@@ -1391,6 +1391,11 @@ const CONFIG_LISTS = {
     label: 'Member Roles',
     defaults: ['General','Elder','Deacon','Youth','Children','Visitor'],
     targets: [{ datalist: 'member-roles-list' }],
+  },
+  employment_types: {
+    label: 'Employment Status',
+    defaults: ['Active','Unemployed','Retired','Self-employed','Student'],
+    targets: [{ select: 'mf-emp-type', blank: true }],
   },
   service_types: {
     label: 'Attendance Service Types',
