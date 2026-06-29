@@ -397,17 +397,32 @@
   <!-- ══ VISITORS ═══════════════════════════════════════════════════════════ -->
   <div class="erp-page page-content" id="page-visitors">
     <div class="page-header">
-      <div class="page-header-left"><h2>Visitors</h2><p>Guest tracking &amp; follow-up</p></div>
-      <div class="page-actions">
-        <select id="vis-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
-          <option value="">All Visitors</option><option value="false">Needs Follow-up</option><option value="true">Followed Up</option>
-        </select>
-        <button class="btn btn-primary btn-sm" id="vis-add-btn">+ Add Visitor</button>
-      </div>
+      <div class="page-header-left"><h2>Visitors &amp; Newcomers</h2><p>First-timers, newcomer classes &amp; the path to membership</p></div>
+      <div class="page-actions"><button class="btn btn-primary btn-sm" id="vis-add-btn">+ Register Visitor</button></div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.25rem;">
+      <div class="stat-card"><div class="stat-card-label">New Visitors</div><div class="stat-card-value" id="vs-new">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">In Classes</div><div class="stat-card-value" id="vs-classes">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">Completed</div><div class="stat-card-value" id="vs-completed">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">Became Members</div><div class="stat-card-value" id="vs-members">—</div></div>
+    </div>
+    <div class="page-actions" style="margin-bottom:1rem;flex-wrap:wrap;">
+      <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="vis-search" placeholder="Search name or phone…"/></div>
+      <select id="vis-purpose-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+        <option value="">All Purposes</option><option>Visiting</option><option>Joining</option>
+      </select>
+      <select id="vis-status-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+        <option value="">All Statuses</option>
+        <option value="new_visitor">New Visitor</option><option value="in_classes">In Classes</option>
+        <option value="completed">Completed Classes</option><option value="full_member">Full Member</option>
+      </select>
+      <select id="vis-gender-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+        <option value="">All Genders</option><option>Male</option><option>Female</option><option>Other</option>
+      </select>
     </div>
     <div class="tbl-wrap">
       <table class="dtable">
-        <thead><tr><th>Name</th><th>Phone</th><th>Visit Date</th><th>How Heard</th><th>Follow-up</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Purpose</th><th>Status</th><th>Phone</th><th>Visit Date</th><th></th></tr></thead>
         <tbody id="vis-tbody"></tbody>
       </table>
     </div>
@@ -1203,7 +1218,7 @@
 </div>
 
 <div class="modal-overlay hidden" id="modal-visitor">
-  <div class="modal"><div class="modal-header"><h3 class="modal-title">Add Visitor</h3><button class="modal-close" onclick="closeModal('modal-visitor')">✕</button></div>
+  <div class="modal"><div class="modal-header"><h3 class="modal-title" id="visitor-modal-title">Register Visitor</h3><button class="modal-close" onclick="closeModal('modal-visitor')">✕</button></div>
     <form id="visitor-form">
       <div class="form-row">
         <div class="form-group"><label class="form-label">First Name *</label><input type="text" id="visf-first" class="form-control" required/></div>
@@ -1213,6 +1228,23 @@
         <div class="form-group"><label class="form-label">Phone</label><input type="tel" id="visf-phone" class="form-control"/></div>
         <div class="form-group"><label class="form-label">Visit Date *</label><input type="date" id="visf-date" class="form-control" required/></div>
       </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Gender</label><select id="visf-gender" class="form-control"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+        <div class="form-group"><label class="form-label">Age</label><input type="number" id="visf-age" class="form-control" min="0" step="1"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Purpose *</label>
+          <select id="visf-purpose" class="form-control"><option>Visiting</option><option>Joining</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Status</label>
+          <select id="visf-status" class="form-control">
+            <option value="new_visitor">New Visitor</option><option value="in_classes">In Classes</option>
+            <option value="completed">Completed Classes</option><option value="full_member">Full Member</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label" style="display:flex;align-items:center;gap:.5rem;cursor:pointer;"><input type="checkbox" id="visf-already"/> <span id="visf-already-label">Already a member of this denomination?</span></label></div>
+      <div class="form-group"><label class="form-label" style="display:flex;align-items:center;gap:.5rem;cursor:pointer;"><input type="checkbox" id="visf-followed"/> Followed up?</label></div>
       <div class="form-group"><label class="form-label">How did they hear about us?</label><input type="text" id="visf-how" class="form-control" list="visitor-sources-list"/><datalist id="visitor-sources-list"></datalist></div>
       <div class="form-group"><label class="form-label">Notes</label><textarea id="visf-notes" class="form-control" rows="2"></textarea></div>
       <input type="hidden" id="visf-id"/>

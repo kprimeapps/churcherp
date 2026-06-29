@@ -290,6 +290,7 @@ export const db = {
     insert: (data) => dbInsert('visitors', data),
     update: (id, data) => dbUpdate('visitors', data, { id }),
     delete: (id) => dbDelete('visitors', { id }),
+    convert: (visitorId, orgId) => supabase.rpc('convert_visitor_to_member', { p_visitor_id: visitorId, p_org_id: orgId }),
   },
 
   // Welfare

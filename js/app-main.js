@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b25 · full confirm';
+const APP_BUILD = 'b26 · newcomers';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -1138,47 +1138,111 @@ window.deleteVol = async (id) => {
 };
 
 // ─── VISITORS ─────────────────────────────────────────────────────────────────
+const VIS_STATUS = {
+  new_visitor: { label: 'New Visitor', cls: 'badge-gray' },
+  in_classes:  { label: 'In Classes',  cls: 'badge-gold' },
+  completed:   { label: 'Completed Classes', cls: 'badge-blue' },
+  full_member: { label: 'Full Member', cls: 'badge-green' },
+};
+const NEXT_STATUS = { new_visitor: 'in_classes', in_classes: 'completed', completed: 'full_member' };
+
+function denominationLabel() {
+  const d = currentOrg?.denomination;
+  return d ? `Already a member of ${d}?` : 'Already a member of this denomination?';
+}
+
 let visData = [];
 async function loadVisitors() {
-  document.getElementById('vis-add-btn').onclick = () => {
-    document.getElementById('visitor-form').reset();
-    document.getElementById('visf-id').value = '';
-    document.getElementById('visf-date').value = today();
-    openModal('modal-visitor');
-  };
-  document.getElementById('vis-filter').addEventListener('change', fetchVisitors);
-  await fetchVisitors();
-}
-
-async function fetchVisitors() {
-  const fu = document.getElementById('vis-filter').value;
-  const param = fu === '' ? null : fu === 'true';
-  const { data, error } = await db.visitors.list(ORG_ID, param);
+  document.getElementById('vis-add-btn').onclick = () => openVisitorModal();
+  ['vis-purpose-filter','vis-status-filter','vis-gender-filter'].forEach(id =>
+    document.getElementById(id).addEventListener('change', renderVisitors));
+  document.getElementById('vis-search').addEventListener('input', debounce(renderVisitors, 250));
+  const { data, error } = await db.visitors.list(ORG_ID);
   if (error) { toast(error.message, 'error'); return; }
   visData = data || [];
-  buildTable(document.getElementById('vis-tbody'), visData, v => `
-    <td class="td-name">${v.first_name} ${v.last_name || ''}</td>
-    <td>${v.phone || '—'}</td>
-    <td>${fmtDate(v.visit_date)}</td>
-    <td>${v.how_heard || '—'}</td>
-    <td>${v.followed_up ? '<span class="badge badge-green">Done</span>' : '<span class="badge badge-gold">Pending</span>'}</td>
-    <td class="td-actions">
-      ${!v.followed_up ? `<button class="btn btn-ghost btn-sm" onclick="markFollowedUp('${v.id}')">✓ Follow up</button>` : ''}
-      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteVisitor('${v.id}')">Delete</button>
-    </td>`);
+  // stats
+  const c = s => visData.filter(v => (v.status || 'new_visitor') === s).length;
+  document.getElementById('vs-new').textContent       = fmtNum(c('new_visitor'));
+  document.getElementById('vs-classes').textContent   = fmtNum(c('in_classes'));
+  document.getElementById('vs-completed').textContent = fmtNum(c('completed'));
+  document.getElementById('vs-members').textContent   = fmtNum(c('full_member'));
+  renderVisitors();
 }
 
-window.markFollowedUp = async (id) => {
-  const { error } = await db.visitors.update(id, { followed_up: true, follow_up_date: today() });
+function renderVisitors() {
+  const q = document.getElementById('vis-search').value.toLowerCase();
+  const pf = document.getElementById('vis-purpose-filter').value;
+  const sf = document.getElementById('vis-status-filter').value;
+  const gf = document.getElementById('vis-gender-filter').value;
+  let rows = visData;
+  if (q)  rows = rows.filter(v => `${v.first_name} ${v.last_name||''} ${v.phone||''}`.toLowerCase().includes(q));
+  if (pf) rows = rows.filter(v => v.purpose === pf);
+  if (sf) rows = rows.filter(v => (v.status || 'new_visitor') === sf);
+  if (gf) rows = rows.filter(v => v.gender === gf);
+  buildTable(document.getElementById('vis-tbody'), rows, v => {
+    const st = VIS_STATUS[v.status || 'new_visitor'] || VIS_STATUS.new_visitor;
+    const next = NEXT_STATUS[v.status || 'new_visitor'];
+    const purposeBadge = v.purpose === 'Joining' ? '<span class="badge badge-green">Joining</span>' : '<span class="badge badge-blue">Visiting</span>';
+    const advance = next && next !== 'full_member'
+      ? `<button class="btn btn-ghost btn-sm" onclick="advanceVisitor('${v.id}','${next}')">→ ${VIS_STATUS[next].label}</button>` : '';
+    const convert = (v.status === 'completed' || v.purpose === 'Joining') && v.status !== 'full_member'
+      ? `<button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="convertVisitor('${v.id}')">Make Member</button>` : '';
+    return `
+      <td class="td-name">${v.first_name} ${v.last_name || ''}</td>
+      <td>${purposeBadge}</td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td>${v.phone || '—'}</td>
+      <td>${fmtDate(v.visit_date)}</td>
+      <td class="td-actions">
+        ${advance}${convert}
+        <button class="btn btn-ghost btn-sm" onclick="editVisitor('${v.id}')">Edit</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteVisitor('${v.id}')">Delete</button>
+      </td>`;
+  });
+}
+
+function openVisitorModal(v = null) {
+  document.getElementById('visitor-form').reset();
+  document.getElementById('visitor-modal-title').textContent = v ? 'Edit Visitor' : 'Register Visitor';
+  document.getElementById('visf-already-label').textContent = denominationLabel();
+  document.getElementById('visf-id').value = v?.id || '';
+  document.getElementById('visf-first').value = v?.first_name || '';
+  document.getElementById('visf-last').value = v?.last_name || '';
+  document.getElementById('visf-phone').value = v?.phone || '';
+  document.getElementById('visf-date').value = v?.visit_date || today();
+  document.getElementById('visf-gender').value = v?.gender || '';
+  document.getElementById('visf-age').value = v?.age ?? '';
+  document.getElementById('visf-purpose').value = v?.purpose || 'Visiting';
+  document.getElementById('visf-status').value = v?.status || 'new_visitor';
+  document.getElementById('visf-already').checked = !!v?.already_member;
+  document.getElementById('visf-followed').checked = !!v?.followed_up;
+  document.getElementById('visf-how').value = v?.how_heard || '';
+  document.getElementById('visf-notes').value = v?.notes || '';
+  openModal('modal-visitor');
+}
+
+window.editVisitor = (id) => { const v = visData.find(x => x.id === id); if (v) openVisitorModal(v); };
+
+window.advanceVisitor = async (id, status) => {
+  const { error } = await db.visitors.update(id, { status });
   if (error) { toast(error.message, 'error'); return; }
-  toast('Marked as followed up', 'success');
-  await fetchVisitors();
+  toast(`Moved to ${VIS_STATUS[status].label}`, 'success');
+  loaded.delete('page-visitors'); loadVisitors();
+};
+
+window.convertVisitor = async (id) => {
+  if (!confirm('Create a member record from this visitor? They can complete their details via the confirm-your-data portal.')) return;
+  const { error } = await db.visitors.convert(id, ORG_ID);
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Member created — pending data confirmation', 'success');
+  await prefetchMembers();
+  loaded.delete('page-visitors'); loadVisitors();
 };
 
 window.deleteVisitor = async (id) => {
   if (!confirm('Delete this visitor record?')) return;
   await db.visitors.delete(id);
-  await fetchVisitors();
+  loaded.delete('page-visitors'); loadVisitors();
 };
 
 // ─── FAMILY LIFE ──────────────────────────────────────────────────────────────
@@ -2335,19 +2399,25 @@ function initFormHandlers() {
     e.preventDefault();
     const id = document.getElementById('visf-id').value;
     const data = {
-      org_id:     ORG_ID,
-      first_name: document.getElementById('visf-first').value.trim(),
-      last_name:  document.getElementById('visf-last').value.trim() || null,
-      phone:      document.getElementById('visf-phone').value.trim() || null,
-      visit_date: document.getElementById('visf-date').value,
-      how_heard:  document.getElementById('visf-how').value.trim() || null,
-      notes:      document.getElementById('visf-notes').value.trim() || null,
+      org_id:         ORG_ID,
+      first_name:     document.getElementById('visf-first').value.trim(),
+      last_name:      document.getElementById('visf-last').value.trim() || null,
+      phone:          document.getElementById('visf-phone').value.trim() || null,
+      visit_date:     document.getElementById('visf-date').value,
+      gender:         document.getElementById('visf-gender').value || null,
+      age:            intOrNull('visf-age'),
+      purpose:        document.getElementById('visf-purpose').value,
+      status:         document.getElementById('visf-status').value,
+      already_member: document.getElementById('visf-already').checked,
+      followed_up:    document.getElementById('visf-followed').checked,
+      how_heard:      document.getElementById('visf-how').value.trim() || null,
+      notes:          document.getElementById('visf-notes').value.trim() || null,
     };
     const { error } = id ? await db.visitors.update(id, data) : await db.visitors.insert(data);
     if (error) { toast(error.message, 'error'); return; }
     toast('Visitor saved', 'success');
     closeModal('modal-visitor');
-    await fetchVisitors();
+    loaded.delete('page-visitors'); loadVisitors();
   });
 
   // Welfare form
