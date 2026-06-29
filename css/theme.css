@@ -502,9 +502,18 @@ body.kiosk .main-wrap { margin-left: 0 !important; }
   .page-actions .btn { flex: 1 1 auto; justify-content: center; }
   .search-box { width: 100%; }
 
-  /* Tables scroll horizontally inside their card instead of breaking layout */
-  .tbl-wrap { -webkit-overflow-scrolling: touch; }
-  .dtable { min-width: 560px; }
+  /* Standard data tables reflow into stacked cards on phones (no side-scroll) */
+  .tbl-wrap { overflow-x: visible; }
+  .dtable { min-width: 0; }
+  .dtable thead { display: none; }
+  .dtable tbody, .dtable tr, .dtable td { display: block; width: 100%; }
+  .dtable tr { border: 1px solid var(--cream3); border-radius: 10px; padding: .4rem .85rem; margin-bottom: .6rem; background: #fff; }
+  .dtable td { border: none; padding: .35rem 0; display: flex; justify-content: space-between; align-items: center; gap: 1rem; text-align: right; }
+  .dtable td::before { content: attr(data-label); font-weight: 600; color: var(--ink3); text-align: left; white-space: nowrap; }
+  .dtable td:not([data-label])::before { content: ''; }
+  .dtable td.td-actions { justify-content: flex-end; flex-wrap: wrap; gap: .35rem; padding-top: .5rem; }
+  .dtable td.tbl-empty { justify-content: center; }
+  .dtable td.tbl-empty::before { content: ''; }
 
   /* Modals fit small screens */
   .modal { width: 100%; max-width: 100%; max-height: 92vh; overflow-y: auto; }

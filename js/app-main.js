@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b27 · newcomer classes';
+const APP_BUILD = 'b28 · optional lessons + mobile';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -1304,17 +1304,18 @@ async function loadClasses() {
   const { data, error } = await db.ncClasses.list(ORG_ID);
   if (error) { toast(error.message, 'error'); return; }
   classesData = data || [];
-  const totalLessons = listValues('newcomer_lessons').length;
+  const required = requiredLessons();
+  // distinct lessons attended per visitor
+  const lessonsByVisitor = {};
+  classesData.forEach(c => { (lessonsByVisitor[c.visitor_id] = lessonsByVisitor[c.visitor_id] || new Set()).add(c.lesson); });
+  const reqAttended = id => [...(lessonsByVisitor[id] || [])].filter(l => required.includes(l)).length;
   // progress for joining newcomers (in_classes / completed)
   const learners = visData.filter(v => ['in_classes','completed'].includes(v.status));
-  const countByVisitor = {};
-  classesData.forEach(c => { countByVisitor[c.visitor_id] = (countByVisitor[c.visitor_id] || 0) + 1; });
   document.getElementById('class-progress-tbody').innerHTML = learners.map(v => {
-    const n = countByVisitor[v.id] || 0;
     const st = VIS_STATUS[v.status || 'new_visitor'];
     return `<tr>
       <td class="td-name">${v.first_name} ${v.last_name || ''}</td>
-      <td>${n} / ${totalLessons}</td>
+      <td>${reqAttended(v.id)} / ${required.length} required</td>
       <td><span class="badge ${st.cls}">${st.label}</span></td>
       <td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="openClassModal('${v.id}')">Record</button></td>
     </tr>`;
@@ -1399,12 +1400,13 @@ function initNewcomerForms() {
 }
 
 async function advanceClassProgress(visitorId) {
-  const total = listValues('newcomer_lessons').length;
+  const required = requiredLessons();
   const { data } = await db.ncClasses.list(ORG_ID);
-  const attended = (data || []).filter(c => c.visitor_id === visitorId).length;
+  const attended = new Set((data || []).filter(c => c.visitor_id === visitorId).map(c => c.lesson));
+  const reqDone = required.filter(l => attended.has(l)).length;
   const v = visData.find(x => x.id === visitorId);
   let newStatus = null;
-  if (attended >= total) newStatus = 'completed';
+  if (required.length && reqDone >= required.length) newStatus = 'completed';
   else if (!v || v.status === 'new_visitor') newStatus = 'in_classes';
   if (newStatus && (!v || v.status !== newStatus) && v?.status !== 'full_member') {
     await db.visitors.update(visitorId, { status: newStatus });
@@ -1664,6 +1666,17 @@ function listValues(key) {
   const v = (s.lists && s.lists[key]) || s[key];   // s[key] = legacy coordinating_groups
   return Array.isArray(v) && v.length ? v : CONFIG_LISTS[key].defaults;
 }
+
+// Newcomer lessons that are optional (excluded from the completion requirement)
+function optionalLessons() { return currentOrg?.settings?.lists?.newcomer_optional_lessons || []; }
+function requiredLessons() { return listValues('newcomer_lessons').filter(l => !optionalLessons().includes(l)); }
+window.toggleOptionalLesson = async (name) => {
+  const opt = optionalLessons().slice();
+  const i = opt.indexOf(name);
+  if (i >= 0) opt.splice(i, 1); else opt.push(name);
+  await saveList('newcomer_optional_lessons', opt);
+  renderListChips('newcomer_lessons');
+};
 
 // Populate every select/datalist bound to a configurable list.
 function populateAllConfigTargets() {
@@ -2294,10 +2307,17 @@ function loadLists() {
 function renderListChips(key) {
   const box = document.getElementById('lst-' + key);
   if (!box) return;
-  box.innerHTML = listValues(key).map(v =>
-    `<span class="role-pill" style="display:inline-flex;align-items:center;gap:.4rem;">${v}
-       <button onclick="removeListItem('${key}','${v.replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;line-height:1;">✕</button>
-     </span>`).join('');
+  const opt = key === 'newcomer_lessons' ? optionalLessons() : [];
+  box.innerHTML = listValues(key).map(v => {
+    const esc = v.replace(/'/g, "\\'");
+    const isOpt = opt.includes(v);
+    const optToggle = key === 'newcomer_lessons'
+      ? `<button onclick="toggleOptionalLesson('${esc}')" title="Toggle optional" style="background:${isOpt?'rgba(184,150,74,.18)':'none'};border:1px solid var(--border);color:${isOpt?'var(--gold-dark)':'var(--ink3)'};border-radius:6px;cursor:pointer;font-size:.66rem;padding:0 .35rem;">${isOpt?'optional':'required'}</button>`
+      : '';
+    return `<span class="role-pill" style="display:inline-flex;align-items:center;gap:.4rem;">${v}${optToggle}
+       <button onclick="removeListItem('${key}','${esc}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;line-height:1;">✕</button>
+     </span>`;
+  }).join('');
 }
 
 async function saveList(key, items) {

@@ -106,9 +106,15 @@ export function buildTable(tbody, rows, colFn, emptyMsg = 'No records found') {
     tbody.innerHTML = `<tr><td colspan="99" class="tbl-empty">${emptyMsg}</td></tr>`;
     return;
   }
+  // Column headers → used as mobile card labels (data-label on each cell)
+  const headers = [...(tbody.closest('table')?.querySelectorAll('thead th') || [])]
+    .map(th => th.textContent.trim());
   rows.forEach(row => {
     const tr = document.createElement('tr');
     tr.innerHTML = colFn(row);
+    if (headers.length) [...tr.children].forEach((td, i) => {
+      if (headers[i]) td.setAttribute('data-label', headers[i]);
+    });
     tbody.appendChild(tr);
   });
 }
