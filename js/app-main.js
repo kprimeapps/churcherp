@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b28 · optional lessons + mobile';
+const APP_BUILD = 'b29 · missions coord + lessons editor';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -1169,6 +1169,12 @@ async function loadVisitors() {
     });
     document.getElementById('teacher-add-btn').onclick = () => openTeacherModal();
     document.getElementById('class-add-btn').onclick = () => openClassModal();
+    const lessonsBtn = document.getElementById('lessons-manage-btn');
+    if (canWritePage('page-visitors')) {
+      lessonsBtn.style.display = '';
+      lessonsBtn.onclick = () => openLessonsModal();
+      initLessonsModal();
+    }
     initNewcomerForms();
   }
   document.getElementById('vis-add-btn').onclick = () => openVisitorModal();
@@ -1677,6 +1683,64 @@ window.toggleOptionalLesson = async (name) => {
   await saveList('newcomer_optional_lessons', opt);
   renderListChips('newcomer_lessons');
 };
+
+// ── Lessons editor modal (permission-scoped; usable by Missions Coordinator) ──
+let lessonsDraft = [], lessonsOptDraft = [];
+function renderLessonsDraft() {
+  document.getElementById('lessons-list').innerHTML = lessonsDraft.map((l, i) => {
+    const isOpt = lessonsOptDraft.includes(l);
+    return `<div style="display:flex;align-items:center;gap:.5rem;">
+      <span style="flex:1;">${l}</span>
+      <button type="button" onclick="window._lessonToggleOpt(${i})" style="background:${isOpt?'rgba(184,150,74,.18)':'none'};border:1px solid var(--border);color:${isOpt?'var(--gold-dark)':'var(--ink3)'};border-radius:6px;cursor:pointer;font-size:.66rem;padding:.1rem .4rem;">${isOpt?'optional':'required'}</button>
+      <button type="button" onclick="window._lessonRemove(${i})" class="btn btn-ghost btn-sm" style="color:var(--red);padding:.1rem .35rem;">✕</button>
+    </div>`;
+  }).join('') || '<p class="text-sm text-muted" style="margin:0;">No lessons yet.</p>';
+}
+window._lessonToggleOpt = (i) => {
+  const l = lessonsDraft[i];
+  const j = lessonsOptDraft.indexOf(l);
+  if (j >= 0) lessonsOptDraft.splice(j, 1); else lessonsOptDraft.push(l);
+  renderLessonsDraft();
+};
+window._lessonRemove = (i) => {
+  const l = lessonsDraft.splice(i, 1)[0];
+  lessonsOptDraft = lessonsOptDraft.filter(x => x !== l);
+  renderLessonsDraft();
+};
+function openLessonsModal() {
+  lessonsDraft = listValues('newcomer_lessons').slice();
+  lessonsOptDraft = optionalLessons().slice();
+  document.getElementById('lessons-new').value = '';
+  renderLessonsDraft();
+  openModal('modal-lessons');
+}
+function initLessonsModal() {
+  const addBtn = document.getElementById('lessons-add-btn');
+  const input = document.getElementById('lessons-new');
+  const add = () => {
+    const v = input.value.trim();
+    if (!v) return;
+    if (!lessonsDraft.includes(v)) lessonsDraft.push(v);
+    input.value = '';
+    renderLessonsDraft();
+    input.focus();
+  };
+  addBtn.onclick = add;
+  input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); add(); } };
+  document.getElementById('lessons-save-btn').onclick = async () => {
+    const { error } = await db.ncLessons.save(ORG_ID, lessonsDraft, lessonsOptDraft);
+    if (error) { toast(error.message, 'error'); return; }
+    // keep local org settings in sync
+    const lists = { ...((currentOrg.settings || {}).lists || {}),
+      newcomer_lessons: lessonsDraft, newcomer_optional_lessons: lessonsOptDraft };
+    currentOrg.settings = { ...(currentOrg.settings || {}), lists };
+    toast('Lessons saved', 'success');
+    closeModal('modal-lessons');
+    populateAllConfigTargets();
+    if (document.getElementById('lists-container')) renderListChips('newcomer_lessons');
+    loadClasses();
+  };
+}
 
 // Populate every select/datalist bound to a configurable list.
 function populateAllConfigTargets() {

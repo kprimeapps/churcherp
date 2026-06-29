@@ -310,6 +310,12 @@ export const db = {
     delete: (id) => dbDelete('newcomer_classes', { id }),
   },
 
+  // Newcomer lesson list (permission-scoped editing for visitors-writers)
+  ncLessons: {
+    save: (orgId, lessons, optional) =>
+      supabase.rpc('set_newcomer_lessons', { p_org_id: orgId, p_lessons: lessons, p_optional: optional }),
+  },
+
   // Welfare
   welfare: {
     list:   (orgId, status = null) => {

@@ -438,7 +438,7 @@
 
     <!-- CLASSES TAB -->
     <div class="vtab" id="vtab-classes" style="display:none;">
-      <div class="page-actions" style="margin-bottom:1rem;"><button class="btn btn-primary btn-sm" id="class-add-btn">+ Record Class Attendance</button></div>
+      <div class="page-actions" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" id="class-add-btn">+ Record Class Attendance</button><button class="btn btn-outline btn-sm" id="lessons-manage-btn" style="display:none;">Manage Lessons</button></div>
       <div class="card" style="margin-bottom:1.25rem;">
         <h3 style="margin:0 0 .6rem;">Joining Newcomers — class progress</h3>
         <div class="tbl-wrap"><table class="dtable">
@@ -1318,6 +1318,19 @@
       <input type="hidden" id="cf-id"/>
       <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-class')">Cancel</button><button type="submit" class="btn btn-primary">Record Attendance</button></div>
     </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-lessons">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header"><h3 class="modal-title">Newcomer Class Lessons</h3><button class="modal-close" onclick="closeModal('modal-lessons')">✕</button></div>
+    <p class="text-sm text-muted" style="margin:0 0 .85rem;">Add or remove lessons, and mark any as optional (excluded from the completion count).</p>
+    <div id="lessons-list" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.85rem;"></div>
+    <div class="form-group" style="display:flex;gap:.5rem;">
+      <input type="text" id="lessons-new" class="form-control" placeholder="New lesson name"/>
+      <button type="button" class="btn btn-outline btn-sm" id="lessons-add-btn">Add</button>
+    </div>
+    <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-lessons')">Cancel</button><button type="button" class="btn btn-primary" id="lessons-save-btn">Save</button></div>
   </div>
 </div>
 

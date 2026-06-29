@@ -38,7 +38,7 @@ const ROLE_ACCESS = {
 
   finance_team:         mk(FINANCE, ['page-reports']),
   usher:                { 'page-attendance': 'write' },  // kiosk: attendance only
-  missions_coordinator: mk(['page-missions']),
+  missions_coordinator: mk(['page-missions','page-visitors']),
   education_coordinator:mk(['page-education','page-scholarship']),
   welfare_coordinator:  mk(['page-welfare']),
   counsellor:           mk(['page-family']),
