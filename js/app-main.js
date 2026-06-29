@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b26 · newcomers';
+const APP_BUILD = 'b27 · newcomer classes';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -1151,8 +1151,26 @@ function denominationLabel() {
   return d ? `Already a member of ${d}?` : 'Already a member of this denomination?';
 }
 
+let visTabInit = false;
 let visData = [];
 async function loadVisitors() {
+  if (!visTabInit) {
+    visTabInit = true;
+    document.querySelectorAll('#vis-tabs .tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#vis-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const t = btn.dataset.vtab;
+        ['visitors','classes','teachers'].forEach(x =>
+          document.getElementById('vtab-' + x).style.display = x === t ? '' : 'none');
+        if (t === 'classes') loadClasses();
+        if (t === 'teachers') loadTeachers();
+      });
+    });
+    document.getElementById('teacher-add-btn').onclick = () => openTeacherModal();
+    document.getElementById('class-add-btn').onclick = () => openClassModal();
+    initNewcomerForms();
+  }
   document.getElementById('vis-add-btn').onclick = () => openVisitorModal();
   ['vis-purpose-filter','vis-status-filter','vis-gender-filter'].forEach(id =>
     document.getElementById(id).addEventListener('change', renderVisitors));
@@ -1244,6 +1262,154 @@ window.deleteVisitor = async (id) => {
   await db.visitors.delete(id);
   loaded.delete('page-visitors'); loadVisitors();
 };
+
+// ─── NEWCOMER TEACHERS ───────────────────────────────────────────────────────
+let teachersData = [];
+async function loadTeachers() {
+  const { data, error } = await db.ncTeachers.list(ORG_ID);
+  if (error) { toast(error.message, 'error'); return; }
+  teachersData = data || [];
+  const grid = document.getElementById('teachers-grid');
+  grid.innerHTML = teachersData.map(t => `
+    <div class="card" style="margin:0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><strong>${t.name}</strong><div class="text-sm text-muted">${t.phone || '—'}</div></div>
+        <span class="badge badge-${t.is_active ? 'green' : 'gray'}">${t.is_active ? 'Active' : 'Inactive'}</span>
+      </div>
+      <div style="margin-top:.65rem;display:flex;gap:.4rem;">
+        <button class="btn btn-ghost btn-sm" onclick="editTeacher('${t.id}')">Edit</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteTeacher('${t.id}')">Remove</button>
+      </div>
+    </div>`).join('') || '<p class="text-sm text-muted">No teachers yet.</p>';
+}
+function openTeacherModal(t = null) {
+  document.getElementById('teacher-form').reset();
+  document.getElementById('teacher-modal-title').textContent = t ? 'Edit Teacher' : 'Add Teacher';
+  document.getElementById('tf-id').value = t?.id || '';
+  document.getElementById('tf-name').value = t?.name || '';
+  document.getElementById('tf-phone').value = t?.phone || '';
+  document.getElementById('tf-active').checked = t ? t.is_active : true;
+  openModal('modal-teacher');
+}
+window.editTeacher = (id) => { const t = teachersData.find(x => x.id === id); if (t) openTeacherModal(t); };
+window.deleteTeacher = async (id) => {
+  if (!confirm('Remove this teacher?')) return;
+  await db.ncTeachers.delete(id);
+  loadTeachers();
+};
+
+// ─── NEWCOMER CLASSES ────────────────────────────────────────────────────────
+let classesData = [];
+async function loadClasses() {
+  const { data, error } = await db.ncClasses.list(ORG_ID);
+  if (error) { toast(error.message, 'error'); return; }
+  classesData = data || [];
+  const totalLessons = listValues('newcomer_lessons').length;
+  // progress for joining newcomers (in_classes / completed)
+  const learners = visData.filter(v => ['in_classes','completed'].includes(v.status));
+  const countByVisitor = {};
+  classesData.forEach(c => { countByVisitor[c.visitor_id] = (countByVisitor[c.visitor_id] || 0) + 1; });
+  document.getElementById('class-progress-tbody').innerHTML = learners.map(v => {
+    const n = countByVisitor[v.id] || 0;
+    const st = VIS_STATUS[v.status || 'new_visitor'];
+    return `<tr>
+      <td class="td-name">${v.first_name} ${v.last_name || ''}</td>
+      <td>${n} / ${totalLessons}</td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="openClassModal('${v.id}')">Record</button></td>
+    </tr>`;
+  }).join('') || '<tr><td class="tbl-empty" colspan="4">No newcomers in classes yet</td></tr>';
+
+  buildTable(document.getElementById('class-recent-tbody'), classesData.slice(0, 50), c => {
+    const name = c.visitors ? `${c.visitors.first_name} ${c.visitors.last_name || ''}` : '—';
+    return `<td>${fmtDate(c.date_attended)}</td><td class="td-name">${name}</td><td>${c.lesson}</td>
+      <td>${c.newcomer_teachers?.name || '—'}</td>
+      <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteClass('${c.id}')">Delete</button></td>`;
+  });
+}
+
+function openClassModal(visitorId = '') {
+  document.getElementById('class-form').reset();
+  document.getElementById('cf-id').value = '';
+  document.getElementById('cf-date').value = today();
+  // newcomers eligible for classes (joining / in classes / completed)
+  const learners = visData.filter(v => v.purpose === 'Joining' || ['in_classes','completed'].includes(v.status));
+  document.getElementById('cf-visitor').innerHTML = learners.map(v =>
+    `<option value="${v.id}">${v.first_name} ${v.last_name || ''}</option>`).join('') || '<option value="">(no joining newcomers)</option>';
+  if (visitorId) document.getElementById('cf-visitor').value = visitorId;
+  // lessons from configurable list
+  populateAllConfigTargets();
+  // teachers
+  const active = teachersData.filter(t => t.is_active);
+  document.getElementById('cf-lead').innerHTML = '<option value="">—</option>' +
+    active.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  document.getElementById('cf-support').innerHTML = active.map(t =>
+    `<label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;"><input type="checkbox" class="cf-support-cb" value="${t.name}"/> ${t.name}</label>`).join('') || '<span class="text-sm text-muted">No teachers added yet.</span>';
+  openModal('modal-class');
+}
+window.openClassModal = openClassModal;
+
+window.deleteClass = async (id) => {
+  if (!confirm('Delete this class attendance record?')) return;
+  await db.ncClasses.delete(id);
+  loadClasses();
+};
+
+function initNewcomerForms() {
+  document.getElementById('teacher-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('tf-id').value;
+    const data = {
+      org_id: ORG_ID,
+      name:   document.getElementById('tf-name').value.trim(),
+      phone:  document.getElementById('tf-phone').value.trim() || null,
+      is_active: document.getElementById('tf-active').checked,
+    };
+    const { error } = id ? await db.ncTeachers.update(id, data) : await db.ncTeachers.insert(data);
+    if (error) { toast(error.message, 'error'); return; }
+    toast('Teacher saved', 'success');
+    closeModal('modal-teacher');
+    loadTeachers();
+  });
+
+  document.getElementById('class-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const visitorId = document.getElementById('cf-visitor').value;
+    if (!visitorId) { toast('Select a newcomer', 'error'); return; }
+    const supporting = [...document.querySelectorAll('.cf-support-cb:checked')].map(c => c.value);
+    const data = {
+      org_id: ORG_ID,
+      visitor_id: visitorId,
+      lesson: document.getElementById('cf-lesson').value,
+      date_attended: document.getElementById('cf-date').value,
+      lead_teacher_id: document.getElementById('cf-lead').value || null,
+      supporting_teachers: supporting,
+      notes: document.getElementById('cf-notes').value.trim() || null,
+    };
+    const { error } = await db.ncClasses.insert(data);
+    if (error) { toast(error.code === '23505' ? 'That lesson is already recorded for this newcomer' : error.message, 'error'); return; }
+    // Auto-advance status based on lessons attended
+    await advanceClassProgress(visitorId);
+    toast('Attendance recorded', 'success');
+    closeModal('modal-class');
+    loaded.delete('page-visitors');
+    await loadVisitors();
+    loadClasses();
+  });
+}
+
+async function advanceClassProgress(visitorId) {
+  const total = listValues('newcomer_lessons').length;
+  const { data } = await db.ncClasses.list(ORG_ID);
+  const attended = (data || []).filter(c => c.visitor_id === visitorId).length;
+  const v = visData.find(x => x.id === visitorId);
+  let newStatus = null;
+  if (attended >= total) newStatus = 'completed';
+  else if (!v || v.status === 'new_visitor') newStatus = 'in_classes';
+  if (newStatus && (!v || v.status !== newStatus) && v?.status !== 'full_member') {
+    await db.visitors.update(visitorId, { status: newStatus });
+  }
+}
 
 // ─── FAMILY LIFE ──────────────────────────────────────────────────────────────
 async function loadFamily() {
@@ -1460,6 +1626,11 @@ const CONFIG_LISTS = {
     label: 'Employment Status',
     defaults: ['Active','Unemployed','Retired','Self-employed','Student'],
     targets: [{ select: 'mf-emp-type', blank: true }],
+  },
+  newcomer_lessons: {
+    label: 'Newcomer Class Lessons',
+    defaults: ['Part 1','Part 2','Study 1','Study 2','Study 3','Study 4','Study 5','Conclusion','Holy Communion','Baptism'],
+    targets: [{ select: 'cf-lesson' }],
   },
   service_types: {
     label: 'Attendance Service Types',

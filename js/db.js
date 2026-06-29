@@ -293,6 +293,23 @@ export const db = {
     convert: (visitorId, orgId) => supabase.rpc('convert_visitor_to_member', { p_visitor_id: visitorId, p_org_id: orgId }),
   },
 
+  // Newcomer class teachers
+  ncTeachers: {
+    list: (orgId) => supabase.from('newcomer_teachers').select('*').eq('org_id', orgId).order('name'),
+    insert: (data) => dbInsert('newcomer_teachers', data),
+    update: (id, data) => dbUpdate('newcomer_teachers', data, { id }),
+    delete: (id) => dbDelete('newcomer_teachers', { id }),
+  },
+
+  // Newcomer class attendance
+  ncClasses: {
+    list: (orgId) => supabase.from('newcomer_classes')
+      .select('*, visitors(first_name,last_name), newcomer_teachers(name)')
+      .eq('org_id', orgId).order('date_attended', { ascending: false }),
+    insert: (data) => dbInsert('newcomer_classes', data),
+    delete: (id) => dbDelete('newcomer_classes', { id }),
+  },
+
   // Welfare
   welfare: {
     list:   (orgId, status = null) => {

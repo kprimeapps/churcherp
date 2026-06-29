@@ -398,33 +398,68 @@
   <div class="erp-page page-content" id="page-visitors">
     <div class="page-header">
       <div class="page-header-left"><h2>Visitors &amp; Newcomers</h2><p>First-timers, newcomer classes &amp; the path to membership</p></div>
-      <div class="page-actions"><button class="btn btn-primary btn-sm" id="vis-add-btn">+ Register Visitor</button></div>
     </div>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.25rem;">
-      <div class="stat-card"><div class="stat-card-label">New Visitors</div><div class="stat-card-value" id="vs-new">—</div></div>
-      <div class="stat-card"><div class="stat-card-label">In Classes</div><div class="stat-card-value" id="vs-classes">—</div></div>
-      <div class="stat-card"><div class="stat-card-label">Completed</div><div class="stat-card-value" id="vs-completed">—</div></div>
-      <div class="stat-card"><div class="stat-card-label">Became Members</div><div class="stat-card-value" id="vs-members">—</div></div>
+    <div class="tabs" id="vis-tabs">
+      <div class="tab-btn active" data-vtab="visitors">Visitors</div>
+      <div class="tab-btn" data-vtab="classes">Newcomer Classes</div>
+      <div class="tab-btn" data-vtab="teachers">Teachers</div>
     </div>
-    <div class="page-actions" style="margin-bottom:1rem;flex-wrap:wrap;">
-      <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="vis-search" placeholder="Search name or phone…"/></div>
-      <select id="vis-purpose-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
-        <option value="">All Purposes</option><option>Visiting</option><option>Joining</option>
-      </select>
-      <select id="vis-status-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
-        <option value="">All Statuses</option>
-        <option value="new_visitor">New Visitor</option><option value="in_classes">In Classes</option>
-        <option value="completed">Completed Classes</option><option value="full_member">Full Member</option>
-      </select>
-      <select id="vis-gender-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
-        <option value="">All Genders</option><option>Male</option><option>Female</option><option>Other</option>
-      </select>
+
+    <!-- VISITORS TAB -->
+    <div class="vtab" id="vtab-visitors">
+      <div class="page-actions" style="margin-bottom:1rem;"><button class="btn btn-primary btn-sm" id="vis-add-btn">+ Register Visitor</button></div>
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.25rem;">
+        <div class="stat-card"><div class="stat-card-label">New Visitors</div><div class="stat-card-value" id="vs-new">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">In Classes</div><div class="stat-card-value" id="vs-classes">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">Completed</div><div class="stat-card-value" id="vs-completed">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">Became Members</div><div class="stat-card-value" id="vs-members">—</div></div>
+      </div>
+      <div class="page-actions" style="margin-bottom:1rem;flex-wrap:wrap;">
+        <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="vis-search" placeholder="Search name or phone…"/></div>
+        <select id="vis-purpose-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All Purposes</option><option>Visiting</option><option>Joining</option>
+        </select>
+        <select id="vis-status-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All Statuses</option>
+          <option value="new_visitor">New Visitor</option><option value="in_classes">In Classes</option>
+          <option value="completed">Completed Classes</option><option value="full_member">Full Member</option>
+        </select>
+        <select id="vis-gender-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
+          <option value="">All Genders</option><option>Male</option><option>Female</option><option>Other</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dtable">
+          <thead><tr><th>Name</th><th>Purpose</th><th>Status</th><th>Phone</th><th>Visit Date</th><th></th></tr></thead>
+          <tbody id="vis-tbody"></tbody>
+        </table>
+      </div>
     </div>
-    <div class="tbl-wrap">
-      <table class="dtable">
-        <thead><tr><th>Name</th><th>Purpose</th><th>Status</th><th>Phone</th><th>Visit Date</th><th></th></tr></thead>
-        <tbody id="vis-tbody"></tbody>
-      </table>
+
+    <!-- CLASSES TAB -->
+    <div class="vtab" id="vtab-classes" style="display:none;">
+      <div class="page-actions" style="margin-bottom:1rem;"><button class="btn btn-primary btn-sm" id="class-add-btn">+ Record Class Attendance</button></div>
+      <div class="card" style="margin-bottom:1.25rem;">
+        <h3 style="margin:0 0 .6rem;">Joining Newcomers — class progress</h3>
+        <div class="tbl-wrap"><table class="dtable">
+          <thead><tr><th>Name</th><th>Lessons Attended</th><th>Status</th><th></th></tr></thead>
+          <tbody id="class-progress-tbody"></tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 .6rem;">Recent Class Attendance</h3>
+        <div class="tbl-wrap"><table class="dtable">
+          <thead><tr><th>Date</th><th>Newcomer</th><th>Lesson</th><th>Lead Teacher</th><th></th></tr></thead>
+          <tbody id="class-recent-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- TEACHERS TAB -->
+    <div class="vtab" id="vtab-teachers" style="display:none;">
+      <div class="page-actions" style="margin-bottom:1rem;"><button class="btn btn-primary btn-sm" id="teacher-add-btn">+ Add Teacher</button></div>
+      <p class="text-sm text-muted" style="margin:0 0 1rem;">Teachers who lead or support newcomer classes.</p>
+      <div id="teachers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.85rem;"></div>
     </div>
   </div>
 
@@ -1249,6 +1284,39 @@
       <div class="form-group"><label class="form-label">Notes</label><textarea id="visf-notes" class="form-control" rows="2"></textarea></div>
       <input type="hidden" id="visf-id"/>
       <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-visitor')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Newcomer teacher modal -->
+<div class="modal-overlay hidden" id="modal-teacher">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header"><h3 class="modal-title" id="teacher-modal-title">Add Teacher</h3><button class="modal-close" onclick="closeModal('modal-teacher')">✕</button></div>
+    <form id="teacher-form">
+      <div class="form-group"><label class="form-label">Full Name *</label><input type="text" id="tf-name" class="form-control" required/></div>
+      <div class="form-group"><label class="form-label">Phone</label><input type="tel" id="tf-phone" class="form-control"/></div>
+      <div class="form-group"><label class="form-label" style="display:flex;align-items:center;gap:.5rem;cursor:pointer;"><input type="checkbox" id="tf-active" checked/> Active teacher</label></div>
+      <input type="hidden" id="tf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-teacher')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Record class attendance modal -->
+<div class="modal-overlay hidden" id="modal-class">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header"><h3 class="modal-title" id="class-modal-title">Record Class Attendance</h3><button class="modal-close" onclick="closeModal('modal-class')">✕</button></div>
+    <form id="class-form">
+      <div class="form-group"><label class="form-label">Newcomer *</label><select id="cf-visitor" class="form-control" required></select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Lesson *</label><select id="cf-lesson" class="form-control" required></select></div>
+        <div class="form-group"><label class="form-label">Date Attended *</label><input type="date" id="cf-date" class="form-control" required/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Lead Teacher</label><select id="cf-lead" class="form-control"><option value="">—</option></select></div>
+      <div class="form-group"><label class="form-label">Supporting Teachers</label><div id="cf-support" style="display:flex;flex-direction:column;gap:.35rem;margin-top:.25rem;max-height:140px;overflow:auto;"></div></div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" id="cf-notes" class="form-control"/></div>
+      <input type="hidden" id="cf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-class')">Cancel</button><button type="submit" class="btn btn-primary">Record Attendance</button></div>
     </form>
   </div>
 </div>
