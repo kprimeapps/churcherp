@@ -45,35 +45,68 @@
         <div class="hint">Membership #: <strong id="ed-mno">—</strong></div>
         <span id="ed-confirmed" class="confirmed-badge" style="display:none;">✓ Confirmed</span>
       </div>
-      <p class="hint" style="margin-bottom:1rem;">Please review and correct anything wrong, and fill any blank fields (highlighted). Then confirm.</p>
+      <p class="hint" id="page-indicator" style="margin-bottom:1rem;">Step 1 of 2 — your contact &amp; basic details. Fill what you can; nothing is required.</p>
       <form id="edit-form">
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">First Name</label><input type="text" id="f-first" class="form-control"/></div>
-          <div class="form-group"><label class="form-label">Surname</label><input type="text" id="f-last" class="form-control"/></div>
-        </div>
-        <div class="form-group"><label class="form-label">Other Names</label><input type="text" id="f-other" class="form-control"/></div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Phone</label><input type="tel" id="f-phone" class="form-control"/></div>
-          <div class="form-group"><label class="form-label">Email</label><input type="email" id="f-email" class="form-control"/></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Gender</label>
-            <select id="f-gender" class="form-control"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select>
+        <!-- PAGE 1: contact & basics -->
+        <div id="page1">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">First Name</label><input type="text" id="f-first" class="form-control"/></div>
+            <div class="form-group"><label class="form-label">Surname</label><input type="text" id="f-last" class="form-control"/></div>
           </div>
-          <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" id="f-dob" class="form-control"/></div>
-        </div>
-        <div class="form-row">
+          <div class="form-group"><label class="form-label">Other Names</label><input type="text" id="f-other" class="form-control"/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Phone</label><input type="tel" id="f-phone" class="form-control"/></div>
+            <div class="form-group"><label class="form-label">Second Phone <span class="hint">(optional)</span></label><input type="tel" id="f-phone2" class="form-control"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" id="f-email" class="form-control"/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Gender</label>
+              <select id="f-gender" class="form-control"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" id="f-dob" class="form-control"/></div>
+          </div>
           <div class="form-group"><label class="form-label">Marital Status</label>
             <select id="f-marital" class="form-control"><option value="">—</option><option>Single</option><option>Married</option><option>Widowed</option><option>Divorced</option><option>Separated</option></select>
           </div>
-          <div class="form-group"><label class="form-label">Profession</label><input type="text" id="f-occupation" class="form-control"/></div>
+          <div class="form-group"><label class="form-label">Residence (area)</label><input type="text" id="f-residence" class="form-control" placeholder="e.g. Abokobi"/></div>
+          <div class="form-group"><label class="form-label">Detailed Residence <span class="hint">(house no., street, landmark)</span></label><textarea id="f-detail" class="form-control" placeholder="House number, street, nearest landmark…"></textarea></div>
+          <div style="display:flex;gap:.6rem;margin-top:.5rem;">
+            <button type="button" class="btn btn-outline" id="back-btn">← Back</button>
+            <button type="button" class="btn btn-outline" id="next-btn">More details →</button>
+            <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Confirm &amp; Save</button>
+          </div>
         </div>
-        <div class="form-group"><label class="form-label">Employment</label><input type="text" id="f-employment" class="form-control" placeholder="e.g. Active (Self-employed)"/></div>
-        <div class="form-group"><label class="form-label">Residence (area)</label><input type="text" id="f-residence" class="form-control" placeholder="e.g. Abokobi"/></div>
-        <div class="form-group"><label class="form-label">Detailed Residence <span class="hint">(house no., street, landmark)</span></label><textarea id="f-detail" class="form-control" placeholder="House number, street, nearest landmark…"></textarea></div>
-        <div style="display:flex;gap:.6rem;margin-top:.5rem;">
-          <button type="button" class="btn btn-outline" id="back-btn">← Back</button>
-          <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;" id="save-btn">Confirm &amp; Save</button>
+
+        <!-- PAGE 2: work & church (all optional) -->
+        <div id="page2" style="display:none;">
+          <div class="form-group"><label class="form-label">Profession</label><input type="text" id="f-occupation" class="form-control"/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Employer</label><input type="text" id="f-employer" class="form-control"/></div>
+            <div class="form-group"><label class="form-label">Employment</label><input type="text" id="f-employment" class="form-control" placeholder="e.g. Active (Self-employed)"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Communicant member?</label>
+              <select id="f-communicant" class="form-control"><option value="">—</option><option value="true">Yes</option><option value="false">No</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Baptised?</label>
+              <select id="f-baptised" class="form-control"><option value="">—</option><option value="true">Yes</option><option value="false">No</option></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Baptism Date</label><input type="date" id="f-baptism-date" class="form-control"/></div>
+            <div class="form-group"><label class="form-label">Baptism Place</label><input type="text" id="f-baptism-place" class="form-control"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Confirmed (sacrament)?</label>
+            <select id="f-confirmed" class="form-control"><option value="">—</option><option value="true">Yes</option><option value="false">No</option></select>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Confirmation Date</label><input type="date" id="f-confirm-date" class="form-control"/></div>
+            <div class="form-group"><label class="form-label">Confirmation Place</label><input type="text" id="f-confirm-place" class="form-control"/></div>
+          </div>
+          <div style="display:flex;gap:.6rem;margin-top:.5rem;">
+            <button type="button" class="btn btn-outline" id="prev-btn">← Basics</button>
+            <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Confirm &amp; Save</button>
+          </div>
         </div>
       </form>
     </div>
@@ -127,29 +160,50 @@ async function search() {
 function val(id){ const v=$(id).value.trim(); return v || null; }
 function flag(id, empty){ $(id).classList.toggle('empty-flag', empty); }
 
+const bval = b => (b === true ? 'true' : b === false ? 'false' : '');
+function showPage(n) {
+  $('page1').style.display = n === 1 ? '' : 'none';
+  $('page2').style.display = n === 2 ? '' : 'none';
+  $('page-indicator').textContent = n === 1
+    ? 'Step 1 of 2 — your contact & basic details. Fill what you can; nothing is required.'
+    : 'Step 2 of 2 — work & church details (all optional).';
+}
+
 function openEdit(m) {
   current = m;
   $('search-screen').style.display = 'none';
   $('edit-screen').style.display = '';
+  showPage(1);
   $('ed-mno').textContent = m.membership_no || '—';
   $('ed-confirmed').style.display = m.member_confirmed ? '' : 'none';
   $('f-first').value = m.first_name || '';
   $('f-last').value = m.last_name || '';
   $('f-other').value = m.other_names || '';
   $('f-phone').value = m.phone || '';
+  $('f-phone2').value = m.phone2 || '';
   $('f-email').value = m.email || '';
   $('f-gender').value = m.gender || '';
   $('f-dob').value = m.date_of_birth || '';
   $('f-marital').value = m.marital_status || '';
-  $('f-occupation').value = m.occupation || '';
-  $('f-employment').value = m.employment_type || '';
   $('f-residence').value = m.residence || '';
   $('f-detail').value = m.detailed_residence || '';
+  $('f-occupation').value = m.occupation || '';
+  $('f-employer').value = m.employer || '';
+  $('f-employment').value = m.employment_type || '';
+  $('f-communicant').value = bval(m.communicant);
+  $('f-baptised').value = bval(m.baptised);
+  $('f-baptism-date').value = m.baptism_date || '';
+  $('f-baptism-place').value = m.baptism_place || '';
+  $('f-confirmed').value = bval(m.confirmed);
+  $('f-confirm-date').value = m.confirmation_date || '';
+  $('f-confirm-place').value = m.confirmation_place || '';
   // highlight blanks worth filling
   flag('f-phone', !m.phone); flag('f-residence', !m.residence);
   flag('f-detail', !m.detailed_residence); flag('f-dob', !m.date_of_birth);
 }
 
+$('next-btn').addEventListener('click', () => showPage(2));
+$('prev-btn').addEventListener('click', () => showPage(1));
 $('back-btn').addEventListener('click', () => {
   $('edit-screen').style.display = 'none';
   $('search-screen').style.display = '';
@@ -157,16 +211,20 @@ $('back-btn').addEventListener('click', () => {
 
 $('edit-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const btn = $('save-btn'); btn.disabled = true; btn.textContent = 'Saving…';
+  const btns = $('edit-form').querySelectorAll('button[type=submit]');
+  btns.forEach(b => { b.disabled = true; b.textContent = 'Saving…'; });
   const data = {
     first_name: val('f-first'), last_name: val('f-last'), other_names: val('f-other'),
-    phone: val('f-phone'), email: val('f-email'), gender: val('f-gender'),
-    date_of_birth: val('f-dob') || '', marital_status: val('f-marital'),
-    occupation: val('f-occupation'), employment_type: val('f-employment'),
+    phone: val('f-phone'), phone2: val('f-phone2'), email: val('f-email'),
+    gender: val('f-gender'), date_of_birth: val('f-dob') || '', marital_status: val('f-marital'),
     residence: val('f-residence'), detailed_residence: val('f-detail'),
+    occupation: val('f-occupation'), employer: val('f-employer'), employment_type: val('f-employment'),
+    communicant: $('f-communicant').value, baptised: $('f-baptised').value,
+    baptism_date: val('f-baptism-date') || '', baptism_place: val('f-baptism-place'),
+    confirmed: $('f-confirmed').value, confirmation_date: val('f-confirm-date') || '', confirmation_place: val('f-confirm-place'),
   };
   const { error } = await sb.rpc('confirm_update_member', { p_id: current.id, p_slug: slug, p_data: data });
-  btn.disabled = false; btn.textContent = 'Confirm & Save';
+  btns.forEach(b => { b.disabled = false; b.textContent = 'Confirm & Save'; });
   if (error) { alert(error.message); return; }
   $('edit-screen').style.display = 'none';
   $('done-screen').style.display = '';

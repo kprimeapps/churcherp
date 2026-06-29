@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b24 · verify progress';
+const APP_BUILD = 'b25 · full confirm';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -744,6 +744,7 @@ function openMemberModal(m = null) {
   document.getElementById('mf-first').value    = m?.first_name || '';
   document.getElementById('mf-last').value     = m?.last_name || '';
   document.getElementById('mf-phone').value    = m?.phone || '';
+  document.getElementById('mf-phone2').value   = m?.phone2 || '';
   document.getElementById('mf-email').value    = m?.email || '';
   document.getElementById('mf-mno').value      = m?.membership_no || '';
   document.getElementById('mf-gender').value   = m?.gender || '';
@@ -2169,6 +2170,7 @@ function initFormHandlers() {
       first_name:    document.getElementById('mf-first').value.trim(),
       last_name:     document.getElementById('mf-last').value.trim(),
       phone:         document.getElementById('mf-phone').value.trim() || null,
+      phone2:        document.getElementById('mf-phone2').value.trim() || null,
       email:         document.getElementById('mf-email').value.trim() || null,
       membership_no: document.getElementById('mf-mno').value.trim() || null,
       gender:        document.getElementById('mf-gender').value || null,
