@@ -94,6 +94,9 @@
         <div class="step-dot" id="dot-1"></div>
         <div class="step-dot" id="dot-2"></div>
       </div>
+      <p class="text-sm" style="text-align:center;margin:-.25rem 0 1rem;">
+        <a href="#" id="onboard-signout" style="color:var(--ink3);">Sign in with a different account</a>
+      </p>
 
       <!-- Step 0: Church details -->
       <div class="onboard-step active" id="step-0">
@@ -221,6 +224,17 @@ document.querySelectorAll('.auth-tab').forEach(tab => {
 document.getElementById('goto-signup').addEventListener('click', e => {
   e.preventDefault();
   document.querySelector('[data-tab="signup"]').click();
+});
+
+// Escape hatch: abandoned an account without creating an org? Sign out of the
+// half-finished session and return to the sign-in view.
+document.getElementById('onboard-signout').addEventListener('click', async e => {
+  e.preventDefault();
+  await sb.auth.signOut();
+  newUserId = null;
+  document.getElementById('onboard-section').style.display = 'none';
+  document.getElementById('auth-section').style.display = 'block';
+  document.querySelector('[data-tab="signin"]').click();
 });
 
 // Sign In
