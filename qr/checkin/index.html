@@ -41,10 +41,11 @@
       </div>
       <span class="svc-pill" id="svc-pill">Sunday Service</span>
       <h2 class="serif" style="margin-bottom:.35rem;font-size:1.1rem;">Check in for today</h2>
-      <p class="text-muted text-sm" style="margin-bottom:1.25rem;">Enter your name and membership number to mark your attendance.</p>
+      <p class="text-muted text-sm" style="margin-bottom:1.25rem;">Enter your membership number or the phone number on record to mark your attendance.</p>
       <form id="ci-form">
-        <div class="form-group"><label class="form-label">Full Name *</label><input type="text" id="ci-name" class="form-control" required autocomplete="name"/></div>
         <div class="form-group"><label class="form-label">Membership #</label><input type="text" id="ci-mno" class="form-control" placeholder="e.g. MIPC123" autocomplete="off"/></div>
+        <div style="text-align:center;font-size:.76rem;color:var(--ink3);margin:-.35rem 0 .6rem;">— or —</div>
+        <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" id="ci-phone" class="form-control" placeholder="+233 …" autocomplete="tel"/></div>
         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem;" id="ci-btn">Check In →</button>
       </form>
     </div>
@@ -114,39 +115,40 @@ async function boot() {
 document.getElementById('ci-form').addEventListener('submit', async e => {
   e.preventDefault();
   const btn = document.getElementById('ci-btn');
+  const mno   = document.getElementById('ci-mno').value.trim();
+  const phone = document.getElementById('ci-phone').value.trim();
+  if (!mno && !phone) { alert('Enter your membership number or phone number.'); return; }
   btn.disabled = true; btn.textContent = 'Checking in…';
-  const name = document.getElementById('ci-name').value.trim();
-  const mno  = document.getElementById('ci-mno').value.trim();
   const todayStr = new Date().toISOString().slice(0, 10);
   try {
     const { data, error } = await sb.rpc('self_check_in', {
-      p_org_id: org.id, p_name: name, p_membership_no: mno || null,
+      p_org_id: org.id, p_membership_no: mno || null, p_phone: phone || null,
       p_service_date: todayStr, p_service_type: svcType,
     });
     if (error) throw error;
-    renderResult(data, name);
+    renderResult(data);
   } catch (err) {
     alert(err.message || 'Check-in failed. Please try again.');
     btn.disabled = false; btn.textContent = 'Check In →';
   }
 });
 
-function renderResult(res, name) {
+function renderResult(res) {
   const emoji = document.getElementById('done-emoji');
   const title = document.getElementById('done-title');
   const msg   = document.getElementById('done-msg');
-  const displayName = res?.name || name;
   if (res?.status === 'duplicate') {
     emoji.textContent = '👍'; title.textContent = 'Already checked in';
-    msg.textContent = `${displayName}, you're already marked present for ${svcType} today.`;
+    msg.textContent = `${res.name}, you're already marked present for ${svcType} today.`;
+  } else if (res?.status === 'unknown') {
+    emoji.textContent = '⚠️'; title.textContent = 'We couldn’t find you';
+    msg.textContent = 'No member matched that membership number or phone. Please check the details or see a steward.';
   } else if (res?.status === 'error') {
     emoji.textContent = '⚠️'; title.textContent = 'Couldn’t check in';
     msg.textContent = res.message || 'Please try again.';
   } else {
     emoji.textContent = '✅'; title.textContent = "You're checked in!";
-    msg.textContent = res?.matched
-      ? `Welcome, ${displayName}. Your attendance is recorded.`
-      : `Thanks, ${displayName}. We recorded your attendance — see a steward to link your membership number.`;
+    msg.textContent = `Welcome, ${res.name}. Your attendance is recorded.`;
   }
   // reset form for the next person
   document.getElementById('ci-form').reset();
