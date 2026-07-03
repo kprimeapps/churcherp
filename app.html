@@ -968,6 +968,7 @@
       <div class="page-header-left"><h2>QR Check-In</h2><p>Manage QR self-registrations &amp; live check-ins</p></div>
       <div class="page-actions">
         <button class="btn btn-outline btn-sm" id="qr-copy-link">Copy QR Link</button>
+        <button class="btn btn-outline btn-sm" id="qr-selfci-btn">Self Check-In QR</button>
         <button class="btn btn-outline btn-sm" id="qr-link-members">Match to Members</button>
         <a id="qr-open-link" href="#" target="_blank" class="btn btn-navy btn-sm">Open QR Page ↗</a>
       </div>
@@ -1772,11 +1773,49 @@
   </div>
 </div>
 
+<!-- Member QR (regenerable) -->
+<div class="modal-overlay hidden" id="modal-member-qr">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header"><h3 class="modal-title">Member QR Code</h3><button class="modal-close" onclick="closeModal('modal-member-qr')">✕</button></div>
+    <div style="text-align:center;padding:.25rem 0 .5rem;">
+      <div id="mqr-canvas" style="display:inline-block;background:#fff;padding:1rem;border-radius:var(--rl);border:1px solid var(--border);"></div>
+      <div class="serif" id="mqr-name" style="font-size:1.1rem;font-weight:700;margin-top:.75rem;">—</div>
+      <div class="text-sm text-muted" id="mqr-meta" style="margin-bottom:.25rem;">—</div>
+      <div class="mono text-sm text-muted" id="mqr-id">—</div>
+      <p class="text-sm text-muted" style="margin:.75rem 0 0;">This is the member's permanent code — regenerating always produces the same QR.</p>
+    </div>
+    <div class="form-actions" style="justify-content:center;">
+      <button type="button" class="btn btn-outline btn-sm" id="mqr-print">🖨 Print</button>
+      <button type="button" class="btn btn-primary btn-sm" id="mqr-save">⬇ Save as Image</button>
+    </div>
+  </div>
+</div>
+
+<!-- Self Check-In QR (one code the congregation scans) -->
+<div class="modal-overlay hidden" id="modal-selfci">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header"><h3 class="modal-title">Self Check-In QR</h3><button class="modal-close" onclick="closeModal('modal-selfci')">✕</button></div>
+    <div class="form-group">
+      <label class="form-label">Service Type</label>
+      <select id="sci-type" class="form-control"></select>
+    </div>
+    <div style="text-align:center;padding:.25rem 0 .5rem;">
+      <div id="sci-canvas" style="display:inline-block;background:#fff;padding:1rem;border-radius:var(--rl);border:1px solid var(--border);"></div>
+      <p class="text-sm text-muted" style="margin:.75rem 0 0;">Post this at the entrance. Members scan it, enter their name &amp; membership number, and their attendance is recorded for the selected service.</p>
+    </div>
+    <div class="form-actions" style="justify-content:center;">
+      <button type="button" class="btn btn-outline btn-sm" id="sci-print">🖨 Print</button>
+      <button type="button" class="btn btn-primary btn-sm" id="sci-save">⬇ Save as Image</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module" src="/js/app-main.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b30 · member search fix (live list + full roster)';
+const APP_BUILD = 'b31 · member QR regen + self check-in';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -738,6 +738,7 @@ function renderMembers() {
     <td>${fmtDate(m.date_joined)}</td>
     <td class="td-actions">
       <button class="btn btn-ghost btn-sm" onclick="viewMemberGiving('${m.id}')">Giving</button>
+      ${canWritePage('page-qr') ? `<button class="btn btn-ghost btn-sm" onclick="showMemberQR('${m.id}')">QR</button>` : ''}
       <button class="btn btn-ghost btn-sm" onclick="editMember('${m.id}')">Edit</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteMember('${m.id}')">Delete</button>
     </td>`);
@@ -2252,6 +2253,96 @@ function initQRPage() {
     if (error) { toast(error.message, 'error'); return; }
     toast(`Linked ${data ?? 0} QR registration(s) to members`, 'success');
   });
+  document.getElementById('qr-selfci-btn')?.addEventListener('click', openSelfCheckinQR);
+}
+
+// ─── QR IMAGE HELPERS (render / branded card / print / save) ─────────────────
+// Render a QR into a container element from arbitrary text.
+function renderQRInto(elId, text) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '';
+  new QRCode(el, { text, width: 220, height: 220,
+    colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.H });
+}
+
+// Compose a branded, printable card (navy frame + white quiet-zone + caption lines).
+function buildQRCard(qrEl, lines) {
+  const canvas = qrEl.querySelector('canvas') || qrEl.querySelector('img');
+  if (!canvas) return null;
+  const qrW = 220, qrH = 220;
+  const pad = 32, quiet = 22, textH = 30 + lines.length * 24;
+  const panelW = qrW + quiet * 2, panelH = qrH + quiet * 2;
+  const out = document.createElement('canvas');
+  out.width = panelW + pad * 2;
+  out.height = panelH + pad * 2 + textH;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#0F2340'; ctx.fillRect(0, 0, out.width, out.height);
+  ctx.fillStyle = '#B8964A'; ctx.fillRect(0, 0, out.width, 8);
+  const px = pad, py = pad + 8;
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(px, py, panelW, panelH);
+  if (canvas.tagName === 'CANVAS') ctx.drawImage(canvas, px + quiet, py + quiet, qrW, qrH);
+  const baseY = py + panelH;
+  ctx.textAlign = 'center';
+  lines.forEach((ln, i) => {
+    ctx.fillStyle = i === 0 ? '#fff' : 'rgba(255,255,255,.6)';
+    ctx.font = i === 0 ? 'bold 18px serif' : '13px sans-serif';
+    ctx.fillText(ln, out.width / 2, baseY + 30 + i * 22);
+  });
+  return out;
+}
+
+function saveQRCard(qrEl, lines, filename) {
+  const out = buildQRCard(qrEl, lines);
+  if (!out) { toast('QR not ready yet', 'error'); return; }
+  const a = document.createElement('a');
+  a.download = filename; a.href = out.toDataURL('image/png'); a.click();
+}
+
+function printQRCard(qrEl, lines) {
+  const out = buildQRCard(qrEl, lines);
+  if (!out) { toast('QR not ready yet', 'error'); return; }
+  const w = window.open('', '_blank');
+  if (!w) { toast('Allow pop-ups to print', 'error'); return; }
+  w.document.write(`<img src="${out.toDataURL('image/png')}" style="max-width:100%;" onload="window.print()"/>`);
+  w.document.close();
+}
+
+// ── Member QR: regenerable, permanent per-member code ──
+window.showMemberQR = async (memberId) => {
+  const m = membersData.find(x => x.id === memberId) || allMembers.find(x => x.id === memberId);
+  const { data: qrId, error } = await db.qrRegs.memberQr(memberId, ORG_ID);
+  if (error) { toast(error.message, 'error'); return; }
+  const name = m ? `${m.first_name} ${m.last_name || ''}`.trim() : 'Member';
+  const meta = [m?.role, m?.membership_no ? '# ' + m.membership_no : ''].filter(Boolean).join(' · ') || '—';
+  document.getElementById('mqr-name').textContent = name;
+  document.getElementById('mqr-meta').textContent = meta;
+  document.getElementById('mqr-id').textContent   = qrId;
+  renderQRInto('mqr-canvas', qrId);
+  const lines = [name, meta === '—' ? '' : meta, qrId].filter(Boolean);
+  const fname = `qr-${name.replace(/\s+/g, '-') || 'member'}.png`;
+  const qrEl = document.getElementById('mqr-canvas');
+  document.getElementById('mqr-print').onclick = () => printQRCard(qrEl, lines);
+  document.getElementById('mqr-save').onclick  = () => saveQRCard(qrEl, lines, fname);
+  openModal('modal-member-qr');
+};
+
+// ── Self Check-In QR: one posted code the congregation scans ──
+function renderSelfCheckinQR() {
+  const type = document.getElementById('sci-type').value || 'Sunday Service';
+  const url = `${window.location.origin}/qr/checkin/?org=${currentOrg?.slug || ''}&type=${encodeURIComponent(type)}`;
+  renderQRInto('sci-canvas', url);
+  const lines = [currentOrg?.name || 'Self Check-In', type, 'Scan to check in'];
+  const qrEl = document.getElementById('sci-canvas');
+  document.getElementById('sci-print').onclick = () => printQRCard(qrEl, lines);
+  document.getElementById('sci-save').onclick  = () => saveQRCard(qrEl, lines, `self-checkin-${type.replace(/\s+/g, '-')}.png`);
+}
+function openSelfCheckinQR() {
+  const sel = document.getElementById('sci-type');
+  sel.innerHTML = listValues('service_types').map(t => `<option>${t}</option>`).join('');
+  sel.onchange = renderSelfCheckinQR;
+  renderSelfCheckinQR();
+  openModal('modal-selfci');
 }
 
 async function loadQRPage() {

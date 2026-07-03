@@ -235,6 +235,8 @@ export const db = {
       supabase.from('qr_registrations').select('*').eq('org_id', orgId).eq('imported', imported).order('created_at', { ascending: false }),
     import: (regId, orgId) => supabase.rpc('import_qr_registration', { p_reg_id: regId, p_org_id: orgId }),
     linkToMembers: (orgId) => supabase.rpc('link_qr_registrations', { p_org_id: orgId }),
+    // Stable, regenerable QR id for a member (creates one if missing).
+    memberQr: (memberId, orgId) => supabase.rpc('ensure_member_qr', { p_member_id: memberId, p_org_id: orgId }),
   },
 
   // Giving

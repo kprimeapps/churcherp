@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Self Check-In</title>
+<link rel="stylesheet" href="/css/theme.css"/>
+<style>
+  body { background: var(--navy); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+  .qr-shell { width: 100%; max-width: 420px; }
+  .qr-card  { background: #fff; border-radius: var(--rxl); padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .qr-logo  { display: flex; align-items: center; gap: .6rem; margin-bottom: 1.75rem; }
+  .qr-logo-icon { width: 40px; height: 40px; background: var(--gold); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+  .qr-church-name { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+  .qr-church-sub  { font-size: .74rem; color: var(--ink3); }
+  .svc-pill { display:inline-block; font-size:.72rem; background:var(--cream2); color:var(--ink2); border-radius:999px; padding:.2rem .7rem; margin-bottom:1rem; }
+  .done { text-align:center; padding:1rem 0; }
+  .done h2 { font-family:'Playfair Display', serif; margin-bottom:.5rem; }
+  .done p  { font-size:.86rem; color:var(--ink3); margin-bottom:1.25rem; }
+  #loading-screen { text-align:center; padding:2rem 0; }
+</style>
+</head>
+<body>
+<div class="qr-shell">
+  <div class="qr-card">
+
+    <!-- Loading -->
+    <div id="loading-screen">
+      <div class="spinner" style="margin:0 auto 1rem;"></div>
+      <div class="text-muted text-sm">Loading…</div>
+    </div>
+
+    <!-- Check-in form -->
+    <div id="form-screen" style="display:none;">
+      <div class="qr-logo">
+        <div class="qr-logo-icon">⛪</div>
+        <div>
+          <div class="qr-church-name" id="church-name">Church</div>
+          <div class="qr-church-sub" id="church-sub"></div>
+        </div>
+      </div>
+      <span class="svc-pill" id="svc-pill">Sunday Service</span>
+      <h2 class="serif" style="margin-bottom:.35rem;font-size:1.1rem;">Check in for today</h2>
+      <p class="text-muted text-sm" style="margin-bottom:1.25rem;">Enter your name and membership number to mark your attendance.</p>
+      <form id="ci-form">
+        <div class="form-group"><label class="form-label">Full Name *</label><input type="text" id="ci-name" class="form-control" required autocomplete="name"/></div>
+        <div class="form-group"><label class="form-label">Membership #</label><input type="text" id="ci-mno" class="form-control" placeholder="e.g. MIPC123" autocomplete="off"/></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem;" id="ci-btn">Check In →</button>
+      </form>
+    </div>
+
+    <!-- Done -->
+    <div id="done-screen" style="display:none;">
+      <div class="qr-logo">
+        <div class="qr-logo-icon">⛪</div>
+        <div><div class="qr-church-name" id="church-name2">Church</div><div class="qr-church-sub" id="church-sub2"></div></div>
+      </div>
+      <div class="done">
+        <div style="font-size:2.5rem;margin-bottom:.75rem;" id="done-emoji">✅</div>
+        <h2 id="done-title">You're checked in!</h2>
+        <p id="done-msg">Your attendance has been recorded.</p>
+        <button class="btn btn-outline btn-sm" id="again-btn">Check in someone else</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script type="module">
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../../js/config.js';
+
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const params  = new URLSearchParams(location.search);
+const orgSlug = params.get('org') || '';
+const svcType = params.get('type') || 'Sunday Service';
+let org = null;
+
+function show(id) {
+  ['loading-screen','form-screen','done-screen'].forEach(s =>
+    document.getElementById(s).style.display = s === id ? '' : 'none');
+}
+function showError(msg) {
+  show('form-screen');
+  document.getElementById('form-screen').innerHTML =
+    `<div style="padding:2rem;text-align:center;color:var(--red);">${msg}</div>`;
+}
+function setBranding(d) {
+  ['','2'].forEach(n => {
+    const el = document.getElementById('church-name' + n);
+    const sl = document.getElementById('church-sub' + n);
+    if (el) el.textContent = d.name || 'Church';
+    if (sl) sl.textContent = d.sub_name || '';
+  });
+  document.getElementById('svc-pill').textContent = svcType;
+  document.title = (d.name || 'Church') + ' — Self Check-In';
+}
+
+async function boot() {
+  if (!orgSlug) { showError('Missing org parameter. Use ?org=your-slug'); return; }
+  try {
+    const { data, error } = await sb.rpc('get_org_by_slug', { p_slug: orgSlug }).maybeSingle();
+    if (error || !data) { showError('Organization not found. Check your link.'); return; }
+    org = data;
+    setBranding(data);
+    show('form-screen');
+  } catch {
+    showError('Cannot connect. Check your internet connection.');
+  }
+}
+
+document.getElementById('ci-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('ci-btn');
+  btn.disabled = true; btn.textContent = 'Checking in…';
+  const name = document.getElementById('ci-name').value.trim();
+  const mno  = document.getElementById('ci-mno').value.trim();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  try {
+    const { data, error } = await sb.rpc('self_check_in', {
+      p_org_id: org.id, p_name: name, p_membership_no: mno || null,
+      p_service_date: todayStr, p_service_type: svcType,
+    });
+    if (error) throw error;
+    renderResult(data, name);
+  } catch (err) {
+    alert(err.message || 'Check-in failed. Please try again.');
+    btn.disabled = false; btn.textContent = 'Check In →';
+  }
+});
+
+function renderResult(res, name) {
+  const emoji = document.getElementById('done-emoji');
+  const title = document.getElementById('done-title');
+  const msg   = document.getElementById('done-msg');
+  const displayName = res?.name || name;
+  if (res?.status === 'duplicate') {
+    emoji.textContent = '👍'; title.textContent = 'Already checked in';
+    msg.textContent = `${displayName}, you're already marked present for ${svcType} today.`;
+  } else if (res?.status === 'error') {
+    emoji.textContent = '⚠️'; title.textContent = 'Couldn’t check in';
+    msg.textContent = res.message || 'Please try again.';
+  } else {
+    emoji.textContent = '✅'; title.textContent = "You're checked in!";
+    msg.textContent = res?.matched
+      ? `Welcome, ${displayName}. Your attendance is recorded.`
+      : `Thanks, ${displayName}. We recorded your attendance — see a steward to link your membership number.`;
+  }
+  // reset form for the next person
+  document.getElementById('ci-form').reset();
+  const btn = document.getElementById('ci-btn');
+  btn.disabled = false; btn.textContent = 'Check In →';
+  show('done-screen');
+}
+
+document.getElementById('again-btn').addEventListener('click', () => show('form-screen'));
+
+boot();
+</script>
+</body>
+</html>
