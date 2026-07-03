@@ -9,18 +9,50 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ─── OFFLINE QUEUE (IndexedDB via a small wrapper) ───────────────────────────
 const DB_NAME = 'churchos_offline';
 const STORE   = 'queue';
+const CACHE   = 'cache';   // key/value cache of read data for offline use
 let idb = null;
 
 async function openIDB() {
   if (idb) return idb;
   return new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(DB_NAME, 2);
     req.onupgradeneeded = e => {
-      e.target.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE))
+        db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+      if (!db.objectStoreNames.contains(CACHE))
+        db.createObjectStore(CACHE, { keyPath: 'key' });
     };
     req.onsuccess = e => { idb = e.target.result; res(idb); };
     req.onerror   = e => rej(e.target.error);
   });
+}
+
+// ─── READ CACHE (key/value) ──────────────────────────────────────────────────
+// Snapshot data while online so the key offline flows (member lookup, giving,
+// attendance) still render when the network is gone.
+export async function cachePut(key, value) {
+  try {
+    const db = await openIDB();
+    await new Promise((res, rej) => {
+      const tx = db.transaction(CACHE, 'readwrite');
+      tx.objectStore(CACHE).put({ key, value, ts: Date.now() });
+      tx.oncomplete = () => res();
+      tx.onerror = e => rej(e.target.error);
+    });
+  } catch { /* cache is best-effort */ }
+}
+
+export async function cacheGet(key) {
+  try {
+    const db = await openIDB();
+    return await new Promise((res, rej) => {
+      const tx = db.transaction(CACHE, 'readonly');
+      const req = tx.objectStore(CACHE).get(key);
+      req.onsuccess = () => res(req.result ? req.result.value : null);
+      req.onerror = e => rej(e.target.error);
+    });
+  } catch { return null; }
 }
 
 async function enqueue(op) {
@@ -100,7 +132,11 @@ window.addEventListener('online', () => syncQueue());
 export async function dbInsert(table, data) {
   if (!navigator.onLine) {
     await enqueue({ table, op: 'insert', data });
-    return { data, queued: true };
+    // Synthesize a local record so the UI can render it and print receipts.
+    // The temp id is replaced by the server's on sync.
+    const local = { ...data, id: `local-${crypto.randomUUID()}`, _local: true,
+                    created_at: new Date().toISOString() };
+    return { data: local, queued: true };
   }
   const { data: row, error } = await supabase.from(table).insert(data).select().single();
   if (error) throw error;

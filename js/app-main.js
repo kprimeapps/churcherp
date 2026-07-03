@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b31 · member QR regen + self check-in';
+const APP_BUILD = 'b32 · offline: attendance + giving';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -27,7 +27,7 @@ function checkPlanBanner() {
     sessionStorage.setItem('plan_banner_dismissed', plan);
   };
 }
-import { supabase, db, syncQueue } from './db.js';
+import { supabase, db, syncQueue, cachePut, cacheGet } from './db.js';
 import { requireAuth, currentProfile, currentOrg, signOut } from './auth.js';
 import {
   toast, openModal, closeModal, fmtDate, fmtMoney, fmtNum,
@@ -171,6 +171,16 @@ async function boot() {
 
   syncQueue();
 
+  // When queued offline writes flush on reconnect, tell the user and refresh the
+  // roster + current page so server ids/joins replace the local placeholders.
+  window.addEventListener('churchos:synced', async e => {
+    const n = e.detail?.count || 0;
+    toast(`${n} offline change${n === 1 ? '' : 's'} synced`, 'success');
+    await prefetchMembers();
+    const cur = sessionStorage.getItem('churchos_page');
+    if (cur) { loaded.delete(cur); activatePage(cur); }
+  });
+
   // Load the last active page or dashboard
   let lastPage = sessionStorage.getItem('churchos_page') || landingPage();
   if (!canSee(lastPage)) lastPage = landingPage();
@@ -217,6 +227,12 @@ function activatePage(pageId) {
 
 // ─── PREFETCH MEMBERS (for autocomplete) ─────────────────────────────────────
 async function prefetchMembers() {
+  // Offline: hydrate the roster from the last cached snapshot so member pickers
+  // (attendance, giving) still work.
+  if (!navigator.onLine) {
+    allMembers = (await cacheGet(`members:${ORG_ID}`)) || [];
+    return;
+  }
   // Supabase/PostgREST caps a single response at ~1000 rows, so page through
   // the full roster (large legacy orgs have several thousand members).
   const PAGE = 1000;
@@ -224,11 +240,17 @@ async function prefetchMembers() {
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await db.members.list(ORG_ID, { active: true })
       .range(from, from + PAGE - 1);
-    if (error) { toast(error.message, 'error'); break; }
+    if (error) {
+      // Network hiccup — fall back to cache rather than emptying the roster.
+      const cached = await cacheGet(`members:${ORG_ID}`);
+      if (cached) { allMembers = cached; return; }
+      toast(error.message, 'error'); break;
+    }
     all.push(...(data || []));
     if (!data || data.length < PAGE) break;
   }
   allMembers = all;
+  cachePut(`members:${ORG_ID}`, all);   // snapshot for offline use
 
   // Populate group datalist
   const groups = [...new Set(allMembers.map(m => m.group_name).filter(Boolean))];
@@ -862,9 +884,22 @@ async function fetchAttendance() {
   const type = document.getElementById('att-type').value;
   document.getElementById('att-subtitle').textContent = `${type} — ${fmtDate(date)}`;
 
+  const cacheKey = `attendance:${ORG_ID}:${date}:${type}`;
+  if (!navigator.onLine) {
+    attData = (await cacheGet(cacheKey)) || [];
+    renderAttendance();
+    return;
+  }
   const { data, error } = await db.attendance.forDate(ORG_ID, date, type);
-  if (error) { toast(error.message, 'error'); return; }
+  if (error) {
+    const cached = await cacheGet(cacheKey);
+    attData = cached || [];
+    renderAttendance();
+    if (!cached) toast(error.message, 'error');
+    return;
+  }
   attData = data || [];
+  cachePut(cacheKey, attData);
   renderAttendance();
 }
 
@@ -1007,9 +1042,22 @@ async function loadGiving() {
 
 async function fetchGiving() {
   const year = document.getElementById('giving-year').value;
+  const cacheKey = `giving:${ORG_ID}:${year}`;
+  if (!navigator.onLine) {
+    givingData = (await cacheGet(cacheKey)) || [];
+    renderGiving();
+    return;
+  }
   const { data, error } = await db.giving.list(ORG_ID, { year });
-  if (error) { toast(error.message, 'error'); return; }
+  if (error) {
+    const cached = await cacheGet(cacheKey);
+    givingData = cached || [];
+    renderGiving();
+    if (!cached) toast(error.message, 'error');
+    return;
+  }
   givingData = data || [];
+  cachePut(cacheKey, givingData);
   renderGiving();
 }
 
@@ -2653,12 +2701,28 @@ function initFormHandlers() {
       data.guest_name = memberName;
       data.guest_role = document.getElementById('af-guest-role').value || null;
     }
-    const { error } = await db.attendance.insert(data);
+    let res, error;
+    try { res = await db.attendance.insert(data); } catch (err) { error = err; }
     if (error) { toast(error.message, 'error'); return; }
-    toast('Attendance recorded', 'success');
     closeModal('modal-att');
     document.getElementById('att-form').reset();
     document.getElementById('af-member-id').value = '';
+
+    if (res?.queued && res.data) {
+      // Offline: realtime won't fire — add the row locally so the steward sees it.
+      const row = res.data;
+      if (row.member_id) {
+        const m = allMembers.find(x => x.id === row.member_id);
+        if (m) row.members = { first_name: m.first_name, last_name: m.last_name, role: m.role };
+      }
+      if (document.getElementById('att-date').value === row.service_date &&
+          document.getElementById('att-type').value === row.service_type) {
+        attData.unshift(row); renderAttendance();
+      }
+      toast('Attendance saved offline — will sync', 'success');
+    } else {
+      toast('Attendance recorded', 'success');
+    }
   });
 
   // Online attendance form
@@ -2700,18 +2764,28 @@ function initFormHandlers() {
       given_date:     document.getElementById('gf-date').value,
       notes:          document.getElementById('gf-notes').value || null,
     };
-    let saved, error;
+    let saved, queued, error;
     try {
-      ({ data: saved } = editId ? await db.giving.update(editId, data) : await db.giving.insert(data));
+      const res = editId ? await db.giving.update(editId, data) : await db.giving.insert(data);
+      saved = res.data; queued = res.queued;
     } catch (err) { error = err; }
     if (error) { toast(error.message, 'error'); return; }
     delete document.getElementById('gf-member-id').dataset.editId;
-    toast(editId ? 'Gift updated' : 'Gift recorded', 'success');
     closeModal('modal-giving');
+
+    if (queued) {
+      // Offline: the write is queued. Show it locally + print the receipt now;
+      // it syncs to Supabase on reconnect.
+      toast(editId ? 'Update saved offline — will sync' : 'Gift saved offline — will sync', 'success');
+      if (!editId && saved) { givingData.unshift(saved); renderGiving(); showGivingReceipt(saved.id); }
+      return;
+    }
+
+    toast(editId ? 'Gift updated' : 'Gift recorded', 'success');
     givingData = [];
     loaded.delete('page-giving');
     await fetchGiving();
-    // Auto-show printable receipt for new entries (queued offline inserts have no id)
+    // Auto-show printable receipt for new entries
     if (!editId && saved?.id && givingData.some(g => g.id === saved.id)) {
       showGivingReceipt(saved.id);
     }

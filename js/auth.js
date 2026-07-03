@@ -1,6 +1,6 @@
 // ChurchOS v2 — Auth module
 
-import { supabase } from './db.js';
+import { supabase, cachePut, cacheGet } from './db.js';
 
 export let currentUser  = null;   // auth.users row
 export let currentProfile = null; // profiles row
@@ -20,6 +20,7 @@ export async function loadProfile(userId) {
   if (error) throw error;
   currentProfile = data;
   currentOrg     = data.organizations;
+  cachePut(`profile:${userId}`, data);   // snapshot for offline boot
   return data;
 }
 
@@ -48,7 +49,15 @@ export async function requireAuth(redirectTo = '/index.html') {
   const session = await getSession();
   if (!session) { window.location.href = redirectTo; return null; }
   currentUser = session.user;
-  await loadProfile(session.user.id);
+  try {
+    await loadProfile(session.user.id);
+  } catch (err) {
+    // Offline (or transient) — fall back to the cached profile so the app still
+    // boots and offline-capable pages (attendance, giving) keep working.
+    const cached = await cacheGet(`profile:${session.user.id}`);
+    if (cached) { currentProfile = cached; currentOrg = cached.organizations; }
+    else { throw err; }
+  }
   return session;
 }
 
