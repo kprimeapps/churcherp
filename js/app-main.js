@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b29 · missions coord + lessons editor';
+const APP_BUILD = 'b30 · member search fix (live list + full roster)';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -217,8 +217,18 @@ function activatePage(pageId) {
 
 // ─── PREFETCH MEMBERS (for autocomplete) ─────────────────────────────────────
 async function prefetchMembers() {
-  const { data } = await db.members.list(ORG_ID, { active: true });
-  allMembers = data || [];
+  // Supabase/PostgREST caps a single response at ~1000 rows, so page through
+  // the full roster (large legacy orgs have several thousand members).
+  const PAGE = 1000;
+  const all = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db.members.list(ORG_ID, { active: true })
+      .range(from, from + PAGE - 1);
+    if (error) { toast(error.message, 'error'); break; }
+    all.push(...(data || []));
+    if (!data || data.length < PAGE) break;
+  }
+  allMembers = all;
 
   // Populate group datalist
   const groups = [...new Set(allMembers.map(m => m.group_name).filter(Boolean))];
@@ -687,19 +697,19 @@ async function loadMembers() {
   document.getElementById('member-add-btn').onclick = () => openMemberModal();
 
   // Member autocomplete for attendance
-  memberSelect(document.getElementById('af-member-name'), allMembers, m => {
+  memberSelect(document.getElementById('af-member-name'), () => allMembers, m => {
     document.getElementById('af-member-id').value = m.id;
     document.getElementById('af-guest-fields').style.display = 'none';
   });
-  memberSelect(document.getElementById('gf-member-name'), allMembers, m => {
+  memberSelect(document.getElementById('gf-member-name'), () => allMembers, m => {
     document.getElementById('gf-member-id').value = m.id;
   });
-  memberSelect(document.getElementById('volf-member-name'), allMembers, m => document.getElementById('volf-member-id').value = m.id);
-  memberSelect(document.getElementById('wff-member-name'), allMembers, m => document.getElementById('wff-member-id').value = m.id);
-  memberSelect(document.getElementById('eduf-member-name'), allMembers, m => document.getElementById('eduf-member-id').value = m.id);
-  memberSelect(document.getElementById('schf-member-name'), allMembers, m => document.getElementById('schf-member-id').value = m.id);
-  memberSelect(document.getElementById('flf-member-name'), allMembers, m => document.getElementById('flf-member-id').value = m.id);
-  memberSelect(document.getElementById('prf-member-name'), allMembers, m => {
+  memberSelect(document.getElementById('volf-member-name'), () => allMembers, m => document.getElementById('volf-member-id').value = m.id);
+  memberSelect(document.getElementById('wff-member-name'), () => allMembers, m => document.getElementById('wff-member-id').value = m.id);
+  memberSelect(document.getElementById('eduf-member-name'), () => allMembers, m => document.getElementById('eduf-member-id').value = m.id);
+  memberSelect(document.getElementById('schf-member-name'), () => allMembers, m => document.getElementById('schf-member-id').value = m.id);
+  memberSelect(document.getElementById('flf-member-name'), () => allMembers, m => document.getElementById('flf-member-id').value = m.id);
+  memberSelect(document.getElementById('prf-member-name'), () => allMembers, m => {
     document.getElementById('prf-member-id').value = m.id;
     document.getElementById('prf-name').value = `${m.first_name} ${m.last_name}`;
   });
@@ -2183,7 +2193,7 @@ async function loadPayroll() {
   }
   document.getElementById('payroll-add-btn').onclick = () => openPayrollModal();
   pe.addEventListener('change', fetchPayroll);
-  memberSelect(document.getElementById('prf-member-name'), allMembers, m => {
+  memberSelect(document.getElementById('prf-member-name'), () => allMembers, m => {
     document.getElementById('prf-member-id').value = m.id;
     document.getElementById('prf-name').value = `${m.first_name} ${m.last_name}`;
   });

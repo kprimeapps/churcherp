@@ -120,18 +120,21 @@ export function buildTable(tbody, rows, colFn, emptyMsg = 'No records found') {
 }
 
 // ─── MEMBER SEARCH AUTOCOMPLETE ──────────────────────────────────────────────
-export function memberSelect(inputEl, members, onSelect) {
+export function memberSelect(inputEl, members, onSelect, limit = 40) {
   let dropdown = null;
+  // `members` may be an array OR a function returning the current array, so the
+  // list is resolved live at input time (callers reassign their cache after fetch).
+  const getMembers = () => (typeof members === 'function' ? members() : members) || [];
 
   inputEl.addEventListener('input', () => {
     const val = inputEl.value.toLowerCase();
     if (dropdown) dropdown.remove();
     if (!val || val.length < 2) return;
 
-    const matches = members.filter(m =>
+    const matches = getMembers().filter(m =>
       `${m.first_name} ${m.last_name}`.toLowerCase().includes(val) ||
       (m.membership_no && m.membership_no.toLowerCase().includes(val))
-    ).slice(0, 8);
+    ).slice(0, limit);
 
     if (!matches.length) return;
 
