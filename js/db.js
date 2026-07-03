@@ -501,6 +501,15 @@ export const db = {
         .upsert({ org_id: orgId, plan, updated_at: new Date().toISOString() }, { onConflict: 'org_id' }),
   },
 
+  // SMS (Arkesel, server-side)
+  sms: {
+    settings: (orgId) => supabase.rpc('sms_settings_get', { p_org_id: orgId }),
+    saveSettings: (orgId, enabled, senderId, sendOnGiving) =>
+      supabase.rpc('sms_settings_set', { p_org_id: orgId, p_enabled: enabled, p_sender_id: senderId, p_send_on_giving: sendOnGiving }),
+    send: (orgId, recipients, message) =>
+      supabase.rpc('send_sms', { p_org_id: orgId, p_recipients: recipients, p_message: message }),
+  },
+
   // Organizations
   org: {
     get:    (id) => supabase.from('organizations').select('*').eq('id', id).single(),

@@ -1076,6 +1076,18 @@
         <div id="lists-container"></div>
       </div>
 
+      <div class="settings-section card" id="sms-section" style="margin-bottom:1.25rem;display:none;">
+        <h3 style="margin-bottom:.25rem;">SMS (Arkesel)</h3>
+        <p class="text-sm text-muted" style="margin:0 0 1rem;">Text members from Communications and auto-thank givers. The API key is stored securely on the server.</p>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Sender ID</label><input type="text" id="sms-sender" class="form-control" maxlength="11" placeholder="ChurchOS"/><div class="text-xs text-muted" style="margin-top:.25rem;">Must be an Arkesel-approved sender (max 11 chars).</div></div>
+          <div class="form-group"><label class="form-label">Status</label><div id="sms-status" style="padding-top:.55rem;font-size:.85rem;">—</div></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:.5rem;margin:.4rem 0;"><input type="checkbox" id="sms-enabled"/> <span class="text-sm">Enable SMS sending</span></label>
+        <label style="display:flex;align-items:center;gap:.5rem;margin:.4rem 0 1rem;"><input type="checkbox" id="sms-on-giving"/> <span class="text-sm">Send a thank-you SMS automatically when a gift is recorded</span></label>
+        <button class="btn btn-primary btn-sm" id="sms-save-btn">Save SMS Settings</button>
+      </div>
+
       <div class="settings-section card">
         <h3 style="margin-bottom:.75rem;">Account</h3>
         <div class="settings-row">
@@ -1485,7 +1497,13 @@
           <select id="cf-audience" class="form-control"><option value="all">All Members</option><option value="leaders">Leaders</option><option value="youth">Youth</option></select>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">Message Body</label><textarea id="cf-body" class="form-control" rows="5"></textarea></div>
+      <div class="form-group"><label class="form-label">Channel</label>
+        <select id="cf-channel" class="form-control"><option value="log">Log only (no SMS)</option><option value="sms">Send as SMS</option></select>
+        <div class="text-xs text-muted" id="cf-sms-note" style="margin-top:.3rem;display:none;">SMS goes to the primary phone of every member in the audience who has one on record.</div>
+      </div>
+      <div class="form-group"><label class="form-label">Message Body</label><textarea id="cf-body" class="form-control" rows="5"></textarea>
+        <div class="text-xs text-muted" id="cf-sms-count" style="margin-top:.3rem;display:none;"></div>
+      </div>
       <input type="hidden" id="cf-id"/>
       <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-comms')">Cancel</button><button type="submit" class="btn btn-primary">Save &amp; Publish</button></div>
     </form>

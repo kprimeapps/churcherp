@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b32 · offline: attendance + giving';
+const APP_BUILD = 'b33 · SMS (Arkesel): giving + comms';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -1509,12 +1509,41 @@ window.deleteFl = async (id) => {
 };
 
 // ─── COMMUNICATIONS ───────────────────────────────────────────────────────────
+// Phone numbers of members in an audience (only those with a number on record).
+function audienceMembers(audience) {
+  const has = m => m.phone && m.phone.trim();
+  const txt = m => `${m.role || ''} ${m.group_name || ''}`.toLowerCase();
+  return allMembers.filter(m => {
+    if (!has(m)) return false;
+    if (audience === 'leaders') return /elder|deacon|pastor|presbyter|leader/.test(txt(m));
+    if (audience === 'youth')   return /youth|young/.test(txt(m));
+    return true; // 'all'
+  });
+}
+function audienceRecipients(audience) {
+  return audienceMembers(audience).map(m => m.phone.trim());
+}
+function updateCommsSmsHint() {
+  const isSms = document.getElementById('cf-channel').value === 'sms';
+  document.getElementById('cf-sms-note').style.display = isSms ? '' : 'none';
+  const countEl = document.getElementById('cf-sms-count');
+  if (!isSms) { countEl.style.display = 'none'; return; }
+  const n = audienceRecipients(document.getElementById('cf-audience').value).length;
+  const len = document.getElementById('cf-body').value.length;
+  const parts = Math.max(1, Math.ceil(len / 160));
+  countEl.style.display = '';
+  countEl.textContent = `${n} recipient(s) · ${len} chars · ${parts} SMS part(s) each`;
+}
+
 async function loadComms() {
   document.getElementById('comms-add-btn').onclick = () => {
     document.getElementById('comms-form').reset();
     document.getElementById('cf-id').value = '';
+    updateCommsSmsHint();
     openModal('modal-comms');
   };
+  ['cf-channel','cf-audience','cf-body'].forEach(id =>
+    document.getElementById(id).addEventListener('input', updateCommsSmsHint));
   await fetchComms();
 }
 
@@ -2449,6 +2478,17 @@ function initSettings() {
     const link = document.getElementById('qr-link-display2').textContent;
     navigator.clipboard.writeText(link).then(() => toast('Copied!', 'success'));
   });
+  document.getElementById('sms-save-btn')?.addEventListener('click', async () => {
+    const { error } = await db.sms.saveSettings(
+      ORG_ID,
+      document.getElementById('sms-enabled').checked,
+      document.getElementById('sms-sender').value.trim(),
+      document.getElementById('sms-on-giving').checked,
+    );
+    if (error) { toast(error.message, 'error'); return; }
+    toast('SMS settings saved', 'success');
+    loadSmsSettings();
+  });
 }
 
 function loadSettings() {
@@ -2487,6 +2527,22 @@ function loadSettings() {
   // Configurable lists (coordinating groups) — anyone who can edit org settings
   document.getElementById('lists-section').style.display = canEditOrg ? '' : 'none';
   if (canEditOrg) loadLists();
+
+  // SMS config — anyone who can write comms
+  const canSms = canWritePage('page-comms');
+  document.getElementById('sms-section').style.display = canSms ? '' : 'none';
+  if (canSms) loadSmsSettings();
+}
+
+async function loadSmsSettings() {
+  const { data, error } = await db.sms.settings(ORG_ID);
+  if (error) { document.getElementById('sms-status').textContent = error.message; return; }
+  document.getElementById('sms-sender').value    = data?.sender_id || 'ChurchOS';
+  document.getElementById('sms-enabled').checked  = !!data?.enabled;
+  document.getElementById('sms-on-giving').checked = !!data?.send_on_giving;
+  document.getElementById('sms-status').innerHTML = data?.configured
+    ? '<span style="color:var(--green);font-weight:600;">API key configured ✓</span>'
+    : '<span style="color:var(--red);">No API key set — contact support</span>';
 }
 
 function loadLists() {
@@ -2989,17 +3045,32 @@ function initFormHandlers() {
   // Communications form
   document.getElementById('comms-form').addEventListener('submit', async e => {
     e.preventDefault();
+    const audience = document.getElementById('cf-audience').value;
+    const channel  = document.getElementById('cf-channel').value;
+    const body     = document.getElementById('cf-body').value.trim();
     const data = {
       org_id:   ORG_ID,
       title:    document.getElementById('cf-title').value.trim(),
-      body:     document.getElementById('cf-body').value.trim() || null,
-      type:     document.getElementById('cf-type').value,
-      audience: document.getElementById('cf-audience').value,
+      body:     body || null,
+      type:     channel === 'sms' ? 'sms' : document.getElementById('cf-type').value,
+      audience,
       sent_at:  new Date().toISOString(),
     };
+
+    // Send SMS first (needs network + config); only log the message if it sends.
+    if (channel === 'sms') {
+      if (!body) { toast('Enter a message body to send by SMS', 'error'); return; }
+      if (!navigator.onLine) { toast('SMS needs an internet connection', 'error'); return; }
+      const recipients = audienceRecipients(audience);
+      if (!recipients.length) { toast('No members with a phone number in this audience', 'error'); return; }
+      const { data: res, error: smsErr } = await db.sms.send(ORG_ID, recipients, body);
+      if (smsErr) { toast(smsErr.message, 'error'); return; }
+      toast(`SMS sent to ${res?.count ?? recipients.length} recipient(s)`, 'success');
+    }
+
     const { error } = await db.communications.insert(data);
     if (error) { toast(error.message, 'error'); return; }
-    toast('Message published', 'success');
+    if (channel !== 'sms') toast('Message published', 'success');
     closeModal('modal-comms');
     await fetchComms();
   });
