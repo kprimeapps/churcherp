@@ -300,16 +300,16 @@ function buildQRCard() {
   const panelW = qrW + quiet*2, panelH = qrH + quiet*2;
   out.width = panelW + pad*2; out.height = panelH + pad*2 + textH;
   const ctx = out.getContext('2d');
-  ctx.fillStyle = '#0F2340'; ctx.fillRect(0,0,out.width,out.height);
+  // White card, gold top accent, black-on-white QR (scans most reliably).
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0,0,out.width,out.height);
   ctx.fillStyle = '#B8964A'; ctx.fillRect(0,0,out.width,8);
   const px = pad, py = pad + 8;
-  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(px,py,panelW,panelH);
   ctx.drawImage(canvas, px+quiet, py+quiet, qrW, qrH);
   const name = `${lastPerson.first_name} ${lastPerson.last_name||''}`.trim();
   const baseY = py + panelH;
-  ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 18px serif';
+  ctx.textAlign = 'center'; ctx.fillStyle = '#0F2340'; ctx.font = 'bold 18px serif';
   ctx.fillText(name, out.width/2, baseY+36);
-  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '13px sans-serif';
+  ctx.fillStyle = '#6B7280'; ctx.font = '13px sans-serif';
   ctx.fillText(lastPerson.role||'', out.width/2, baseY+56);
   ctx.fillText(lastPerson.id||'', out.width/2, baseY+74);
   return out;

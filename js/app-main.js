@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b33 · SMS (Arkesel): giving + comms';
+const APP_BUILD = 'b34 · QR: white card + all check-in flows + names';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -2354,15 +2354,15 @@ function buildQRCard(qrEl, lines) {
   out.width = panelW + pad * 2;
   out.height = panelH + pad * 2 + textH;
   const ctx = out.getContext('2d');
-  ctx.fillStyle = '#0F2340'; ctx.fillRect(0, 0, out.width, out.height);
+  // White card, gold top accent, black-on-white QR (scans most reliably).
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, out.width, out.height);
   ctx.fillStyle = '#B8964A'; ctx.fillRect(0, 0, out.width, 8);
   const px = pad, py = pad + 8;
-  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(px, py, panelW, panelH);
   if (canvas.tagName === 'CANVAS') ctx.drawImage(canvas, px + quiet, py + quiet, qrW, qrH);
   const baseY = py + panelH;
   ctx.textAlign = 'center';
   lines.forEach((ln, i) => {
-    ctx.fillStyle = i === 0 ? '#fff' : 'rgba(255,255,255,.6)';
+    ctx.fillStyle = i === 0 ? '#0F2340' : '#6B7280';
     ctx.font = i === 0 ? 'bold 18px serif' : '13px sans-serif';
     ctx.fillText(ln, out.width / 2, baseY + 30 + i * 22);
   });
@@ -2425,7 +2425,11 @@ function openSelfCheckinQR() {
 async function loadQRPage() {
   const [{ data: pending }, { data: todayQR }] = await Promise.all([
     db.qrRegs.list(ORG_ID, false),
-    supabase.from('attendance').select('*').eq('org_id', ORG_ID).eq('service_date', today()).eq('check_in_method','qr').order('created_at', { ascending: false }),
+    supabase.from('attendance')
+      .select('*, members(first_name,last_name,role)')
+      .eq('org_id', ORG_ID).eq('service_date', today())
+      .in('check_in_method', ['qr','qr_self'])
+      .order('created_at', { ascending: false }),
   ]);
 
   document.getElementById('qr-pending-count').textContent = fmtNum(pending?.length || 0);
@@ -2443,15 +2447,22 @@ async function loadQRPage() {
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="dismissQRReg('${r.id}')">Dismiss</button>
     </td>`);
 
-  buildTable(document.getElementById('qr-today-tbody'), todayQR || [], r => `
-    <td class="td-name">${r.guest_name || '—'}</td>
-    <td>${r.guest_role || '—'}</td>
-    <td class="text-sm text-muted">${new Date(r.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</td>`);
+  buildTable(document.getElementById('qr-today-tbody'), todayQR || [], r => {
+    const name = r.members ? `${r.members.first_name} ${r.members.last_name || ''}`.trim() : (r.guest_name || '—');
+    const role = r.members?.role || r.guest_role || '—';
+    const src  = r.check_in_method === 'qr_self'
+      ? '<span class="badge badge-gray">Self</span>'
+      : '<span class="badge badge-blue">Scan</span>';
+    return `
+      <td class="td-name">${name} ${src}</td>
+      <td>${role}</td>
+      <td class="text-sm text-muted">${new Date(r.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</td>`;
+  });
 
-  // Subscribe to live QR check-ins
+  // Subscribe to live QR check-ins (operator scan, manual entry, and self-scan)
   supabase.channel('qr-live')
     .on('postgres_changes', { event:'INSERT', schema:'public', table:'attendance', filter:`org_id=eq.${ORG_ID}` }, p => {
-      if (p.new.check_in_method === 'qr') loadQRPage();
+      if (['qr','qr_self'].includes(p.new.check_in_method)) loadQRPage();
     }).subscribe();
 }
 
