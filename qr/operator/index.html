@@ -9,18 +9,20 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --navy:#0A1628; --navy-2:#0F1E38; --navy-3:#162240; --navy-4:#1C2A4E;
-    --gold:#C9A84C; --gold-2:#E2C06A; --gold-dim:rgba(201,168,76,0.18); --gold-glow:rgba(201,168,76,0.08);
-    --white:#F8F5EE; --white-dim:rgba(248,245,238,0.72); --muted:rgba(248,245,238,0.45);
-    --border:rgba(201,168,76,0.15); --border-2:rgba(201,168,76,0.28);
-    --success:#2ECC71; --success-bg:rgba(46,204,113,0.12);
-    --danger:#E74C3C;  --danger-bg:rgba(231,76,60,0.12);
-    --warn:#F39C12;    --warn-bg:rgba(243,156,18,0.12);
+    /* Light white/gold theme (matches the self-check-in & register pages) */
+    --bg:#F5F1E8;
+    --navy:#0A1628; --navy-2:#FFFFFF; --navy-3:#FBF9F4; --navy-4:#F0EBDD;
+    --gold:#C9A84C; --gold-2:#B8964A; --gold-dim:rgba(201,168,76,0.16); --gold-glow:rgba(201,168,76,0.20);
+    --white:#1B2436; --white-dim:rgba(27,36,54,0.66); --muted:rgba(27,36,54,0.45);
+    --border:rgba(27,36,54,0.12); --border-2:rgba(201,168,76,0.42);
+    --success:#1E9E5A; --success-bg:rgba(46,204,113,0.14);
+    --danger:#D64535;  --danger-bg:rgba(231,76,60,0.10);
+    --warn:#B9791A;    --warn-bg:rgba(243,156,18,0.16);
     --display:'Playfair Display',Georgia,serif; --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
     --r:8px; --rl:14px; --tap:48px;
   }
   *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:var(--sans); color:var(--white); background:var(--navy); min-height:100vh; font-size:15px; -webkit-tap-highlight-color:transparent; display:flex; justify-content:center; padding:1.25rem 1rem; }
+  body { font-family:var(--sans); color:var(--white); background:var(--bg); min-height:100vh; font-size:15px; -webkit-tap-highlight-color:transparent; display:flex; justify-content:center; padding:1.25rem 1rem; }
   .shell { width:100%; max-width:480px; }
   .head { display:flex; align-items:center; gap:.7rem; margin-bottom:18px; }
   .logo { width:38px; height:38px; border-radius:10px; background:var(--gold-dim); border:.5px solid var(--border-2); display:flex; align-items:center; justify-content:center; }
@@ -28,7 +30,7 @@
   .eyebrow { font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); }
   .title { font-family:var(--display); font-size:20px; font-weight:600; }
   .signout { margin-left:auto; }
-  .card { background:var(--navy-2); border:.5px solid var(--border-2); border-radius:var(--rl); padding:18px; margin-bottom:14px; position:relative; overflow:hidden; }
+  .card { background:var(--navy-2); border:.5px solid var(--border-2); border-radius:var(--rl); padding:18px; margin-bottom:14px; position:relative; overflow:hidden; box-shadow:0 6px 20px rgba(10,22,40,.06); }
   .card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,.3),transparent); }
   label.fl { font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; display:block; }
   .field { margin-bottom:13px; }
@@ -48,7 +50,7 @@
   .panel { display:none; } .panel.active { display:block; }
   /* QR output */
   .qr-out { text-align:center; }
-  .qr-wrap { background:#fff; border-radius:var(--rl); padding:16px; display:inline-block; margin:10px 0; }
+  .qr-wrap { background:#fff; border:1px solid var(--border); border-radius:var(--rl); padding:16px; display:inline-block; margin:10px 0; }
   .qr-name { font-family:var(--display); font-size:18px; font-weight:600; }
   .qr-meta { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:3px; }
   .count { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.05em; }
@@ -168,7 +170,7 @@
         <div id="cam-wrap">
           <video id="cam-video" autoplay playsinline muted></video>
           <div class="cam-frame"><div class="frame-box"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span><span class="scan-line"></span></div></div>
-          <button id="cam-start" style="position:absolute;inset:0;width:100%;height:100%;background:rgba(10,22,40,.7);color:var(--white);border:none;font-family:var(--sans);font-size:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
+          <button id="cam-start" style="position:absolute;inset:0;width:100%;height:100%;background:rgba(10,22,40,.7);color:#F8F5EE;border:none;font-family:var(--sans);font-size:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
             <span style="font-size:2rem;">📷</span><span id="cam-start-label">Tap to start camera</span>
           </button>
         </div>
