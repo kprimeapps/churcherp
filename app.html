@@ -982,9 +982,18 @@
       <div class="tab-btn" data-tab="qr-today">Today's QR Check-Ins</div>
     </div>
     <div class="tab-panel active" id="qr-pending-panel">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.85rem;flex-wrap:wrap;">
+        <label class="text-sm text-muted">Show</label>
+        <select id="qr-pending-filter" class="form-control" style="width:auto;min-width:180px;">
+          <option value="member">Members only</option>
+          <option value="visitor">Newcomers / Visitors</option>
+          <option value="all">All</option>
+        </select>
+        <span class="text-sm text-muted" id="qr-pending-filter-count"></span>
+      </div>
       <div class="tbl-wrap">
         <table class="dtable">
-          <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Membership #</th><th>Role</th><th>Registered</th><th>Actions</th></tr></thead>
+          <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Membership #</th><th>Type</th><th>Registered</th><th>Actions</th></tr></thead>
           <tbody id="qr-pending-tbody"></tbody>
         </table>
       </div>

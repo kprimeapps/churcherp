@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b34 · QR: white card + all check-in flows + names';
+const APP_BUILD = 'b35 · Pending Import type badge + filter';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -2422,6 +2422,35 @@ function openSelfCheckinQR() {
   openModal('modal-selfci');
 }
 
+let qrPendingData = [];
+// Classify a registration's stored type/role into 'visitor' vs 'member'.
+// New sign-ups store 'Newcomer/Visitor' or 'Member'; legacy rows store
+// 'Visitor','General','Elder',… — anything visitor/newcomer-ish is a visitor.
+function regType(role) {
+  return /visitor|newcomer/i.test(role || '') ? 'visitor' : 'member';
+}
+function renderQRPending() {
+  const filter = document.getElementById('qr-pending-filter').value;
+  const rows = qrPendingData.filter(r => filter === 'all' || regType(r.role) === filter);
+  const countEl = document.getElementById('qr-pending-filter-count');
+  countEl.textContent = `${rows.length} of ${qrPendingData.length}`;
+  buildTable(document.getElementById('qr-pending-tbody'), rows, r => {
+    const isVisitor = regType(r.role) === 'visitor';
+    const badge = `<span class="badge ${isVisitor ? 'badge-gray' : 'badge-blue'}">${r.role || '—'}</span>`;
+    return `
+    <td class="mono text-sm">${r.id}</td>
+    <td class="td-name">${r.first_name} ${r.last_name || ''}</td>
+    <td>${r.phone || '—'}</td>
+    <td>${r.membership_no || '—'}</td>
+    <td>${badge}</td>
+    <td class="text-sm text-muted">${fmtDate(r.created_at)}</td>
+    <td class="td-actions">
+      <button class="btn btn-primary btn-sm" onclick="importQRReg('${r.id}')">Import to Members</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="dismissQRReg('${r.id}')">Dismiss</button>
+    </td>`;
+  });
+}
+
 async function loadQRPage() {
   const [{ data: pending }, { data: todayQR }] = await Promise.all([
     db.qrRegs.list(ORG_ID, false),
@@ -2432,20 +2461,13 @@ async function loadQRPage() {
       .order('created_at', { ascending: false }),
   ]);
 
-  document.getElementById('qr-pending-count').textContent = fmtNum(pending?.length || 0);
+  qrPendingData = pending || [];
+  document.getElementById('qr-pending-count').textContent = fmtNum(qrPendingData.length);
   document.getElementById('qr-today-count').textContent   = fmtNum(todayQR?.length || 0);
 
-  buildTable(document.getElementById('qr-pending-tbody'), pending || [], r => `
-    <td class="mono text-sm">${r.id}</td>
-    <td class="td-name">${r.first_name} ${r.last_name || ''}</td>
-    <td>${r.phone || '—'}</td>
-    <td>${r.membership_no || '—'}</td>
-    <td><span class="badge badge-gold">${r.role || '—'}</span></td>
-    <td class="text-sm text-muted">${fmtDate(r.created_at)}</td>
-    <td class="td-actions">
-      <button class="btn btn-primary btn-sm" onclick="importQRReg('${r.id}')">Import to Members</button>
-      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="dismissQRReg('${r.id}')">Dismiss</button>
-    </td>`);
+  const filterEl = document.getElementById('qr-pending-filter');
+  filterEl.onchange = renderQRPending;
+  renderQRPending();
 
   buildTable(document.getElementById('qr-today-tbody'), todayQR || [], r => {
     const name = r.members ? `${r.members.first_name} ${r.members.last_name || ''}`.trim() : (r.guest_name || '—');
