@@ -224,6 +224,14 @@ export const db = {
       .eq('org_id', orgId).not('group_name', 'is', null).order('summary_date', { ascending: false }).limit(limit),
     range: (orgId, start, end) => supabase.from('attendance_summaries').select('*')
       .eq('org_id', orgId).gte('summary_date', start).lte('summary_date', end),
+    forGroup: (orgId, groupName, limit = 30) => supabase.from('attendance_summaries').select('*')
+      .eq('org_id', orgId).eq('service_type', 'Group Meeting').eq('group_name', groupName)
+      .order('summary_date', { ascending: false }).limit(limit),
+    // Scoped upsert used by the Group Secretary kiosk (and admins).
+    recordGroup: (groupName, date, count, male, female, children, notes) =>
+      supabase.rpc('record_group_attendance', {
+        p_group_name: groupName, p_date: date, p_count: count,
+        p_male: male, p_female: female, p_children: children, p_notes: notes }),
     insert: (data) => dbInsert('attendance_summaries', data),
     update: (id, data) => dbUpdate('attendance_summaries', data, { id }),
     delete: (id) => dbDelete('attendance_summaries', { id }),
@@ -256,8 +264,9 @@ export const db = {
   // Team / roles
   team: {
     list: (orgId) => supabase.from('profiles')
-      .select('id,first_name,last_name,role').eq('org_id', orgId).order('first_name'),
-    setRole: (userId, role) => supabase.rpc('set_user_role', { p_user_id: userId, p_role: role }),
+      .select('id,first_name,last_name,role,group_name').eq('org_id', orgId).order('first_name'),
+    setRole: (userId, role, group = null) =>
+      supabase.rpc('set_user_role', { p_user_id: userId, p_role: role, p_group: group }),
     invites: (orgId) => supabase.from('org_invites')
       .select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
     invite: (orgId, email, role) => supabase.from('org_invites')

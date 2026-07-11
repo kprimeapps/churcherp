@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b35 · Pending Import type badge + filter';
+const APP_BUILD = 'b36 · Group Secretary kiosk';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -221,6 +221,7 @@ function activatePage(pageId) {
     case 'page-expenses':   loadExpenses(); break;
     case 'page-budget':     loadFinanceTab('ledger'); break;
     case 'page-qr':         loadQRPage(); break;
+    case 'page-group-attendance': loadGroupAttendance(); break;
     case 'page-settings':   loadSettings(); break;
   }
 }
@@ -2504,6 +2505,101 @@ window.dismissQRReg = async (id) => {
   loadQRPage();
 };
 
+// ─── GROUP ATTENDANCE (Group Secretary kiosk) ─────────────────────────────────
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+let gaGroup = null, gaInit = false;
+
+async function loadGroupAttendance() {
+  document.getElementById('topbar-title').textContent = 'Group Attendance';
+  const fixed = currentProfile?.group_name || null;
+  const { data: groups } = await db.groups.list(ORG_ID);
+  const list = groups || [];
+
+  const wrap = document.getElementById('ga-group-wrap');
+  const sel  = document.getElementById('ga-group');
+  if (fixed) {
+    wrap.style.display = 'none';
+    gaGroup = fixed;
+    document.getElementById('ga-title').textContent = `${fixed} — Meeting Attendance`;
+  } else {
+    // Admin/full-access viewing: let them pick a group.
+    wrap.style.display = '';
+    sel.innerHTML = list.map(g => `<option value="${g.name}">${g.name}</option>`).join('')
+      || '<option value="">(no groups yet)</option>';
+    gaGroup = sel.value || null;
+    sel.onchange = () => { gaGroup = sel.value || null; refreshGroupAttendance(list); };
+    document.getElementById('ga-title').textContent = 'Group Meeting Attendance';
+  }
+
+  // Default the date to the group's most recent meeting weekday, and show a hint.
+  const grp = list.find(g => g.name === gaGroup);
+  const days = (grp?.meeting_days || []).slice().sort();
+  document.getElementById('ga-days-hint').textContent = days.length
+    ? `${gaGroup || 'This group'} meets on ${days.map(d => DOW[d]).join(', ')}. You can still enter another date for corrections.`
+    : 'No meeting days set for this group — any date is allowed.';
+  document.getElementById('ga-date').value = lastMeetingDate(days);
+
+  if (!gaInit) {
+    gaInit = true;
+    document.getElementById('ga-form').addEventListener('submit', submitGroupAttendance);
+  }
+  refreshGroupAttendance(list);
+}
+
+// Most recent date (today or earlier) whose weekday is a meeting day; else today.
+function lastMeetingDate(days) {
+  const t = new Date();
+  if (!days.length) return t.toISOString().slice(0, 10);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(t); d.setDate(t.getDate() - i);
+    if (days.includes(d.getDay())) return d.toISOString().slice(0, 10);
+  }
+  return t.toISOString().slice(0, 10);
+}
+
+let gaRecent = [];
+async function refreshGroupAttendance() {
+  const tbody = document.getElementById('ga-recent-tbody');
+  if (!gaGroup) { tbody.innerHTML = '<tr><td class="tbl-empty" colspan="4">Select a group</td></tr>'; return; }
+  const { data, error } = await db.summaries.forGroup(ORG_ID, gaGroup);
+  if (error) { toast(error.message, 'error'); return; }
+  gaRecent = data || [];
+  buildTable(tbody, gaRecent, r => `
+    <td>${fmtDate(r.summary_date)}</td>
+    <td style="font-weight:600;">${fmtNum(r.total_count)}</td>
+    <td class="text-sm text-muted">${r.male_count || 0} / ${r.female_count || 0} / ${r.children_count || 0}</td>
+    <td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="gaEdit('${r.id}')">Edit</button></td>`,
+    'No entries yet');
+}
+
+window.gaEdit = (id) => {
+  const r = gaRecent.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('ga-date').value     = r.summary_date;
+  document.getElementById('ga-count').value    = r.total_count;
+  document.getElementById('ga-male').value     = r.male_count || '';
+  document.getElementById('ga-female').value   = r.female_count || '';
+  document.getElementById('ga-children').value = r.children_count || '';
+  document.getElementById('ga-notes').value    = r.notes || '';
+  document.getElementById('ga-count').focus();
+};
+
+async function submitGroupAttendance(e) {
+  e.preventDefault();
+  if (!gaGroup) { toast('No group selected', 'error'); return; }
+  const num = id => { const v = document.getElementById(id).value; return v === '' ? 0 : Number(v); };
+  const { error } = await db.summaries.recordGroup(
+    gaGroup,
+    document.getElementById('ga-date').value,
+    num('ga-count'), num('ga-male'), num('ga-female'), num('ga-children'),
+    document.getElementById('ga-notes').value.trim() || null,
+  );
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Attendance saved', 'success');
+  ['ga-count','ga-male','ga-female','ga-children','ga-notes'].forEach(id => document.getElementById(id).value = '');
+  refreshGroupAttendance();
+}
+
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 function initSettings() {
   document.getElementById('save-org-btn')?.addEventListener('click', saveOrgSettings);
@@ -2661,8 +2757,13 @@ async function loadTeam() {
   }
   loadInvites();
 
-  const { data, error } = await db.team.list(ORG_ID);
+  const [{ data, error }, { data: groups }] = await Promise.all([
+    db.team.list(ORG_ID), db.groups.list(ORG_ID),
+  ]);
   if (error) { toast(error.message, 'error'); return; }
+  const groupOpts = (sel) => (groups || []).map(g =>
+    `<option value="${g.name}"${g.name === sel ? ' selected' : ''}>${g.name}</option>`).join('')
+    || '<option value="">(no groups)</option>';
   const tbody = document.getElementById('team-tbody');
   tbody.innerHTML = (data || []).map(u => {
     const name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || '(no name)';
@@ -2672,17 +2773,38 @@ async function loadTeam() {
     const locked = isOwner || isSelf;
     const opts = ASSIGNABLE_ROLES.map(r =>
       `<option value="${r}"${u.role === r ? ' selected' : ''}>${ROLE_LABELS[r]}</option>`).join('');
+    const grpSel = `<select id="grp-${u.id}" class="form-control" style="min-height:34px;font-size:.8rem;padding:.2rem .5rem;width:auto;margin-top:.35rem;display:${u.role === 'group_secretary' ? '' : 'none'};" onchange="assignRoleGroup('${u.id}')">${groupOpts(u.group_name)}</select>`;
     const cell = locked
-      ? `<span class="role-pill">${ROLE_LABELS[u.role] || u.role}${isSelf ? ' · you' : ''}</span>`
-      : `<select class="form-control" style="min-height:34px;font-size:.8rem;padding:.2rem .5rem;width:auto;" onchange="assignRole('${u.id}', this.value)">${opts}</select>`;
+      ? `<span class="role-pill">${ROLE_LABELS[u.role] || u.role}${isSelf ? ' · you' : ''}${u.role === 'group_secretary' && u.group_name ? ' · ' + u.group_name : ''}</span>`
+      : `<select class="form-control" style="min-height:34px;font-size:.8rem;padding:.2rem .5rem;width:auto;" onchange="assignRole('${u.id}', this.value)">${opts}</select>${grpSel}`;
     return `<tr><td class="td-name">${name}</td><td class="text-sm text-muted">${isSelf ? '(you)' : ''}</td><td>${cell}</td></tr>`;
   }).join('');
 }
 
 window.assignRole = async (userId, role) => {
-  const { error } = await db.team.setRole(userId, role);
+  const grpSel = document.getElementById(`grp-${userId}`);
+  if (role === 'group_secretary') {
+    // Reveal the group picker and assign using its current value.
+    if (grpSel) grpSel.style.display = '';
+    const group = grpSel?.value || null;
+    if (!group) { toast('Create a group first, then assign', 'error'); return; }
+    const { error } = await db.team.setRole(userId, role, group);
+    if (error) { toast(error.message, 'error'); loadTeam(); return; }
+    toast(`Assigned as Group Secretary (${group})`, 'success');
+    return;
+  }
+  if (grpSel) grpSel.style.display = 'none';
+  const { error } = await db.team.setRole(userId, role, null);
   if (error) { toast(error.message, 'error'); loadTeam(); return; }
   toast('Role updated', 'success');
+};
+
+window.assignRoleGroup = async (userId) => {
+  const group = document.getElementById(`grp-${userId}`)?.value || null;
+  if (!group) return;
+  const { error } = await db.team.setRole(userId, 'group_secretary', group);
+  if (error) { toast(error.message, 'error'); return; }
+  toast(`Group set to ${group}`, 'success');
 };
 
 async function loadInvites() {

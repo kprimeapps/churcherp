@@ -8,7 +8,7 @@ export const ALL_PAGES = [
   'page-dashboard','page-reports','page-members','page-attendance','page-groups','page-giving',
   'page-volunteers','page-visitors','page-family','page-comms','page-events',
   'page-welfare','page-education','page-missions','page-scholarship',
-  'page-expenses','page-budget','page-qr','page-settings',
+  'page-expenses','page-budget','page-qr','page-group-attendance','page-settings',
 ];
 
 const FINANCE = ['page-giving','page-expenses','page-budget'];
@@ -38,6 +38,7 @@ const ROLE_ACCESS = {
 
   finance_team:         mk(FINANCE, ['page-reports']),
   usher:                { 'page-attendance': 'write' },  // kiosk: attendance only
+  group_secretary:      { 'page-group-attendance': 'write' },  // kiosk: their group's meeting count only
   missions_coordinator: mk(['page-missions','page-visitors']),
   education_coordinator:mk(['page-education','page-scholarship']),
   welfare_coordinator:  mk(['page-welfare']),
@@ -53,6 +54,7 @@ export const ROLE_LABELS = {
   viewer: 'Viewer (read-only)',
   finance_team: 'Finance Team',
   usher: 'Usher',
+  group_secretary: 'Group Secretary',
   missions_coordinator: 'Missions Coordinator',
   education_coordinator: 'Education Coordinator',
   welfare_coordinator: 'Welfare Coordinator',
@@ -60,7 +62,7 @@ export const ROLE_LABELS = {
 };
 // Roles offered in the assignment dropdown (hierarchy roles managed elsewhere).
 export const ASSIGNABLE_ROLES = [
-  'admin','pastor','finance_team','usher','missions_coordinator',
+  'admin','pastor','finance_team','usher','group_secretary','missions_coordinator',
   'education_coordinator','welfare_coordinator','counsellor','staff','viewer',
 ];
 

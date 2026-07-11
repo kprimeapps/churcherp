@@ -1008,6 +1008,38 @@
     </div>
   </div>
 
+  <!-- ══ GROUP ATTENDANCE (kiosk for Group Secretaries) ═══════════════════════ -->
+  <div class="erp-page page-content" id="page-group-attendance">
+    <div class="page-header">
+      <div class="page-header-left"><h2 id="ga-title">Group Meeting Attendance</h2><p id="ga-sub">Record your group's attendance count for a meeting day.</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem;align-items:start;" id="ga-grid">
+      <div class="card">
+        <h3 style="margin:0 0 .25rem;">New / Update Entry</h3>
+        <p class="text-sm text-muted" id="ga-days-hint" style="margin:0 0 1rem;"></p>
+        <form id="ga-form">
+          <div class="form-group" id="ga-group-wrap" style="display:none;"><label class="form-label">Group *</label><select id="ga-group" class="form-control"></select></div>
+          <div class="form-group"><label class="form-label">Meeting Date *</label><input type="date" id="ga-date" class="form-control" required/></div>
+          <div class="form-group"><label class="form-label">Total Present *</label><input type="number" id="ga-count" class="form-control" min="0" inputmode="numeric" required/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Male</label><input type="number" id="ga-male" class="form-control" min="0" inputmode="numeric"/></div>
+            <div class="form-group"><label class="form-label">Female</label><input type="number" id="ga-female" class="form-control" min="0" inputmode="numeric"/></div>
+            <div class="form-group"><label class="form-label">Children</label><input type="number" id="ga-children" class="form-control" min="0" inputmode="numeric"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Notes</label><input type="text" id="ga-notes" class="form-control" placeholder="Optional"/></div>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Save Attendance</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 .6rem;">Recent Entries</h3>
+        <div class="tbl-wrap"><table class="dtable">
+          <thead><tr><th>Date</th><th>Total</th><th>M / F / C</th><th></th></tr></thead>
+          <tbody id="ga-recent-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ SETTINGS ═══════════════════════════════════════════════════════════ -->
   <div class="erp-page page-content" id="page-settings">
     <div class="page-header">
