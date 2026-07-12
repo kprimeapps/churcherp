@@ -295,6 +295,9 @@ export const db = {
       return q.order('given_date', { ascending: false });
     },
     summary: (orgId) => supabase.rpc('get_giving_by_category', { p_org_id: orgId }),
+    // Distinct names of non-member givers (for repeat-giver autocomplete).
+    donorNames: (orgId) => supabase.from('giving').select('member_name')
+      .eq('org_id', orgId).is('member_id', null).not('member_name', 'is', null).limit(2000),
     insert: (data) => dbInsert('giving', data),
     update: (id, data) => dbUpdate('giving', data, { id }),
     delete: (id) => dbDelete('giving', { id }),

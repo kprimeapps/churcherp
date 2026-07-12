@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b39 · configurable count segments + usher/media split';
+const APP_BUILD = 'b40 · online-save fix + repeat-giver autocomplete';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -748,8 +748,9 @@ async function loadMembers() {
     document.getElementById('af-member-id').value = m.id;
     document.getElementById('af-guest-fields').style.display = 'none';
   });
-  memberSelect(document.getElementById('gf-member-name'), () => allMembers, m => {
-    document.getElementById('gf-member-id').value = m.id;
+  memberSelect(document.getElementById('gf-member-name'), () => givingSearchSource(), m => {
+    // Members carry an id; past non-member givers don't (name only).
+    document.getElementById('gf-member-id').value = m.id || '';
   });
   memberSelect(document.getElementById('volf-member-name'), () => allMembers, m => document.getElementById('volf-member-id').value = m.id);
   memberSelect(document.getElementById('wff-member-name'), () => allMembers, m => document.getElementById('wff-member-id').value = m.id);
@@ -859,7 +860,7 @@ async function loadAttendance() {
   document.getElementById('online-add-btn').onclick = () => {
     document.getElementById('online-form').reset();
     document.getElementById('onf-id').value = '';
-    populateAllConfigTargets();
+    fillChannelSelect();
     openModal('modal-online');
   };
 
@@ -936,11 +937,21 @@ async function fetchOnline() {
     </td>`);
 }
 
+// Fill the channel <select> from the configurable list (guarantees it's never
+// empty, which would silently block the required-field form submit).
+function fillChannelSelect(selected) {
+  const sel = document.getElementById('onf-channel');
+  if (!sel) return;
+  const chans = listValues('online_channels');
+  sel.innerHTML = chans.map(c => `<option>${c}</option>`).join('');
+  if (selected) setSelectValue('onf-channel', selected);
+}
+
 window.editOnline = (id) => {
   const r = onlineData.find(x => x.id === id);
   if (!r) return;
   document.getElementById('onf-id').value = r.id;
-  document.getElementById('onf-channel').value = r.channel;
+  fillChannelSelect(r.channel);
   document.getElementById('onf-count').value = r.count;
   document.getElementById('onf-notes').value = r.notes || '';
   openModal('modal-online');
@@ -1098,7 +1109,27 @@ window.deleteGroup = async (id) => {
 
 // ─── GIVING ───────────────────────────────────────────────────────────────────
 let givingData = [];
+// Past non-member givers (name-only), merged into the Giving autocomplete so a
+// repeat gift for someone without a membership number surfaces their name.
+let pastGivers = [];
+async function loadPastGivers() {
+  const { data } = await db.giving.donorNames(ORG_ID);
+  const seen = new Set();
+  pastGivers = [];
+  (data || []).forEach(r => {
+    const name = (r.member_name || '').trim();
+    const key = name.toLowerCase();
+    if (name && !seen.has(key)) { seen.add(key); pastGivers.push({ first_name: name, last_name: '', _giver: true }); }
+  });
+}
+// Members first, then past givers whose name isn't already a member.
+function givingSearchSource() {
+  const memberNames = new Set(allMembers.map(m => `${m.first_name} ${m.last_name || ''}`.trim().toLowerCase()));
+  return [...allMembers, ...pastGivers.filter(g => !memberNames.has(g.first_name.toLowerCase()))];
+}
+
 async function loadGiving() {
+  loadPastGivers();
   const yearEl = document.getElementById('giving-year');
   const currentYear = new Date().getFullYear();
   yearEl.innerHTML = [0,1,2].map(i => `<option value="${currentYear-i}">${currentYear-i}</option>`).join('');
@@ -3057,7 +3088,7 @@ function initFormHandlers() {
   document.getElementById('giving-form').addEventListener('submit', async e => {
     e.preventDefault();
     const memberId   = document.getElementById('gf-member-id').value;
-    const memberName = document.getElementById('gf-member-name').value;
+    const memberName = document.getElementById('gf-member-name').value.trim();
     const editId     = document.getElementById('gf-member-id').dataset.editId || '';
     const data = {
       org_id:         ORG_ID,
@@ -3088,6 +3119,7 @@ function initFormHandlers() {
     }
 
     toast(editId ? 'Gift updated' : 'Gift recorded', 'success');
+    if (!memberId && memberName) loadPastGivers();   // remember this non-member giver
     givingData = [];
     loaded.delete('page-giving');
     await fetchGiving();
