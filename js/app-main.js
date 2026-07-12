@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b36 · Group Secretary kiosk';
+const APP_BUILD = 'b37 · Group Attendance: per-group hint, no children';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -2507,13 +2507,13 @@ window.dismissQRReg = async (id) => {
 
 // ─── GROUP ATTENDANCE (Group Secretary kiosk) ─────────────────────────────────
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-let gaGroup = null, gaInit = false;
+let gaGroup = null, gaInit = false, gaGroups = [];
 
 async function loadGroupAttendance() {
   document.getElementById('topbar-title').textContent = 'Group Attendance';
   const fixed = currentProfile?.group_name || null;
   const { data: groups } = await db.groups.list(ORG_ID);
-  const list = groups || [];
+  gaGroups = groups || [];
 
   const wrap = document.getElementById('ga-group-wrap');
   const sel  = document.getElementById('ga-group');
@@ -2524,26 +2524,30 @@ async function loadGroupAttendance() {
   } else {
     // Admin/full-access viewing: let them pick a group.
     wrap.style.display = '';
-    sel.innerHTML = list.map(g => `<option value="${g.name}">${g.name}</option>`).join('')
+    sel.innerHTML = gaGroups.map(g => `<option value="${g.name}">${g.name}</option>`).join('')
       || '<option value="">(no groups yet)</option>';
     gaGroup = sel.value || null;
-    sel.onchange = () => { gaGroup = sel.value || null; refreshGroupAttendance(list); };
+    sel.onchange = () => applyGroupContext(sel.value || null);
     document.getElementById('ga-title').textContent = 'Group Meeting Attendance';
   }
-
-  // Default the date to the group's most recent meeting weekday, and show a hint.
-  const grp = list.find(g => g.name === gaGroup);
-  const days = (grp?.meeting_days || []).slice().sort();
-  document.getElementById('ga-days-hint').textContent = days.length
-    ? `${gaGroup || 'This group'} meets on ${days.map(d => DOW[d]).join(', ')}. You can still enter another date for corrections.`
-    : 'No meeting days set for this group — any date is allowed.';
-  document.getElementById('ga-date').value = lastMeetingDate(days);
 
   if (!gaInit) {
     gaInit = true;
     document.getElementById('ga-form').addEventListener('submit', submitGroupAttendance);
   }
-  refreshGroupAttendance(list);
+  applyGroupContext(gaGroup);
+}
+
+// Set the active group, then refresh the meeting-day hint, default date, and list.
+function applyGroupContext(group) {
+  gaGroup = group;
+  const grp = gaGroups.find(g => g.name === gaGroup);
+  const days = (grp?.meeting_days || []).slice().sort();
+  document.getElementById('ga-days-hint').textContent = days.length
+    ? `${gaGroup || 'This group'} meets on ${days.map(d => DOW[d]).join(', ')}. You can still enter another date for corrections.`
+    : `No meeting days set for ${gaGroup || 'this group'} — any date is allowed.`;
+  document.getElementById('ga-date').value = lastMeetingDate(days);
+  refreshGroupAttendance();
 }
 
 // Most recent date (today or earlier) whose weekday is a meeting day; else today.
@@ -2567,7 +2571,7 @@ async function refreshGroupAttendance() {
   buildTable(tbody, gaRecent, r => `
     <td>${fmtDate(r.summary_date)}</td>
     <td style="font-weight:600;">${fmtNum(r.total_count)}</td>
-    <td class="text-sm text-muted">${r.male_count || 0} / ${r.female_count || 0} / ${r.children_count || 0}</td>
+    <td class="text-sm text-muted">${r.male_count || 0} / ${r.female_count || 0}</td>
     <td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="gaEdit('${r.id}')">Edit</button></td>`,
     'No entries yet');
 }
@@ -2579,7 +2583,6 @@ window.gaEdit = (id) => {
   document.getElementById('ga-count').value    = r.total_count;
   document.getElementById('ga-male').value     = r.male_count || '';
   document.getElementById('ga-female').value   = r.female_count || '';
-  document.getElementById('ga-children').value = r.children_count || '';
   document.getElementById('ga-notes').value    = r.notes || '';
   document.getElementById('ga-count').focus();
 };
@@ -2591,12 +2594,12 @@ async function submitGroupAttendance(e) {
   const { error } = await db.summaries.recordGroup(
     gaGroup,
     document.getElementById('ga-date').value,
-    num('ga-count'), num('ga-male'), num('ga-female'), num('ga-children'),
+    num('ga-count'), num('ga-male'), num('ga-female'), 0,
     document.getElementById('ga-notes').value.trim() || null,
   );
   if (error) { toast(error.message, 'error'); return; }
   toast('Attendance saved', 'success');
-  ['ga-count','ga-male','ga-female','ga-children','ga-notes'].forEach(id => document.getElementById(id).value = '');
+  ['ga-count','ga-male','ga-female','ga-notes'].forEach(id => document.getElementById(id).value = '');
   refreshGroupAttendance();
 }
 
