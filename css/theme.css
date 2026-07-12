@@ -476,6 +476,14 @@ body.kiosk #menu-toggle,
 body.kiosk #sidebar-backdrop { display: none !important; }
 body.kiosk .main-wrap { margin-left: 0 !important; }
 
+/* Role-scoped Attendance sections — hidden from first paint (no flash) */
+body[data-role="usher"] #att-checkin-section,
+body[data-role="usher"] #att-online-section,
+body[data-role="usher"] #att-add-btn,
+body[data-role="media_team"] #att-checkin-section,
+body[data-role="media_team"] #att-countentry-section,
+body[data-role="media_team"] #att-add-btn { display: none !important; }
+
 /* Mobile sidebar backdrop (tap to close) */
 .sidebar-backdrop {
   display: none;

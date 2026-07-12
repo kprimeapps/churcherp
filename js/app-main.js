@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b41 · non-member adherents';
+const APP_BUILD = 'b42 · online-save error handling + no section flash';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -65,6 +65,10 @@ async function boot() {
   document.getElementById('sb-name').textContent = `${currentProfile.first_name || ''} ${currentProfile.last_name || ''}`.trim() || 'User';
   document.getElementById('sb-role').textContent = currentProfile.role || 'staff';
   document.getElementById('sb-avatar').textContent = initials(currentProfile.first_name, currentProfile.last_name);
+
+  // Stamp the role on <body> so role-scoped sections (e.g. the Attendance page's
+  // usher/media-team split) are hidden from first paint — no flash before JS gates them.
+  document.body.dataset.role = currentProfile.role || '';
 
   // RBAC: hide nav items this role can't access
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {
@@ -3080,9 +3084,11 @@ function initFormHandlers() {
       count:        parseInt(document.getElementById('onf-count').value, 10) || 0,
       notes:        document.getElementById('onf-notes').value.trim() || null,
     };
-    const { error } = id ? await db.online.update(id, data) : await db.online.insert(data);
+    let error;
+    try { if (id) await db.online.update(id, data); else await db.online.insert(data); }
+    catch (err) { error = err; }
     if (error) {
-      toast(error.code === '23505' ? 'That channel is already recorded for this service' : error.message, 'error');
+      toast(error.code === '23505' ? 'That channel is already recorded for this service — edit the existing row instead' : (error.message || 'Could not save'), 'error');
       return;
     }
     toast('Online attendance saved', 'success');
