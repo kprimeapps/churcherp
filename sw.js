@@ -1,5 +1,5 @@
 // ChurchOS v2 — Service Worker
-const CACHE = 'churchos-v45';
+const CACHE = 'churchos-v46';
 const PRECACHE = [
   '/',
   '/index.html',

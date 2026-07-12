@@ -267,6 +267,7 @@ export const db = {
       .select('id,first_name,last_name,role,group_name').eq('org_id', orgId).order('first_name'),
     setRole: (userId, role, group = null) =>
       supabase.rpc('set_user_role', { p_user_id: userId, p_role: role, p_group: group }),
+    remove: (userId) => supabase.rpc('remove_team_member', { p_user_id: userId }),
     invites: (orgId) => supabase.from('org_invites')
       .select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
     invite: (orgId, email, role) => supabase.from('org_invites')

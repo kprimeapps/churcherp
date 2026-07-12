@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b37 · Group Attendance: per-group hint, no children';
+const APP_BUILD = 'b38 · remove team member + online channel dropdown';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -1731,8 +1731,13 @@ const CONFIG_LISTS = {
   },
   service_types: {
     label: 'Attendance Service Types',
-    defaults: ['Sunday Service','Prayer Meeting','Group Meeting','Special Service'],
+    defaults: ['Sunday Service','1st Service','2nd Service','Prayer Meeting','Group Meeting','Special Service'],
     targets: [{ select: 'att-type' }],
+  },
+  online_channels: {
+    label: 'Online Streaming Channels',
+    defaults: ['Facebook','YouTube','TikTok','Instagram','Zoom','Website'],
+    targets: [{ select: 'onf-channel' }],
   },
   visitor_sources: {
     label: 'Visitor Sources (How heard)',
@@ -2780,7 +2785,9 @@ async function loadTeam() {
     const cell = locked
       ? `<span class="role-pill">${ROLE_LABELS[u.role] || u.role}${isSelf ? ' · you' : ''}${u.role === 'group_secretary' && u.group_name ? ' · ' + u.group_name : ''}</span>`
       : `<select class="form-control" style="min-height:34px;font-size:.8rem;padding:.2rem .5rem;width:auto;" onchange="assignRole('${u.id}', this.value)">${opts}</select>${grpSel}`;
-    return `<tr><td class="td-name">${name}</td><td class="text-sm text-muted">${isSelf ? '(you)' : ''}</td><td>${cell}</td></tr>`;
+    const remove = locked ? '' :
+      `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="removeTeamMember('${u.id}','${name.replace(/'/g,"\\'")}')">Remove</button>`;
+    return `<tr><td class="td-name">${name}</td><td class="text-sm text-muted">${isSelf ? '(you)' : ''}</td><td>${cell}</td><td class="td-actions">${remove}</td></tr>`;
   }).join('');
 }
 
@@ -2800,6 +2807,14 @@ window.assignRole = async (userId, role) => {
   const { error } = await db.team.setRole(userId, role, null);
   if (error) { toast(error.message, 'error'); loadTeam(); return; }
   toast('Role updated', 'success');
+};
+
+window.removeTeamMember = async (userId, name) => {
+  if (!confirm(`Remove ${name} from this church? They lose all access. This does not delete their login.`)) return;
+  const { error } = await db.team.remove(userId);
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Team member removed', 'success');
+  loadTeam();
 };
 
 window.assignRoleGroup = async (userId) => {

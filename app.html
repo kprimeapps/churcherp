@@ -1103,7 +1103,7 @@
         <h4 style="margin:0 0 .6rem;font-size:.9rem;">Current members</h4>
         <div class="tbl-wrap">
           <table class="dtable">
-            <thead><tr><th>Name</th><th></th><th>Role</th></tr></thead>
+            <thead><tr><th>Name</th><th></th><th>Role</th><th></th></tr></thead>
             <tbody id="team-tbody"></tbody>
           </table>
         </div>
@@ -1802,11 +1802,8 @@
     <div class="modal-header"><h3 class="modal-title">Online Attendance</h3><button class="modal-close" onclick="closeModal('modal-online')">✕</button></div>
     <form id="online-form">
       <div class="form-group"><label class="form-label">Channel *</label>
-        <input type="text" id="onf-channel" class="form-control" list="online-channels" placeholder="Facebook, YouTube, TikTok…" required/>
-        <datalist id="online-channels">
-          <option>Facebook</option><option>YouTube</option><option>TikTok</option>
-          <option>Instagram</option><option>Zoom</option><option>X (Twitter)</option><option>Website</option>
-        </datalist>
+        <select id="onf-channel" class="form-control" required></select>
+        <div class="text-xs text-muted" style="margin-top:.25rem;">Add or edit channels in Settings → Lists &amp; Options. Record each streaming channel separately.</div>
       </div>
       <div class="form-group"><label class="form-label">Viewers / Count *</label><input type="number" id="onf-count" class="form-control" min="0" step="1" required/></div>
       <div class="form-group"><label class="form-label">Notes</label><input type="text" id="onf-notes" class="form-control"/></div>
