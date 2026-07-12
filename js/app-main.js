@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b40 · online-save fix + repeat-giver autocomplete';
+const APP_BUILD = 'b41 · non-member adherents';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -777,7 +777,8 @@ function renderMembers() {
     <td><div style="display:flex;align-items:center;gap:.6rem;">
       <div class="member-photo">${initials(m.first_name, m.last_name)}</div>
       <span class="td-name">${m.first_name} ${m.last_name}</span>
-      ${m.member_confirmed ? '' : '<span class="badge badge-gold" title="Not yet verified">⚠ Unverified</span>'}
+      ${m.is_member === false ? '<span class="badge badge-gray" title="Non-member">Adherent</span>' : ''}
+      ${m.member_confirmed || m.is_member === false ? '' : '<span class="badge badge-gold" title="Not yet verified">⚠ Unverified</span>'}
     </div></td>
     <td>${m.membership_no || '—'}</td>
     <td>${m.group_name ? `<span class="badge badge-gold">${m.group_name}</span>` : '—'}</td>
@@ -791,9 +792,12 @@ function renderMembers() {
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteMember('${m.id}')">Delete</button>
     </td>`);
 
-  const unverified = membersData.filter(m => !m.member_confirmed).length;
+  const members   = membersData.filter(m => m.is_member !== false);
+  const adherents = membersData.length - members.length;
+  const unverified = members.filter(m => !m.member_confirmed).length;
   document.getElementById('member-count-bar').innerHTML =
-    `Showing ${rows.length} of ${membersData.length} members` +
+    `Showing ${rows.length} of ${members.length} members` +
+    (adherents ? ` · ${adherents} adherent${adherents === 1 ? '' : 's'}` : '') +
     (unverified ? ` · <strong style="color:var(--gold-dark)">${unverified} unverified</strong> (pending confirmation)` : '');
 }
 
@@ -806,6 +810,7 @@ function openMemberModal(m = null) {
   document.getElementById('mf-phone2').value   = m?.phone2 || '';
   document.getElementById('mf-email').value    = m?.email || '';
   document.getElementById('mf-mno').value      = m?.membership_no || '';
+  document.getElementById('mf-adherent').checked = m ? (m.is_member === false) : false;
   document.getElementById('mf-gender').value   = m?.gender || '';
   document.getElementById('mf-role').value     = m?.role || '';
   document.getElementById('mf-group').value    = m?.group_name || '';
@@ -2983,6 +2988,7 @@ function initFormHandlers() {
       phone2:        document.getElementById('mf-phone2').value.trim() || null,
       email:         document.getElementById('mf-email').value.trim() || null,
       membership_no: document.getElementById('mf-mno').value.trim() || null,
+      is_member:     !document.getElementById('mf-adherent').checked,
       gender:        document.getElementById('mf-gender').value || null,
       role:          document.getElementById('mf-role').value.trim() || 'General',
       group_name:    document.getElementById('mf-group').value.trim() || null,

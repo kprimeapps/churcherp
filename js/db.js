@@ -180,7 +180,7 @@ export const db = {
     insert: (data) => dbInsert('members', data),
     update: (id, data) => dbUpdate('members', data, { id }),
     delete: (id) => dbDelete('members', { id }),
-    count:  (orgId) => supabase.from('members').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('is_active', true),
+    count:  (orgId) => supabase.from('members').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('is_active', true).eq('is_member', true),
   },
 
   // Attendance
@@ -251,9 +251,9 @@ export const db = {
       .select('date_joined,created_at').eq('org_id', orgId),
     verifyCounts: async (orgId) => {
       const total = await supabase.from('members').select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId).eq('is_active', true);
+        .eq('org_id', orgId).eq('is_active', true).eq('is_member', true);
       const verified = await supabase.from('members').select('id', { count: 'exact', head: true })
-        .eq('org_id', orgId).eq('is_active', true).eq('member_confirmed', true);
+        .eq('org_id', orgId).eq('is_active', true).eq('is_member', true).eq('member_confirmed', true);
       return { total: total.count || 0, verified: verified.count || 0 };
     },
     attendanceRange: (orgId, start, end) => supabase.from('attendance')
