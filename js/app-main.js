@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b38 · remove team member + online channel dropdown';
+const APP_BUILD = 'b39 · configurable count segments + usher/media split';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -631,46 +631,70 @@ function exportGroupsCSV() {
 }
 
 // ── Summary modal (service total OR group meeting) ──
+// Renders one number input per configurable attendance segment.
+function renderSummarySegments(values = {}) {
+  const segs = listValues('attendance_segments');
+  document.getElementById('as-segments').innerHTML = segs.map((name, i) =>
+    `<div class="form-group" style="margin:0;">
+       <label class="form-label">${name}</label>
+       <input type="number" id="as-seg-${i}" data-seg="${name}" class="form-control as-seg" min="0" step="1"
+              value="${values[name] ?? ''}" oninput="asRecalc()"/>
+     </div>`).join('');
+}
 function openSummaryModal(mode) {
   document.getElementById('attsummary-form').reset();
   document.getElementById('as-id').value = '';
   document.getElementById('as-mode').value = mode;
-  document.getElementById('as-date').value = mode === 'service' ? (document.getElementById('rep-att-date').value || today()) : today();
-  document.getElementById('as-title').textContent = mode === 'service' ? 'Record Service Total' : 'Record Group Meeting';
+  const repDate = document.getElementById('rep-att-date')?.value;
+  const attDate = document.getElementById('att-date')?.value;
+  document.getElementById('as-date').value = mode === 'service' ? (repDate || attDate || today()) : today();
+  document.getElementById('as-title').textContent = mode === 'service' ? 'Record Service Count' : 'Record Group Meeting';
   document.getElementById('as-type-wrap').style.display = mode === 'service' ? '' : 'none';
   document.getElementById('as-group-wrap').style.display = mode === 'group' ? '' : 'none';
   document.getElementById('as-type').innerHTML = listValues('service_types').map(t => `<option>${t}</option>`).join('');
-  if (mode === 'service') document.getElementById('as-type').value = document.getElementById('rep-att-type').value;
+  if (mode === 'service') {
+    const t = document.getElementById('rep-att-type')?.value || document.getElementById('att-type')?.value;
+    if (t) setSelectValue('as-type', t);
+  }
   const groups = [...new Set(allMembers.map(m => m.group_name).filter(Boolean))];
   document.getElementById('as-group').innerHTML = groups.map(g => `<option>${g}</option>`).join('') || '<option value="">(no groups)</option>';
+  renderSummarySegments();
   openModal('modal-attsummary');
 }
 window.asRecalc = () => {
-  const m = +document.getElementById('as-male').value || 0;
-  const f = +document.getElementById('as-female').value || 0;
-  const c = +document.getElementById('as-children').value || 0;
-  if (m || f || c) document.getElementById('as-total').value = m + f + c;
+  let sum = 0, any = false;
+  document.querySelectorAll('#as-segments .as-seg').forEach(el => {
+    if (el.value !== '') { sum += +el.value || 0; any = true; }
+  });
+  if (any) document.getElementById('as-total').value = sum;
 };
 function initSummaryForm() {
   document.getElementById('attsummary-form').addEventListener('submit', async e => {
     e.preventDefault();
     const mode = document.getElementById('as-mode').value;
+    // Collect the segment breakdown; keep legacy m/f/c columns for known names.
+    const breakdown = {};
+    document.querySelectorAll('#as-segments .as-seg').forEach(el => {
+      if (el.value !== '') breakdown[el.dataset.seg] = +el.value || 0;
+    });
+    const seg = (n) => breakdown[n] || 0;
     const data = {
       org_id: ORG_ID,
       summary_date: document.getElementById('as-date').value,
       service_type: mode === 'group' ? 'Group Meeting' : document.getElementById('as-type').value,
       group_name: mode === 'group' ? (document.getElementById('as-group').value || null) : null,
       total_count: intOrNull('as-total') || 0,
-      male_count: intOrNull('as-male') || 0,
-      female_count: intOrNull('as-female') || 0,
-      children_count: intOrNull('as-children') || 0,
+      male_count: seg('Male'), female_count: seg('Female'), children_count: seg('Children'),
+      breakdown: Object.keys(breakdown).length ? breakdown : null,
       notes: document.getElementById('as-notes').value.trim() || null,
     };
     const { error } = await db.summaries.insert(data);
     if (error) { toast(error.code === '23505' ? 'A total for that date/service already exists' : error.message, 'error'); return; }
     toast('Saved', 'success');
     closeModal('modal-attsummary');
-    repLoadTab(mode === 'group' ? 'groups' : 'attendance');
+    // Refresh whichever surface is open.
+    if (document.getElementById('page-attendance').classList.contains('active')) fetchCounts();
+    else repLoadTab(mode === 'group' ? 'groups' : 'attendance');
   });
 }
 window.deleteSummary = async (id) => {
@@ -828,21 +852,69 @@ async function loadAttendance() {
   const typeEl = document.getElementById('att-type');
   dateEl.value = today();
   typeEl.value = 'Sunday Service';
+  populateAllConfigTargets();   // fill service-type + online channel dropdowns
 
   document.getElementById('att-add-btn').onclick = () => openModal('modal-att');
+  document.getElementById('count-add-btn').onclick = () => openSummaryModal('service');
   document.getElementById('online-add-btn').onclick = () => {
     document.getElementById('online-form').reset();
     document.getElementById('onf-id').value = '';
+    populateAllConfigTargets();
     openModal('modal-online');
   };
 
-  dateEl.addEventListener('change', () => { fetchAttendance(); fetchOnline(); });
-  typeEl.addEventListener('change', () => { fetchAttendance(); fetchOnline(); });
+  // Role-scoped sections: Usher → head-count only, Media Team → online only.
+  const role = currentProfile?.role;
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+  const isUsher = role === 'usher', isMedia = role === 'media_team';
+  const restricted = isUsher || isMedia;
+  show('att-checkin-section',    !restricted);
+  show('att-countentry-section', !isMedia);   // usher + full-access
+  show('att-online-section',     !isUsher);   // media_team + full-access
+  document.getElementById('att-add-btn').style.display = restricted ? 'none' : '';
+  if (restricted) {
+    document.querySelector('#page-attendance .page-header-left h2').textContent =
+      isUsher ? 'Service Head-Count' : 'Online Attendance';
+    document.getElementById('att-subtitle').textContent =
+      isUsher ? 'Record the manual count for each service' : 'Record live-stream viewers by channel';
+  }
 
-  await fetchAttendance();
-  await fetchOnline();
-  subscribeAttendanceRealtime();
+  dateEl.addEventListener('change', () => { fetchAttendance(); fetchOnline(); fetchCounts(); });
+  typeEl.addEventListener('change', () => { fetchAttendance(); fetchOnline(); fetchCounts(); });
+
+  if (!restricted) await fetchAttendance();
+  if (!isMedia) await fetchCounts();
+  if (!isUsher) await fetchOnline();
+  if (!restricted) subscribeAttendanceRealtime();
 }
+
+// Recent manual service counts (non-group summaries) for the head-count section.
+let countData = [];
+async function fetchCounts() {
+  const tbody = document.getElementById('count-tbody');
+  if (!tbody) return;
+  const { data, error } = await db.summaries.forDate(ORG_ID, document.getElementById('att-date').value);
+  if (error) { toast(error.message, 'error'); return; }
+  countData = (data || []).filter(r => !r.group_name);
+  buildTable(tbody, countData, r => {
+    const bd = r.breakdown && typeof r.breakdown === 'object'
+      ? Object.entries(r.breakdown).map(([k, v]) => `${k}: ${v}`).join(', ')
+      : [r.male_count && `M: ${r.male_count}`, r.female_count && `F: ${r.female_count}`, r.children_count && `C: ${r.children_count}`].filter(Boolean).join(', ');
+    return `
+      <td>${fmtDate(r.summary_date)}</td>
+      <td>${r.service_type || '—'}</td>
+      <td style="font-weight:600;">${fmtNum(r.total_count)}</td>
+      <td class="text-sm text-muted">${bd || '—'}</td>
+      <td class="td-actions"><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteCount('${r.id}')">Delete</button></td>`;
+  }, 'No counts recorded for this date');
+}
+
+window.deleteCount = async (id) => {
+  if (!confirm('Delete this count?')) return;
+  const { error } = await db.summaries.delete(id);
+  if (error) { toast(error.message, 'error'); return; }
+  fetchCounts();
+};
 
 // ─── ONLINE ATTENDANCE ─────────────────────────────────────────────────────
 let onlineData = [];
@@ -1738,6 +1810,11 @@ const CONFIG_LISTS = {
     label: 'Online Streaming Channels',
     defaults: ['Facebook','YouTube','TikTok','Instagram','Zoom','Website'],
     targets: [{ select: 'onf-channel' }],
+  },
+  attendance_segments: {
+    label: 'Attendance Count Segments',
+    defaults: ['Male','Female','Children'],
+    targets: [],   // rendered dynamically in the count form
   },
   visitor_sources: {
     label: 'Visitor Sources (How heard)',

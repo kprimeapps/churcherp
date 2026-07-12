@@ -320,16 +320,32 @@
         <span class="attendance-live-badge" id="att-live-badge" style="display:none;">Live QR</span>
       </div>
     </div>
-    <div class="tbl-wrap">
-      <table class="dtable dtable-cards">
-        <thead><tr><th>Name</th><th>Role / Group</th><th>Method</th><th>Time</th><th></th></tr></thead>
-        <tbody id="att-tbody"></tbody>
-      </table>
+    <div id="att-checkin-section">
+      <div class="tbl-wrap">
+        <table class="dtable dtable-cards">
+          <thead><tr><th>Name</th><th>Role / Group</th><th>Method</th><th>Time</th><th></th></tr></thead>
+          <tbody id="att-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:.75rem;font-size:.76rem;color:var(--ink3);" id="att-count"></div>
     </div>
-    <div style="margin-top:.75rem;font-size:.76rem;color:var(--ink3);" id="att-count"></div>
+
+    <!-- Manual service head-count (configurable demographic segments) -->
+    <div class="card" id="att-countentry-section" style="margin-top:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;">
+        <div><h3 style="margin:0;">Service Head-Count</h3><p class="text-sm text-muted" style="margin:.15rem 0 0;">Manual total for the selected service &amp; date, by segment.</p></div>
+        <button class="btn btn-primary btn-sm" id="count-add-btn">+ Record Count</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="dtable dtable-cards">
+          <thead><tr><th>Date</th><th>Service</th><th>Total</th><th>Breakdown</th><th></th></tr></thead>
+          <tbody id="count-tbody"></tbody>
+        </table>
+      </div>
+    </div>
 
     <!-- Online attendance (per-channel manual counts) -->
-    <div class="card" style="margin-top:1.5rem;">
+    <div class="card" id="att-online-section" style="margin-top:1.5rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;">
         <div><h3 style="margin:0;">Online Attendance</h3><p class="text-sm text-muted" style="margin:.15rem 0 0;">Live-stream viewers by channel for this service</p></div>
         <div style="display:flex;align-items:center;gap:.65rem;">
@@ -1765,15 +1781,9 @@
         <div class="form-group" id="as-type-wrap"><label class="form-label">Service Type</label><select id="as-type" class="form-control"></select></div>
       </div>
       <div class="form-group" id="as-group-wrap" style="display:none;"><label class="form-label">Group *</label><select id="as-group" class="form-control"></select></div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Male</label><input type="number" id="as-male" class="form-control" min="0" step="1" oninput="asRecalc()"/></div>
-        <div class="form-group"><label class="form-label">Female</label><input type="number" id="as-female" class="form-control" min="0" step="1" oninput="asRecalc()"/></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Children</label><input type="number" id="as-children" class="form-control" min="0" step="1" oninput="asRecalc()"/></div>
-        <div class="form-group"><label class="form-label">Total *</label><input type="number" id="as-total" class="form-control" min="0" step="1" required/></div>
-      </div>
-      <p class="text-xs text-muted" style="margin:0 0 .5rem;">Enter a total only, or split by gender (Total auto-sums when you fill the splits).</p>
+      <div id="as-segments" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.5rem;"></div>
+      <div class="form-group" style="margin-top:.5rem;"><label class="form-label">Total *</label><input type="number" id="as-total" class="form-control" min="0" step="1" required/></div>
+      <p class="text-xs text-muted" style="margin:0 0 .5rem;">Fill the segments that apply — Total auto-sums, but you can override it. Manage segments in Settings → Lists &amp; Options.</p>
       <div class="form-group"><label class="form-label">Notes</label><input type="text" id="as-notes" class="form-control"/></div>
       <input type="hidden" id="as-id"/><input type="hidden" id="as-mode" value="service"/>
       <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-attsummary')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>

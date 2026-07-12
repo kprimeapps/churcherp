@@ -37,7 +37,8 @@ const ROLE_ACCESS = {
   viewer: 'READ_ALL',
 
   finance_team:         mk(FINANCE, ['page-reports']),
-  usher:                { 'page-attendance': 'write' },  // kiosk: attendance only
+  usher:                { 'page-attendance': 'write' },  // kiosk: service counts only
+  media_team:           { 'page-attendance': 'write' },  // kiosk: online attendance only
   group_secretary:      { 'page-group-attendance': 'write' },  // kiosk: their group's meeting count only
   missions_coordinator: mk(['page-missions','page-visitors']),
   education_coordinator:mk(['page-education','page-scholarship']),
@@ -54,6 +55,7 @@ export const ROLE_LABELS = {
   viewer: 'Viewer (read-only)',
   finance_team: 'Finance Team',
   usher: 'Usher',
+  media_team: 'Online Media Team',
   group_secretary: 'Group Secretary',
   missions_coordinator: 'Missions Coordinator',
   education_coordinator: 'Education Coordinator',
@@ -62,7 +64,7 @@ export const ROLE_LABELS = {
 };
 // Roles offered in the assignment dropdown (hierarchy roles managed elsewhere).
 export const ASSIGNABLE_ROLES = [
-  'admin','pastor','finance_team','usher','group_secretary','missions_coordinator',
+  'admin','pastor','finance_team','usher','media_team','group_secretary','missions_coordinator',
   'education_coordinator','welfare_coordinator','counsellor','staff','viewer',
 ];
 
