@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b42 · online-save error handling + no section flash';
+const APP_BUILD = 'b43 · missions coord scope + mobile hamburger';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -119,7 +119,7 @@ async function boot() {
   // Mobile menu + tap-to-close backdrop
   const menuBtn = document.getElementById('menu-toggle');
   const sidebar = document.getElementById('sidebar');
-  if (window.innerWidth <= 768) { menuBtn.style.display = 'flex'; }
+  menuBtn.style.display = '';   // visibility is governed by CSS (mobile media query)
   let backdrop = document.getElementById('sidebar-backdrop');
   if (!backdrop) {
     backdrop = document.createElement('div');

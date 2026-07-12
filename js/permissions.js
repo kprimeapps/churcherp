@@ -40,7 +40,8 @@ const ROLE_ACCESS = {
   usher:                { 'page-attendance': 'write' },  // kiosk: service counts only
   media_team:           { 'page-attendance': 'write' },  // kiosk: online attendance only
   group_secretary:      { 'page-group-attendance': 'write' },  // kiosk: their group's meeting count only
-  missions_coordinator: mk(['page-missions','page-visitors']),
+  // No dashboard/settings — Missions & Evangelism + Visitors only.
+  missions_coordinator: { 'page-missions': 'write', 'page-visitors': 'write' },
   education_coordinator:mk(['page-education','page-scholarship']),
   welfare_coordinator:  mk(['page-welfare']),
   counsellor:           mk(['page-family']),

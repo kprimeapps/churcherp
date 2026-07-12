@@ -476,6 +476,9 @@ body.kiosk #menu-toggle,
 body.kiosk #sidebar-backdrop { display: none !important; }
 body.kiosk .main-wrap { margin-left: 0 !important; }
 
+/* Hamburger: hidden on desktop, shown on mobile (governed by media query) */
+#menu-toggle { display: none; }
+
 /* Role-scoped Attendance sections — hidden from first paint (no flash) */
 body[data-role="usher"] #att-checkin-section,
 body[data-role="usher"] #att-online-section,
@@ -494,6 +497,7 @@ body[data-role="media_team"] #att-add-btn { display: none !important; }
 .sidebar-backdrop.show { display: block; }
 
 @media (max-width: 768px) {
+  #menu-toggle { display: inline-flex !important; }
   .sidebar { transform: translateX(-100%); z-index: 110; box-shadow: 6px 0 24px rgba(0,0,0,.25); }
   .sidebar.open { transform: translateX(0); }
   .main-wrap { margin-left: 0; }
