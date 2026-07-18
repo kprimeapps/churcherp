@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b44 · giving page: pagination + server-side totals';
+const APP_BUILD = 'b45 · giving: receipt no/date on receipt';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -1259,9 +1259,10 @@ window.showGivingReceipt = (id) => {
   if (!r) return;
   const name = r.members ? `${r.members.first_name} ${r.members.last_name}` : r.member_name || 'Anonymous';
   document.getElementById('rc-org').textContent    = currentOrg?.name || 'Church';
-  document.getElementById('rc-no').textContent     = r.id.slice(0,8).toUpperCase();
+  document.getElementById('rc-no').textContent     = r.receipt_no || r.id.slice(0,8).toUpperCase();
   document.getElementById('rc-name').textContent   = name;
-  document.getElementById('rc-date').textContent   = fmtDate(r.given_date);
+  // Show the actual receipt/transaction date when we have it; else the period.
+  document.getElementById('rc-date').textContent   = fmtDate(r.receipt_date || r.given_date);
   document.getElementById('rc-cat').textContent    = r.category;
   document.getElementById('rc-method').textContent = r.payment_method;
   document.getElementById('rc-amount').textContent = fmtMoney(r.amount, CURRENCY);
