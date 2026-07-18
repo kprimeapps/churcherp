@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b45 · giving: receipt no/date on receipt';
+const APP_BUILD = 'b46 · giving report: server-side aggregation + full CSV';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -516,27 +516,24 @@ async function repGiving() {
   const start = document.getElementById('rep-giving-start').value;
   const end   = document.getElementById('rep-giving-end').value;
   if (!start || !end) return;
-  const { data } = await db.reports.givingRange(ORG_ID, start, end);
-  const rows = data || [];
-  repStore.giving = { rows, start, end };
-  const total = rows.reduce((s,r) => s + Number(r.amount), 0);
-  const thisMonth = new Date().toISOString().slice(0,7);
-  const monthTotal = rows.filter(r => r.given_date?.startsWith(thisMonth)).reduce((s,r) => s + Number(r.amount), 0);
-  const givers = new Set(rows.filter(r => r.member_id).map(r => r.member_id)).size;
+  // Server-side aggregation (raw-row fetch is capped at 1000 by PostgREST).
+  const { data: rep, error } = await db.reports.givingReport(ORG_ID, start, end);
+  if (error) { toast(error.message, 'error'); return; }
+  const total = Number(rep?.total || 0);
+  repStore.giving = { start, end };
   document.getElementById('rep-giving-total').textContent  = fmtMoney(total, CURRENCY);
-  document.getElementById('rep-giving-month').textContent  = fmtMoney(monthTotal, CURRENCY);
-  document.getElementById('rep-giving-givers').textContent = fmtNum(givers);
-  // by month (across range)
+  document.getElementById('rep-giving-month').textContent  = fmtMoney(Number(rep?.month_total || 0), CURRENCY);
+  document.getElementById('rep-giving-givers').textContent = fmtNum(rep?.givers || 0);
+  // by month (fill all months in range, then overlay server totals)
   const mk = monthKeys(start, end), byMonth = {};
   mk.forEach(k => byMonth[k] = 0);
-  rows.forEach(r => { const k = (r.given_date||'').slice(0,7); if (k in byMonth) byMonth[k] += Number(r.amount); });
+  (rep?.by_month || []).forEach(m => { if (m.ym in byMonth) byMonth[m.ym] = Number(m.total); });
   repChart('rep-giving-month-chart', {
     type: 'bar', data: { labels: mk.map(k => `${MONTHS[+k.slice(5,7)-1]} ${k.slice(2,4)}`), datasets: [{ label: 'Giving', data: mk.map(k => byMonth[k]), backgroundColor: 'rgba(26,107,69,.55)', borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
   });
   // by category
-  const byCat = {}; rows.forEach(r => { byCat[r.category] = (byCat[r.category]||0) + Number(r.amount); });
-  const cats = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  const cats = (rep?.by_category || []).map(c => [c.category, Number(c.total)]);
   repStore.givingCats = cats; repStore.givingTotal = total;
   repChart('rep-giving-cat-chart', {
     type: 'doughnut', data: { labels: cats.map(c => c[0]), datasets: [{ data: cats.map(c => c[1]), backgroundColor: ['#B8964A','#0F2340','#1A6B45','#8B1F1F','#C9A84C','#5DADE2','#9898e0','#E2C06A'] }] },
@@ -546,12 +543,20 @@ async function repGiving() {
     `<tr><td class="td-name">${c}</td><td style="font-weight:600;">${fmtMoney(v, CURRENCY)}</td><td>${total? Math.round(v/total*100):0}%</td></tr>`).join('')
     || '<tr><td class="tbl-empty" colspan="3">No giving recorded</td></tr>';
 }
-function exportGivingCSV() {
+async function exportGivingCSV() {
   const g = repStore.giving; if (!g) return;
+  // Page through every row in range (single fetch is capped at 1000).
+  const all = []; const size = 1000;
+  for (let from = 0; ; from += size) {
+    const { data, error } = await db.reports.givingRange(ORG_ID, g.start, g.end)
+      .order('given_date').range(from, from + size - 1);
+    if (error) { toast(error.message, 'error'); return; }
+    all.push(...(data || []));
+    if (!data || data.length < size) break;
+  }
   downloadCSV(`giving_${g.start}_to_${g.end}.csv`,
     ['Date','Member','Category','Method','Amount'],
-    g.rows.sort((a,b)=>(a.given_date||'').localeCompare(b.given_date||''))
-      .map(r => [r.given_date, r.member_name || '', r.category, r.payment_method, r.amount]));
+    all.map(r => [r.given_date, r.member_name || '', r.category, r.payment_method, r.amount]));
 }
 
 // ── Spending report ──

@@ -244,6 +244,9 @@ export const db = {
     givingRange: (orgId, start, end) => supabase.from('giving')
       .select('amount,category,given_date,member_id,member_name,payment_method')
       .eq('org_id', orgId).gte('given_date', start).lte('given_date', end),
+    // Server-side aggregation for the Giving report (avoids the 1000-row cap).
+    givingReport: (orgId, start, end) =>
+      supabase.rpc('get_giving_report', { p_org_id: orgId, p_start: start, p_end: end }),
     expensesRange: (orgId, start, end) => supabase.from('expenses')
       .select('amount,category,expense_date,title,vendor')
       .eq('org_id', orgId).gte('expense_date', start).lte('expense_date', end),
