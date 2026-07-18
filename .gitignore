@@ -1,4 +1,6 @@
 
 # Legacy member data (PII — never commit)
 master.xlsx
+finance_records/
+*.csv
 .DS_Store
