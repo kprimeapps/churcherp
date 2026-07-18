@@ -295,6 +295,15 @@ export const db = {
       return q.order('given_date', { ascending: false });
     },
     summary: (orgId) => supabase.rpc('get_giving_by_category', { p_org_id: orgId }),
+    // Server-side year totals (giving page can't sum tens of thousands client-side).
+    summaryYear: (orgId, year) => supabase.rpc('get_giving_summary', { p_org_id: orgId, p_year: Number(year) }),
+    // One page of a year's gifts, newest first.
+    page: (orgId, { year, page = 1, size = 100 } = {}) =>
+      supabase.from('giving').select('*, members(first_name,last_name)')
+        .eq('org_id', orgId)
+        .gte('given_date', `${year}-01-01`).lte('given_date', `${year}-12-31`)
+        .order('given_date', { ascending: false })
+        .range((page - 1) * size, page * size - 1),
     // Distinct names of non-member givers (for repeat-giver autocomplete).
     donorNames: (orgId) => supabase.from('giving').select('member_name')
       .eq('org_id', orgId).is('member_id', null).not('member_name', 'is', null).limit(2000),

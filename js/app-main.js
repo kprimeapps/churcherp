@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b43 · missions coord scope + mobile hamburger';
+const APP_BUILD = 'b44 · giving page: pagination + server-side totals';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -1137,54 +1137,90 @@ function givingSearchSource() {
   return [...allMembers, ...pastGivers.filter(g => !memberNames.has(g.first_name.toLowerCase()))];
 }
 
+const GIVING_PAGE_SIZE = 100;
+let givingPage = 1, givingCount = 0;
+
 async function loadGiving() {
   loadPastGivers();
   const yearEl = document.getElementById('giving-year');
   const currentYear = new Date().getFullYear();
-  yearEl.innerHTML = [0,1,2].map(i => `<option value="${currentYear-i}">${currentYear-i}</option>`).join('');
+  // Cover imported history (legacy data goes back to 2022) down to 2020.
+  const years = [];
+  for (let y = currentYear; y >= 2020; y--) years.push(y);
+  yearEl.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
   yearEl.value = String(currentYear);
-  yearEl.addEventListener('change', () => fetchGiving());
+  yearEl.addEventListener('change', () => fetchGiving(true));
   document.getElementById('giving-add-btn').onclick = () => {
     document.getElementById('giving-form').reset();
     document.getElementById('gf-date').value = today();
     document.getElementById('gf-member-id').value = '';
     openModal('modal-giving');
   };
-  await fetchGiving();
+  await fetchGiving(true);
 }
 
-async function fetchGiving() {
+async function fetchGiving(resetPage = false) {
+  if (resetPage) givingPage = 1;
   const year = document.getElementById('giving-year').value;
-  const cacheKey = `giving:${ORG_ID}:${year}`;
+  const cacheKey = `giving:${ORG_ID}:${year}:p1`;
+
   if (!navigator.onLine) {
-    givingData = (await cacheGet(cacheKey)) || [];
+    givingData = (givingPage === 1 ? await cacheGet(cacheKey) : null) || [];
+    setGivingStats(null);
     renderGiving();
+    renderGivingPager();
     return;
   }
-  const { data, error } = await db.giving.list(ORG_ID, { year });
+
+  // Server-side totals for the whole year (can't sum 8k+ rows client-side).
+  const { data: sum } = await db.giving.summaryYear(ORG_ID, year);
+  setGivingStats(sum);
+  givingCount = sum?.count || 0;
+
+  const { data, error } = await db.giving.page(ORG_ID, { year, page: givingPage, size: GIVING_PAGE_SIZE });
   if (error) {
     const cached = await cacheGet(cacheKey);
     givingData = cached || [];
-    renderGiving();
+    renderGiving(); renderGivingPager();
     if (!cached) toast(error.message, 'error');
     return;
   }
   givingData = data || [];
-  cachePut(cacheKey, givingData);
+  if (givingPage === 1) cachePut(cacheKey, givingData);
   renderGiving();
+  renderGivingPager();
 }
 
+function setGivingStats(sum) {
+  document.getElementById('gv-total').textContent  = sum ? fmtMoney(Number(sum.total), CURRENCY) : '—';
+  document.getElementById('gv-month').textContent  = sum ? fmtMoney(Number(sum.month_total), CURRENCY) : '—';
+  document.getElementById('gv-givers').textContent = sum ? fmtNum(sum.givers) : '—';
+}
+
+function renderGivingPager() {
+  const el = document.getElementById('giving-pager');
+  if (!el) return;
+  const totalPages = Math.max(1, Math.ceil(givingCount / GIVING_PAGE_SIZE));
+  const start = givingCount ? (givingPage - 1) * GIVING_PAGE_SIZE + 1 : 0;
+  const end = Math.min(givingPage * GIVING_PAGE_SIZE, givingCount);
+  el.innerHTML = `
+    <span class="text-sm text-muted">Showing ${fmtNum(start)}–${fmtNum(end)} of ${fmtNum(givingCount)}</span>
+    <span style="display:flex;gap:.4rem;align-items:center;">
+      <button class="btn btn-outline btn-sm" ${givingPage <= 1 ? 'disabled' : ''} onclick="givingGoPage(-1)">← Prev</button>
+      <span class="text-sm">Page ${givingPage} / ${totalPages}</span>
+      <button class="btn btn-outline btn-sm" ${givingPage >= totalPages ? 'disabled' : ''} onclick="givingGoPage(1)">Next →</button>
+    </span>`;
+}
+
+window.givingGoPage = (delta) => {
+  const totalPages = Math.max(1, Math.ceil(givingCount / GIVING_PAGE_SIZE));
+  const np = Math.min(totalPages, Math.max(1, givingPage + delta));
+  if (np === givingPage) return;
+  givingPage = np;
+  fetchGiving(false);
+};
+
 function renderGiving() {
-  const now = new Date();
-  const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const total = givingData.reduce((s,r) => s + Number(r.amount), 0);
-  const monthTotal = givingData.filter(r => r.given_date?.startsWith(thisMonthStr)).reduce((s,r) => s + Number(r.amount), 0);
-  const givers = new Set(givingData.filter(r => r.member_id).map(r => r.member_id)).size;
-
-  document.getElementById('gv-total').textContent  = fmtMoney(total, CURRENCY);
-  document.getElementById('gv-month').textContent  = fmtMoney(monthTotal, CURRENCY);
-  document.getElementById('gv-givers').textContent = fmtNum(givers);
-
   buildTable(document.getElementById('giving-tbody'), givingData, r => {
     const name = r.members ? `${r.members.first_name} ${r.members.last_name}` : r.member_name || 'Anonymous';
     return `
@@ -1264,8 +1300,7 @@ window.deleteGiving = async (id) => {
   if (!confirm('Delete this giving record?')) return;
   const { error } = await db.giving.delete(id);
   if (error) { toast(error.message, 'error'); return; }
-  givingData = givingData.filter(r => r.id !== id);
-  renderGiving();
+  await fetchGiving();   // refresh page rows + server-side totals
 };
 
 // ─── VOLUNTEERS ───────────────────────────────────────────────────────────────
@@ -3134,7 +3169,7 @@ function initFormHandlers() {
     if (!memberId && memberName) loadPastGivers();   // remember this non-member giver
     givingData = [];
     loaded.delete('page-giving');
-    await fetchGiving();
+    await fetchGiving(true);
     // Auto-show printable receipt for new entries
     if (!editId && saved?.id && givingData.some(g => g.id === saved.id)) {
       showGivingReceipt(saved.id);
