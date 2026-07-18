@@ -250,6 +250,13 @@ export const db = {
     expensesRange: (orgId, start, end) => supabase.from('expenses')
       .select('amount,category,expense_date,title,vendor')
       .eq('org_id', orgId).gte('expense_date', start).lte('expense_date', end),
+    // Server-side report aggregations (avoid the 1000-row cap).
+    spendingReport: (orgId, start, end) =>
+      supabase.rpc('get_spending_report', { p_org_id: orgId, p_start: start, p_end: end }),
+    attendanceSeries: (orgId, start, end, type = null, bucket = 'day') =>
+      supabase.rpc('get_attendance_series', { p_org_id: orgId, p_start: start, p_end: end, p_type: type, p_bucket: bucket }),
+    memberJoins: (orgId, bucket = 'month') =>
+      supabase.rpc('get_member_joins', { p_org_id: orgId, p_bucket: bucket }),
     membersJoined: (orgId) => supabase.from('members')
       .select('date_joined,created_at').eq('org_id', orgId),
     verifyCounts: async (orgId) => {

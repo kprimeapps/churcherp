@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b46 · giving report: server-side aggregation + full CSV';
+const APP_BUILD = 'b47 · spending/attendance/growth reports: server-side agg';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -454,17 +454,12 @@ async function repAttendance() {
 async function repAttendanceTrend(type) {
   const end = new Date(); const start = new Date(); start.setDate(start.getDate() - 84); // ~12 weeks
   const startStr = start.toISOString().slice(0,10), endStr = end.toISOString().slice(0,10);
-  const [{ data: att }, { data: sums }] = await Promise.all([
-    db.reports.attendanceRange(ORG_ID, startStr, endStr),
-    db.summaries.range(ORG_ID, startStr, endStr),
-  ]);
-  const byDate = {};
-  (att || []).filter(r => r.service_type === type).forEach(r => { byDate[r.service_date] = (byDate[r.service_date]||0) + 1; });
-  (sums || []).filter(r => !r.group_name && r.service_type === type).forEach(r => { byDate[r.summary_date] = (byDate[r.summary_date]||0) + Number(r.total_count); });
-  const dates = Object.keys(byDate).sort();
+  const { data: series } = await db.reports.attendanceSeries(ORG_ID, startStr, endStr, type, 'day');
+  const rows = series || [];
+  const dates = rows.map(r => r.k);
   repChart('rep-att-trend-chart', {
     type: 'bar',
-    data: { labels: dates.map(d => fmtDate(d)), datasets: [{ label: type, data: dates.map(d => byDate[d]), backgroundColor: 'rgba(184,150,74,.6)', borderRadius: 4 }] },
+    data: { labels: dates.map(d => fmtDate(d)), datasets: [{ label: type, data: rows.map(r => Number(r.c)), backgroundColor: 'rgba(184,150,74,.6)', borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
   });
 }
@@ -472,33 +467,24 @@ async function repAttendanceTrend(type) {
 // ── Growth: membership + attendance over time ──
 async function repGrowth() {
   const period = document.getElementById('rep-growth-period').value;
-  const { data: members } = await db.reports.membersJoined(ORG_ID);
-  const keyOf = d => period === 'year' ? d.slice(0,4) : d.slice(0,7);
-  // cumulative membership by period
-  const joins = (members || []).map(m => (m.date_joined || m.created_at || '').slice(0,10)).filter(Boolean).sort();
-  const buckets = {};
-  joins.forEach(d => { const k = keyOf(d); buckets[k] = (buckets[k]||0) + 1; });
-  const keys = Object.keys(buckets).sort();
-  let running = 0; const cum = keys.map(k => (running += buckets[k]));
+  const bucket = period === 'year' ? 'year' : 'month';
+  // cumulative membership by period (server-side; roster exceeds the 1000-row cap)
+  const { data: joins } = await db.reports.memberJoins(ORG_ID, bucket);
+  const keys = (joins || []).map(j => j.k);
+  let running = 0; const cum = (joins || []).map(j => (running += Number(j.c)));
   repChart('rep-membership-chart', {
     type: 'line',
     data: { labels: keys, datasets: [{ label: 'Total members', data: cum, borderColor: '#0F2340', backgroundColor: 'rgba(15,35,64,.1)', fill: true, tension: .3 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
   });
-  // attendance over time (per-person + manual totals)
+  // attendance over time (per-person + manual totals), server-aggregated
   const end = new Date(); const start = new Date(); start.setFullYear(start.getFullYear() - 1);
   const startStr = start.toISOString().slice(0,10), endStr = end.toISOString().slice(0,10);
-  const [{ data: att }, { data: sums }] = await Promise.all([
-    db.reports.attendanceRange(ORG_ID, startStr, endStr),
-    db.summaries.range(ORG_ID, startStr, endStr),
-  ]);
-  const ab = {};
-  (att || []).forEach(r => { const k = keyOf(r.service_date); ab[k] = (ab[k]||0) + 1; });
-  (sums || []).filter(r => !r.group_name).forEach(r => { const k = keyOf(r.summary_date); ab[k] = (ab[k]||0) + Number(r.total_count); });
-  const akeys = Object.keys(ab).sort();
+  const { data: series } = await db.reports.attendanceSeries(ORG_ID, startStr, endStr, null, bucket);
+  const akeys = (series || []).map(r => r.k);
   repChart('rep-attgrowth-chart', {
     type: 'bar',
-    data: { labels: akeys, datasets: [{ label: 'Attendance', data: akeys.map(k => ab[k]), backgroundColor: 'rgba(184,150,74,.6)', borderRadius: 4 }] },
+    data: { labels: akeys, datasets: [{ label: 'Attendance', data: (series || []).map(r => Number(r.c)), backgroundColor: 'rgba(184,150,74,.6)', borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
   });
 }
@@ -564,23 +550,20 @@ async function repSpending() {
   const start = document.getElementById('rep-spend-start').value;
   const end   = document.getElementById('rep-spend-end').value;
   if (!start || !end) return;
-  const { data } = await db.reports.expensesRange(ORG_ID, start, end);
-  const rows = data || [];
-  repStore.spending = { rows, start, end };
-  const total = rows.reduce((s,r) => s + Number(r.amount), 0);
-  const thisMonth = new Date().toISOString().slice(0,7);
-  const monthTotal = rows.filter(r => r.expense_date?.startsWith(thisMonth)).reduce((s,r) => s + Number(r.amount), 0);
+  const { data: rep, error } = await db.reports.spendingReport(ORG_ID, start, end);
+  if (error) { toast(error.message, 'error'); return; }
+  const total = Number(rep?.total || 0);
+  repStore.spending = { start, end };
   document.getElementById('rep-spend-total').textContent = fmtMoney(total, CURRENCY);
-  document.getElementById('rep-spend-month').textContent = fmtMoney(monthTotal, CURRENCY);
+  document.getElementById('rep-spend-month').textContent = fmtMoney(Number(rep?.month_total || 0), CURRENCY);
   const mk = monthKeys(start, end), byMonth = {};
   mk.forEach(k => byMonth[k] = 0);
-  rows.forEach(r => { const k = (r.expense_date||'').slice(0,7); if (k in byMonth) byMonth[k] += Number(r.amount); });
+  (rep?.by_month || []).forEach(m => { if (m.ym in byMonth) byMonth[m.ym] = Number(m.total); });
   repChart('rep-spend-month-chart', {
     type: 'bar', data: { labels: mk.map(k => `${MONTHS[+k.slice(5,7)-1]} ${k.slice(2,4)}`), datasets: [{ label: 'Spending', data: mk.map(k => byMonth[k]), backgroundColor: 'rgba(139,31,31,.55)', borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
   });
-  const byCat = {}; rows.forEach(r => { byCat[r.category] = (byCat[r.category]||0) + Number(r.amount); });
-  const cats = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  const cats = (rep?.by_category || []).map(c => [c.category, Number(c.total)]);
   repChart('rep-spend-cat-chart', {
     type: 'doughnut', data: { labels: cats.map(c => c[0]), datasets: [{ data: cats.map(c => c[1]), backgroundColor: ['#8B1F1F','#0F2340','#B8964A','#1A6B45','#C9A84C','#5DADE2','#9898e0','#E2C06A'] }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } },
@@ -589,12 +572,19 @@ async function repSpending() {
     `<tr><td class="td-name">${c}</td><td style="font-weight:600;">${fmtMoney(v, CURRENCY)}</td><td>${total? Math.round(v/total*100):0}%</td></tr>`).join('')
     || '<tr><td class="tbl-empty" colspan="3">No spending recorded</td></tr>';
 }
-function exportSpendingCSV() {
+async function exportSpendingCSV() {
   const g = repStore.spending; if (!g) return;
+  const all = []; const size = 1000;
+  for (let from = 0; ; from += size) {
+    const { data, error } = await db.reports.expensesRange(ORG_ID, g.start, g.end)
+      .order('expense_date').range(from, from + size - 1);
+    if (error) { toast(error.message, 'error'); return; }
+    all.push(...(data || []));
+    if (!data || data.length < size) break;
+  }
   downloadCSV(`spending_${g.start}_to_${g.end}.csv`,
     ['Date','Title','Category','Vendor','Amount'],
-    g.rows.sort((a,b)=>(a.expense_date||'').localeCompare(b.expense_date||''))
-      .map(r => [r.expense_date, r.title || '', r.category, r.vendor || '', r.amount]));
+    all.map(r => [r.expense_date, r.title || '', r.category, r.vendor || '', r.amount]));
 }
 
 // ── Groups report ──
