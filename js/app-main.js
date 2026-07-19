@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b47 · spending/attendance/growth reports: server-side agg';
+const APP_BUILD = 'b48 · Pending Import: Delete option';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -2600,7 +2600,8 @@ function renderQRPending() {
     <td class="text-sm text-muted">${fmtDate(r.created_at)}</td>
     <td class="td-actions">
       <button class="btn btn-primary btn-sm" onclick="importQRReg('${r.id}')">Import to Members</button>
-      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="dismissQRReg('${r.id}')">Dismiss</button>
+      <button class="btn btn-ghost btn-sm" onclick="dismissQRReg('${r.id}')">Dismiss</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteQRReg('${r.id}')">Delete</button>
     </td>`;
   });
 }
@@ -2654,6 +2655,16 @@ window.importQRReg = async (id) => {
 window.dismissQRReg = async (id) => {
   if (!confirm('Mark as imported without adding to members?')) return;
   await supabase.from('qr_registrations').update({ imported: true }).eq('id', id);
+  loaded.delete('page-qr');
+  loadQRPage();
+};
+
+// Permanently remove a registration (spam/duplicate). Their QR code stops working.
+window.deleteQRReg = async (id) => {
+  if (!confirm('Delete this registration permanently? This cannot be undone and the QR code will stop working.')) return;
+  const { error } = await supabase.from('qr_registrations').delete().eq('id', id).eq('org_id', ORG_ID);
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Registration deleted', 'success');
   loaded.delete('page-qr');
   loadQRPage();
 };
