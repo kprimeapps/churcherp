@@ -540,6 +540,10 @@ export const db = {
       supabase.rpc('sms_settings_set', { p_org_id: orgId, p_enabled: enabled, p_sender_id: senderId, p_send_on_giving: sendOnGiving }),
     send: (orgId, recipients, message) =>
       supabase.rpc('send_sms', { p_org_id: orgId, p_recipients: recipients, p_message: message }),
+    // Auto-provision this org's SMS Relay tenant + key (giving-confirmation SMS
+    // via the physical Android gateway). Idempotent; stores relay_tenant_key on
+    // sms_config. See supabase/functions/sms-relay-provision.
+    provisionRelay: () => supabase.functions.invoke('sms-relay-provision', { method: 'POST' }),
   },
 
   // Organizations
