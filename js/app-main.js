@@ -1,5 +1,5 @@
 // ChurchOS v2 — Main App Controller
-const APP_BUILD = 'b48 · Pending Import: Delete option';
+const APP_BUILD = 'b49 · search + giving lock + finance-team + Payments/Receipts';
 const intOrNull = (id) => {
   const v = document.getElementById(id).value;
   return v !== '' ? parseInt(v, 10) : null;
@@ -223,6 +223,7 @@ function activatePage(pageId) {
     case 'page-missions':   loadMissions(); break;
     case 'page-scholarship':loadScholarship(); break;
     case 'page-expenses':   loadExpenses(); break;
+    case 'page-receipts':   loadReceipts(); break;
     case 'page-budget':     loadFinanceTab('ledger'); break;
     case 'page-qr':         loadQRPage(); break;
     case 'page-group-attendance': loadGroupAttendance(); break;
@@ -732,15 +733,19 @@ async function loadMembers() {
   // Search
   const search = document.getElementById('members-search');
   search.addEventListener('input', debounce(async () => {
-    const { data } = await db.members.list(ORG_ID, { search: search.value, active: null });
+    const q = search.value.trim();
+    // Multi-word full-roster search via RPC; empty query reloads the base list.
+    const { data } = q ? await db.members.search(ORG_ID, q) : await db.members.list(ORG_ID);
     membersData = data || [];
     renderMembers();
   }, 350));
 
   document.getElementById('members-verify-filter').addEventListener('change', renderMembers);
 
-  // Add button
-  document.getElementById('member-add-btn').onclick = () => openMemberModal();
+  // Add button (hidden for read-only roles, e.g. Finance Team)
+  const addBtn = document.getElementById('member-add-btn');
+  addBtn.style.display = canWritePage('page-members') ? '' : 'none';
+  addBtn.onclick = () => openMemberModal();
 
   // Member autocomplete for attendance
   memberSelect(document.getElementById('af-member-name'), () => allMembers, m => {
@@ -767,7 +772,13 @@ function renderMembers() {
   const group  = document.getElementById('members-group-filter')?.value || '';
   const verify = document.getElementById('members-verify-filter')?.value || '';
   let rows = membersData;
-  if (search) rows = rows.filter(m => `${m.first_name} ${m.last_name} ${m.phone||''} ${m.membership_no||''}`.toLowerCase().includes(search));
+  if (search) {
+    const toks = search.split(/\s+/).filter(Boolean);
+    rows = rows.filter(m => {
+      const hay = `${m.first_name||''} ${m.last_name||''} ${m.other_names||''} ${m.phone||''} ${m.phone2||''} ${m.membership_no||''}`.toLowerCase();
+      return toks.every(t => hay.includes(t));
+    });
+  }
   if (group)  rows = rows.filter(m => m.group_name === group);
   if (verify === 'verified')   rows = rows.filter(m => m.member_confirmed);
   if (verify === 'unverified') rows = rows.filter(m => !m.member_confirmed);
@@ -787,8 +798,8 @@ function renderMembers() {
     <td class="td-actions">
       <button class="btn btn-ghost btn-sm" onclick="viewMemberGiving('${m.id}')">Giving</button>
       ${canWritePage('page-qr') ? `<button class="btn btn-ghost btn-sm" onclick="showMemberQR('${m.id}')">QR</button>` : ''}
-      <button class="btn btn-ghost btn-sm" onclick="editMember('${m.id}')">Edit</button>
-      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteMember('${m.id}')">Delete</button>
+      ${canWritePage('page-members') ? `<button class="btn btn-ghost btn-sm" onclick="editMember('${m.id}')">Edit</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteMember('${m.id}')">Delete</button>` : ''}
     </td>`);
 
   const members   = membersData.filter(m => m.is_member !== false);
@@ -1227,8 +1238,6 @@ function renderGiving() {
       <td class="text-sm text-muted">${r.notes || '—'}</td>
       <td class="td-actions">
         <button class="btn btn-ghost btn-sm" onclick="showGivingReceipt('${r.id}')">Receipt</button>
-        <button class="btn btn-ghost btn-sm" onclick="editGiving('${r.id}')">Edit</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteGiving('${r.id}')">Delete</button>
       </td>`;
   });
 }
@@ -2152,6 +2161,83 @@ window.deleteExp = async (id) => {
   await db.expenses.delete(id);
   await fetchExpenses();
 };
+
+// ─── RECEIPTS (incoming bulk funds) ──────────────────────────────────────────
+let rcptData = [], rcptInit = false;
+async function loadReceipts() {
+  document.getElementById('rcpt-add-btn').onclick = () => openReceiptModal();
+  if (!rcptInit) { rcptInit = true; document.getElementById('rcpt-form').addEventListener('submit', saveReceipt); }
+  await fetchReceipts();
+}
+async function openReceiptModal(r = null) {
+  document.getElementById('rcpt-form').reset();
+  document.getElementById('rcptf-id').value = r?.id || '';
+  document.getElementById('rcpt-modal-title').textContent = r ? 'Edit Receipt' : 'Add Receipt';
+  document.getElementById('rcptf-date').value = r?.receipt_date || today();
+  const { data: accts } = await db.accounts.list(ORG_ID);
+  document.getElementById('rcptf-account').innerHTML = '<option value="">—</option>' +
+    (accts || []).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  if (r) {
+    document.getElementById('rcptf-title').value = r.title || '';
+    document.getElementById('rcptf-amount').value = r.amount;
+    setSelectValue('rcptf-cat', r.category);
+    setSelectValue('rcptf-method', r.method);
+    document.getElementById('rcptf-ref').value = r.reference || '';
+    if (r.account_id) document.getElementById('rcptf-account').value = r.account_id;
+    document.getElementById('rcptf-notes').value = r.notes || '';
+  }
+  openModal('modal-rcpt');
+}
+async function fetchReceipts() {
+  const { data, error } = await db.receipts.list(ORG_ID);
+  if (error) { toast(error.message, 'error'); return; }
+  rcptData = data || [];
+  const now = new Date();
+  const m = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`, y = String(now.getFullYear());
+  document.getElementById('rcpt-month').textContent = fmtMoney(rcptData.filter(r => r.receipt_date?.startsWith(m)).reduce((s,r) => s+Number(r.amount),0), CURRENCY);
+  document.getElementById('rcpt-year').textContent  = fmtMoney(rcptData.filter(r => r.receipt_date?.startsWith(y)).reduce((s,r) => s+Number(r.amount),0), CURRENCY);
+  buildTable(document.getElementById('rcpt-tbody'), rcptData, r => `
+    <td data-label="Date">${fmtDate(r.receipt_date)}</td>
+    <td class="td-name" data-label="Title">${r.title}</td>
+    <td data-label="Category"><span class="badge badge-gold">${r.category || '—'}</span></td>
+    <td data-label="Method">${r.method || '—'}</td>
+    <td data-label="Ref" class="text-sm text-muted">${r.reference || '—'}</td>
+    <td data-label="Amount" style="color:var(--green);font-weight:500;">${fmtMoney(r.amount, CURRENCY)}</td>
+    <td class="td-actions" data-label="">
+      <button class="btn btn-ghost btn-sm" onclick="editReceipt('${r.id}')">Edit</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteReceipt('${r.id}')">Delete</button>
+    </td>`);
+}
+window.editReceipt = (id) => { const r = rcptData.find(x => x.id === id); if (r) openReceiptModal(r); };
+window.deleteReceipt = async (id) => {
+  if (!confirm('Delete this receipt?')) return;
+  const { error } = await db.receipts.delete(id);
+  if (error) { toast(error.message, 'error'); return; }
+  await fetchReceipts();
+};
+async function saveReceipt(e) {
+  e.preventDefault();
+  const id = document.getElementById('rcptf-id').value;
+  const data = {
+    org_id: ORG_ID,
+    receipt_date: document.getElementById('rcptf-date').value,
+    title: document.getElementById('rcptf-title').value.trim(),
+    category: document.getElementById('rcptf-cat').value,
+    amount: parseFloat(document.getElementById('rcptf-amount').value),
+    currency: CURRENCY,
+    method: document.getElementById('rcptf-method').value,
+    reference: document.getElementById('rcptf-ref').value.trim() || null,
+    account_id: document.getElementById('rcptf-account').value || null,
+    notes: document.getElementById('rcptf-notes').value.trim() || null,
+  };
+  let error;
+  try { if (id) await db.receipts.update(id, data); else await db.receipts.insert(data); }
+  catch (err) { error = err; }
+  if (error) { toast(error.message, 'error'); return; }
+  toast(id ? 'Receipt updated' : 'Receipt recorded', 'success');
+  closeModal('modal-rcpt');
+  await fetchReceipts();
+}
 
 // ─── FINANCE ──────────────────────────────────────────────────────────────────
 let accountsCache = [];

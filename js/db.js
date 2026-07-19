@@ -177,6 +177,8 @@ export const db = {
       return q.order('first_name');
     },
     get:    (id) => supabase.from('members').select('*').eq('id', id).single(),
+    // Multi-word search across name + membership # + phone, whole roster.
+    search: (orgId, q) => supabase.rpc('search_members', { p_org_id: orgId, p_q: q }),
     insert: (data) => dbInsert('members', data),
     update: (id, data) => dbUpdate('members', data, { id }),
     delete: (id) => dbDelete('members', { id }),
@@ -507,6 +509,16 @@ export const db = {
     insert: (data) => dbInsert('expenses', data),
     update: (id, data) => dbUpdate('expenses', data, { id }),
     delete: (id) => dbDelete('expenses', { id }),
+  },
+
+  // Receipts (incoming bulk funds)
+  receipts: {
+    list: (orgId, { limit = 500 } = {}) => supabase.from('receipts')
+      .select('*, accounts(name)').eq('org_id', orgId)
+      .order('receipt_date', { ascending: false }).limit(limit),
+    insert: (data) => dbInsert('receipts', data),
+    update: (id, data) => dbUpdate('receipts', data, { id }),
+    delete: (id) => dbDelete('receipts', { id }),
   },
 
   // Dashboard

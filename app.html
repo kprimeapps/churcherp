@@ -92,7 +92,8 @@
   <div class="nav-item" data-page="page-education"  data-title="Education"><span class="nav-icon">🎓</span> Education</div>
   <div class="nav-item" data-page="page-missions"   data-title="Mission &amp; Evangelism"><span class="nav-icon">🌍</span> Mission &amp; Evangelism</div>
   <div class="nav-item" data-page="page-scholarship" data-title="Scholarship"><span class="nav-icon">📚</span> Scholarship</div>
-  <div class="nav-item" data-page="page-expenses"   data-title="Expenses"><span class="nav-icon">🧾</span> Expenses</div>
+  <div class="nav-item" data-page="page-expenses"   data-title="Payments"><span class="nav-icon">🧾</span> Payments</div>
+  <div class="nav-item" data-page="page-receipts"   data-title="Receipts"><span class="nav-icon">📥</span> Receipts</div>
   <div class="nav-item" data-page="page-budget"     data-title="Budget &amp; Finance"><span class="nav-icon">💰</span> Budget &amp; Finance</div>
   <div class="nav-divider"></div>
   <div class="nav-section-label">Administration</div>
@@ -591,7 +592,7 @@
   <!-- ══ EXPENSES ═══════════════════════════════════════════════════════════ -->
   <div class="erp-page page-content" id="page-expenses">
     <div class="page-header">
-      <div class="page-header-left"><h2>Expenses</h2><p>Church expenditure records</p></div>
+      <div class="page-header-left"><h2>Payments</h2><p>Church expenditure records</p></div>
       <div class="page-actions">
         <select id="exp-status-filter" class="form-control" style="width:auto;min-height:40px;font-size:.82rem;">
           <option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="paid">Paid</option><option value="rejected">Rejected</option>
@@ -608,6 +609,24 @@
       <table class="dtable">
         <thead><tr><th>Title</th><th>Category</th><th>Amount</th><th>Vendor</th><th>Date</th><th>Status</th><th></th></tr></thead>
         <tbody id="exp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ RECEIPTS (incoming bulk funds) ══════════════════════════════════════ -->
+  <div class="erp-page page-content" id="page-receipts">
+    <div class="page-header">
+      <div class="page-header-left"><h2>Receipts</h2><p>Incoming bulk funds — offerings, donations, deposits</p></div>
+      <div class="page-actions"><button class="btn btn-primary btn-sm" id="rcpt-add-btn">+ Add Receipt</button></div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:1.25rem;">
+      <div class="stat-card"><div class="stat-card-label">Total This Month</div><div class="stat-card-value" id="rcpt-month">—</div></div>
+      <div class="stat-card"><div class="stat-card-label">Total This Year</div><div class="stat-card-value" id="rcpt-year">—</div></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="dtable dtable-cards">
+        <thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Method</th><th>Ref</th><th>Amount</th><th></th></tr></thead>
+        <tbody id="rcpt-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -1585,6 +1604,33 @@
       <div class="form-group"><label class="form-label">Notes</label><input type="text" id="expf-notes" class="form-control"/></div>
       <input type="hidden" id="expf-id"/>
       <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-expense')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-rcpt">
+  <div class="modal"><div class="modal-header"><h3 class="modal-title" id="rcpt-modal-title">Add Receipt</h3><button class="modal-close" onclick="closeModal('modal-rcpt')">✕</button></div>
+    <form id="rcpt-form">
+      <div class="form-group"><label class="form-label">Title / Source *</label><input type="text" id="rcptf-title" class="form-control" placeholder="Sunday offering, donation…" required/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input type="number" id="rcptf-amount" class="form-control" step="0.01" required/></div>
+        <div class="form-group"><label class="form-label">Category</label>
+          <select id="rcptf-cat" class="form-control"><option>Offering</option><option>Donation</option><option>Harvest</option><option>Grant</option><option>Fundraising</option><option>Transfer</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Method</label>
+          <select id="rcptf-method" class="form-control"><option>Cash</option><option>Mobile Money</option><option>Cheque</option><option>Bank</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Date *</label><input type="date" id="rcptf-date" class="form-control" required/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Reference</label><input type="text" id="rcptf-ref" class="form-control" placeholder="MoMo / cheque / transfer ref"/></div>
+        <div class="form-group"><label class="form-label">Account</label><select id="rcptf-account" class="form-control"><option value="">—</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" id="rcptf-notes" class="form-control"/></div>
+      <input type="hidden" id="rcptf-id"/>
+      <div class="form-actions"><button type="button" class="btn btn-outline" onclick="closeModal('modal-rcpt')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
     </form>
   </div>
 </div>

@@ -8,10 +8,10 @@ export const ALL_PAGES = [
   'page-dashboard','page-reports','page-members','page-attendance','page-groups','page-giving',
   'page-volunteers','page-visitors','page-family','page-comms','page-events',
   'page-welfare','page-education','page-missions','page-scholarship',
-  'page-expenses','page-budget','page-qr','page-group-attendance','page-settings',
+  'page-expenses','page-receipts','page-budget','page-qr','page-group-attendance','page-settings',
 ];
 
-const FINANCE = ['page-giving','page-expenses','page-budget'];
+const FINANCE = ['page-giving','page-expenses','page-receipts','page-budget'];
 const GENERAL = ['page-members','page-attendance','page-groups','page-volunteers',
                  'page-visitors','page-family','page-comms','page-events',
                  'page-welfare','page-education','page-missions','page-scholarship','page-qr'];
@@ -36,7 +36,7 @@ const ROLE_ACCESS = {
 
   viewer: 'READ_ALL',
 
-  finance_team:         mk(FINANCE, ['page-reports']),
+  finance_team:         mk(FINANCE, ['page-reports','page-members']),  // members read-only (view finance history)
   usher:                { 'page-attendance': 'write' },  // kiosk: service counts only
   media_team:           { 'page-attendance': 'write' },  // kiosk: online attendance only
   group_secretary:      { 'page-group-attendance': 'write' },  // kiosk: their group's meeting count only

@@ -131,10 +131,13 @@ export function memberSelect(inputEl, members, onSelect, limit = 40) {
     if (dropdown) dropdown.remove();
     if (!val || val.length < 2) return;
 
-    const matches = getMembers().filter(m =>
-      `${m.first_name} ${m.last_name}`.toLowerCase().includes(val) ||
-      (m.membership_no && m.membership_no.toLowerCase().includes(val))
-    ).slice(0, limit);
+    // Every token must match somewhere (name / membership # / phone), so
+    // "nana osae" and phone numbers both resolve.
+    const toks = val.split(/\s+/).filter(Boolean);
+    const matches = getMembers().filter(m => {
+      const hay = `${m.first_name || ''} ${m.last_name || ''} ${m.membership_no || ''} ${m.phone || ''} ${m.phone2 || ''}`.toLowerCase();
+      return toks.every(t => hay.includes(t));
+    }).slice(0, limit);
 
     if (!matches.length) return;
 
